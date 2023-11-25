@@ -1,0 +1,941 @@
+%% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
+% Copyright © 2023 Bryce Carson
+\documentclass{article}
+
+%% MARGIN
+\usepackage[margin=1in]{geometry}
+\usepackage{mparhack}
+\usepackage{mathptmx}
+
+%% FIXME: biblatex causes knoweb to be unable to compile.
+%% \usepackage{biblatex}
+%% \addbibresource{\whs.bib}
+
+\usepackage[smallcode,nohyperidents]{knoweb}
+\usepackage[colorlinks,backref]{hyperref}
+
+\usepackage{syntax}
+\usepackage{xspace}
+\usepackage{paralist}
+\usepackage{color}
+
+%% NOTE: used in the figure of the WHS frame layout.
+\usepackage{fancyvrb}
+
+\newcommand{\historicalRef}[1]{For some commentary on the development history of WHS related to this text, see §\ref{#1}.}
+
+%% BEGIN
+\pagestyle{noweb}
+\begin{document}
+
+%% \section{Preface}
+%% A paper describing this implementation---written in Noweb and browsable,
+%% editable, and auditable with WHS, or readable in the printed form---is
+%% hoped to be submitted to The Journal of Open Source Software (JOSS)
+%% before the year 2024. N.B.: the paper will include historical
+%% information about literate programming, and citations (especially of
+%% those given credit in the [[<<Commentary>>]] for ideating WHS itself).
+
+%% \subsection{On literate programming}
+%% Literate programs can be organized in multiple ways; particularly, I
+%% note these forms of organization here. How WHS implementations may
+%% influence literate programming style, taste, or form will be interesting
+%% to observe (as it is a multi-langual art and will benefit from both the
+%% traditional language arts greatly as well as ``code smell'' [a strange
+%%   term programmers have invented to somewhat describe computer--language
+%%   arts]).
+
+%% \begin{enumerate}
+%% \item Algorithmic
+%% \item Architectural
+%% \item Linear
+%% \item Notebook--like (Jupyter and iPython--like, which were influenced by Sweave)
+%% \item Sweave--like (R Noweb ::= R Markdown)
+%% \end{enumerate}
+
+%% The organization of this literate program is \textit{linear}, with
+%% aspects of the program explained as the user would encounter them, more
+%% or less.
+
+\section{Projects}\label{Projects}
+WEB Hypertext System's Emacs implementation (WHS) is a project-based
+application. Projects are lists registered with WHS using the ``Easy
+Customization Interface'', which provides a simple way to make the
+necessary information known to WHS. Users register a literate
+programming project (only Noweb–based programming is supported) as an
+item in the customization variable [[whs-registered-projects]]; further
+project data is contained in a Common Lisp struct during runtime.
+
+In short, a project is composed of several things:
+
+\begin{itemize}
+\item a name,
+\item a Noweb source file,
+\item a shell command to run a user-defined script
+  %% FIXME: textsc is not working in an unordered list
+\item an \textsc{SQLite3} database, and a connection thereto,
+\item a frame,
+\item and date-time information (creation, edition, and export).
+\end{itemize}
+
+The struct keeps some information during runtime, like the connection,
+but other information is generated at runtime (such as the filename of
+the database). These items are each explained in this section. If some
+item is not well-enough explained in this section, please try editing
+the Noweb source and improving the explanataion and creating a
+pull-request against the WHS Emacs Lisp repository on its Git forge; you
+may also submit your edition by email to the package maintainer.
+
+Users of WHS in Emacs are expected to be familiar with Noweb; this does
+not include how Noweb is built from source (that is arcane, supposedly)
+or how filters are implemented with Sed, Awk, or other languages. Users
+must know, however, how to write a custom command-line for Noweave (read
+the manual section regarding the \texttt{-v} option).
+
+Developers of WHS extensions (in either SQL or Emacs Lisp) should read
+the Noweb Hacker's Guide until they understand it, afterwards reading
+this documentation several times until the full implementation is
+understood. I recommend modifying the system using itself to keep
+organized, and writing literately; you'll thank yourself later for doing
+so.
+
+A customization group for WHS is defined to organize its customization
+variables, and these details are explained before moving on to explain the
+struct used during runtime.
+
+<<Customization and global variables>>=
+(defgroup whs nil
+  "The WEB Hypertext System."
+  :tag "WHS"
+  :group 'applications)
+
+(defcustom whs-registered-projects nil
+  "This variable stores all of the projects that are known to WHS."
+  :group 'whs
+  :type '(repeat whs--project-widget)
+  :require 'widget
+  :tag "WHS Registered Projects")
+@
+
+The Widget feature is required by the registered projects variable, but
+may be redundant because the Easy Customization Interface is itself
+implemented with The Emacs Widget Library. Requiring the library may be
+undesireable, as [[(require 'widget)]] will be eagerly evaluated upon
+Emacs' initialization when [[whs-registered-projects]] is set to its
+saved custom value. However, there may be a good reason to eagerly
+evaluate that form: the Widget feature will be available immediately,
+and widgets will be used in buffers to provide TUI buttons for
+navigation between modules of a literate program (at least, that is the
+design of the program at this point in development), so having this
+feature available sooner than later is okay. The feature is required by
+the package regardless.
+
+The [[whs--project-widget]] type used for the registered projects
+variable is a simple list widget containing the name of the project and
+its Noweb source file, along with a filename for a shell script which
+generates the Noweb tool syntax for this project. Each Noweb project has
+a different command-line, and some are complex enough to have a
+Makefile, or multiple Makefiles! Noweb itself is an example of that
+level of complexity. The shell script is later executed by WHS upon
+loading the project, and the standard output captured for parsing by a
+PEG parser.
+
+<<Widgets>>=
+(define-widget 'whs--project-widget 'list
+  "The WHS project widget type."
+  :format "\n%v\n"
+  :offset 0
+  :indent 0
+
+  ;; NOTE: the convert-widget keyword with the argument
+  ;; 'widget-types-convert-widget is absolutely necessary for ARGS to be
+  ;; converted to widgets.
+  :convert-widget 'widget-types-convert-widget
+  :args '((editable-field
+           :format "%t: %v"
+           :tag "Name"
+           :value "")
+
+          (file
+           :tag "Noweb source file (*.nw)"
+           :format "%t: %v"
+           :valid-regexp ".*\\.nw$"
+           :value "")
+
+          (string
+           :tag "A shell command to run a shell script to generates Noweb tool syntax"
+           :format "%t: %v"
+           :documentation "A shell script which will produce the
+           Noweb tool syntax. Any shell commands involved with
+           noweave should be included, but totex should of course
+           be excluded from this script. The script should output
+           the full syntax to standard output. See the Noweb
+           implementation of WHS for explanation."
+           :value "")))
+
+@
+
+NB: Comments may be superfluous in a literate document like this, but
+some effort was made to produce a readable source file regardless of the
+general principles of literate programming; other authors write warnings
+into their tangled source files: ``Don't read this file! Read the Noweb
+source only!''. I don't say that, especially for an Emacs application.
+
+The sole interactive command---[[whs]]---loads the first element of
+[[whs-registered-projects]], considering it the default project.
+
+<<WHS>>=
+(defun whs ()
+  (interactive)
+  (if-let ((whs-load-default-project?)
+           (default-project (cl-first whs-registered-projects))
+           (project (make-whs-project :name (nth 0 default-project)
+                                      :noweb (nth 1 default-project)
+                                      :script (nth 2 default-project))))
+      <<System Initialization>>
+      <<open Customize to register projects>>))
+
+@
+
+WHS is likely to be useful for very large literate programs, so the
+command is designed to initialize from an existing project without
+prompt. In more verbose terms: unless [[whs-load-default-project?]] is
+non-nil and [[whs-registered-projects]] includes at least one element,
+Customize will be opened to customize the WHS group when [[whs]] is
+invoked.
+
+<<Customization and global variables>>=
+(defcustom whs-load-default-project? t
+  "Non-nil values mean the system will load the default project.
+
+nil will cause the interactive command `whs' to open Customize on
+its group of variables."
+  :type 'boolean
+  :group 'whs
+  :tag "Load default project when `whs' is invoked?")
+
+<<open Customize to register projects>>=
+    (message "No WHS projects registered, or `whs-load-default-project?' is nil. %s" (customize-group 'whs))
+@
+
+When [[whs]] is invoked, an instance of the project struct is created,
+and as
+%% TODO:
+a design goal is persisted using serialization after WHS exits.
+
+<<WHS project structure>>=
+(cl-defstruct whs-project
+  "A WHS project"
+  ;; Fundamental
+  name
+  noweb
+  script
+  database-file
+  database-connection
+
+  ;; Usage
+  frame
+
+  ;; Metadata
+  (date-created (ts-now))
+  date-last-edited
+  date-last-exported
+
+  ;; TODO: limit with a cutomization variable so that it does not grow too large.
+  history-sql-commands)
+@
+
+Instances of this struct are only initialized with a few values:
+[[name]], [[noweb]], and [[script]]. The rest of the fields
+either have default values dependent upon the input data (like
+the database-file, database-connection, and date-created), or are
+given values when appropriate later in operation (such as
+[[date-last-exported]]) or upon initalization ([[frame]]).
+
+Initialization when the interactive command is called is covered next;
+to sumamrize: [[whs-project-load-hook]] is run.
+
+\section{System initialization from new projects}\label{Initialization}
+To summarize this section, since it is longer than the previous
+section, the object is the definition of [[<<System Initialization>>]],
+which is a chunk used in [[whs]].
+
+In more explicit words, this section describes the actions that occur
+when a user invokes [[whs]] interactively (with \textit{M-x}) and the
+preconditions have been met; the [[whs]] function has already been
+introduced, and only the ``meaty'' business end of its operation has
+been left undefined until now. Ergo, [[<<System Initialization>>]]
+gathers together the functionality that converts a Noweb to its tool
+syntax with a project's specified shell script, sends the parsed text to
+the database, and finally creates the IDE frame.
+
+<<System Initialization>>=
+(let ((buffer (generate-new-buffer "WHS tool syntax generation shell output")))
+  (with-current-buffer buffer
+    <<run the project shell script to obtain the tool syntax>>
+
+    ;; Go to the beginning of the buffer, then parse according to the PEG.
+    (goto-char (point-min))
+    <<parse the buffer with PEG rules>>))
+@ 
+
+\subsection{Conversion to tool syntax}\label{toolconversion}
+WHS could have been written to call the \texttt{noweave} programs
+itself, but that is less configurable than providing the opportunity to
+let the user configure this on their own. It respects Noweb's pipelines
+architecture, and keeps things as transparent as possible. What is
+needed to be Emacs Lisp is, and what is not isn't. The tool syntax is
+thus obtained by running the shell script configured for the project by
+calling it with the command-line provided in the third element of an
+entry in [[whs-registered-projects]].
+
+<<run the project shell script to obtain the tool syntax>>=
+(make-process
+ :name "whs-tool-generation"
+ :buffer (get-buffer buffer)
+ :command `("bash" ;; likely BASH on a GNU system, hoping for the `command-string' option.
+           "-c"
+           (,@(whs-project-script project)))
+ :stderr (generate-new-buffer "WHS tool generation standard error stream")
+ :sentinel (lambda (process event-string)
+             (message "%S: %s" process event-string)))
+@ 
+
+The PEG for Noweb's tool syntax is run on the result of the shell
+script, and this value consumed by the parent of this chunk.
+
+\subsection{Database initialization}
+Every project should have a database file located somewhere within the
+user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
+cache directory is used, otherwise the database is made in the user's
+Emacs directory and not a subdirectory thereof.
+
+The form used to create the absolute path for the location of the
+database joins three things: the user's emacs directory, \texttt{nil} or
+Spacemacs' cache directory, and the name of the project with ``.db''
+appended. Note that concatenating \texttt{nil} with a string is the same
+as returning the string unchanged.
+
+<<return a filename for the project database>>=
+(file-name-concat
+ ;; Usually ~/.emacs.d/
+ user-emacs-directory
+ ;; `nil' or the Spacemacs cache directory.
+ (when (f-directory? (expand-file-name ".cache" user-emacs-directory))
+   ".cache")
+ ;; PROJECT-NAME.db
+ (concat (whs-project-name project)
+         ".db"))
+@
+
+For \textsc{SQLite}, the pathname of the database to connect to or
+create is sufficient to establish a connection, so the next step is to
+connect to the database and store the connection object in the
+appropriate slot of the project struct.
+
+<<create the database>>=
+(setf (whs-project-database-connection project)
+      (emacsql-sqlite
+       (whs-project-database-file <<return a filename for the project database>>)))
+@ 
+
+The only thing left to do is establish the schema of the tables, which
+is done by mapping over several \textsc{EmacSQL} s-expressions.
+
+%% To create an (SQLite) database from scratch for use with WHS, the schema
+%% must be applied to the database using data definition language (DDL).
+%% With the four tables created, data is provided to the database after the
+%% parsing expression grammar (PEG) has finished its work on the tool
+%% syntax produced by Noweave's \texttt{markup} program. The PEG and the
+%% tool syntax are dealt with in \ref{PEG}.
+
+%% TODO: ensure that this database is in 3NF and make a nice database
+%% planning documents for it.
+<<map over SQL s-expressions, creating the tables>>=
+(--map (emacsql (whs-project-database-connection project) it)
+
+      ;; A list of SQL s-expressions to create the tables.
+      '([:create-table module
+         ([module-name
+           content
+           file-name
+           section-name
+           (displacement integer)
+           (module-number integer :primary-key)])]
+
+        [:create-table parent-child
+         ([(parent integer)
+           (child  integer)
+           (line-number integer)]
+          (:primary-key [parent
+                         child]))]
+
+        [:create-table identifier-used-in-module
+         ([identifier-name
+           (module-number integer)
+           (line-number integer)
+           type-of-usage]
+          (:primary-key [identifier-name
+                         module-number
+                         line-number
+                         type-of-usage]))]
+
+        [:create-table topic-referenced-in-module
+         ([(topic-name nil)
+           (module-number integer)]
+          (:primary-key [topic-name
+                         module-number]))]))
+@
+
+\subsection{Frame creation and atomic window specification}
+A frame like in Figure \ref{fig1} should be created.
+
+\begin{figure}
+\begin{center}
+\label{fig1}
+\begin{BVerbatim}
++--------------+-----------------+-------+
+| Module       | Module         ↑| Index |
+| Code         |  documentation  |       |
+|              |                 |       |
+|              |  (prior or      |       |
+|              |    posterior)   |       |
+????????????????                 |       |
+? AWK  Scripts ?                ↓|       |
+????????????????-----------------+       |
+| Console                        |       |
++--------------------------------+-------+
+\end{BVerbatim}
+\end{center}
+\caption{Simple drawing of WHS frame layout}
+\end{figure}
+
+
+<<Get project frame>>=
+(progn
+  (select-frame (whs-project-frame project))
+  (switch-to-buffer (generate-new-buffer (whs-project-name project)) nil 'force-same-window)
+  (let* ((window-right (split-window-right))
+         (parent-window (window-parent window-right)))
+    (window-make-atom parent-window)
+    (display-buffer-in-atom-window
+     (get-buffer-create (format "Module Index<%s>" (whs-project-name project)))
+     `((window . ,parent-window) (window-height . 8)))))
+
+@
+
+\section{System initialization from existing projects}
+WHS loads a project by running the shell script stored in the third
+element of the project list (which is pointed to by the script slot in
+the struct).
+
+\subsection{Initializing from an existing project}
+With a default project available, WHS runs [[whs-project-load-hook]]
+with the struct of the default project let-bound as [[project]]. Much of
+the functionality of WHS is implemented with the default hook, and
+extensions to WHS should be implemented by editing the WHS Noweb source
+and recompiling it, or extending the existing system with more hook
+functions added to the aforementioned hook list variable.
+
+If the project's database file is empty (zero-bytes) or does not exist
+then the database is created from scratch. If the database already
+exists, the first module is loaded and the database is not changed.
+
+<<delete the database if it already exists, but only if it's an empty file>>=
+;; Unless the SQLite database's size is zero or it doesn't exist, move it to the user's trash directory.
+(let ((whs--dbfile (whs-project-database-file project)))
+  (unless (or (not (file-exists-p whs--dbfile))
+              (= 0 (file-attribute-size (file-attributes whs--dbfile))))
+
+    ;; TODO: Is there a better way to do this? `backup-buffer'?
+    (copy-file whs--dbfile (concat whs--dbfile "~") t)
+
+    ;; TODO: ensure that this AREA of code is reasonable before release.
+    ;; It may have been written to ease development only.
+    (let ((delete-by-moving-to-trash t))
+      (delete-file whs--dbfile t)))
+
+@ 
+
+\section{Loading Noweb source files}\label{Loading}
+To parse a noweb source file, the file needs to be loaded into a temporary
+buffer, then it can be parsed.
+
+A simple usage of \textsc{Noweb} is given next, which shows that
+\texttt{noweave} does not include the header keyword, nor
+autodefinitions, usages, or indexing by default. Those are further
+stages in the UNIX pipeline defined by the user with \texttt{noweave}
+command-line program options and flags.
+
+The WHS system parses the tool syntax emitted by \texttt{markup}, and
+early development versions
+%% TODO: set a version.
+(prior to version \texttt{0.n-devel})
+completely ignore Noweb keywords out of that scope.
+
+An example of a \textsc{Noweb} command-line a user may call is given next.
+
+\begin{quote}
+\begin{verbatim}
+[bryce@fedora whs]$ noweave -v -autodefs elisp -index whs.nw 1>/dev/null
+RCS version name $Name:  $
+RCS id $Id: noweave.nw,v 1.7 2008/10/06 01:03:24 nr Exp $
+(echo @header latex
+/usr/local/lib/markup whs.nw
+echo @trailer latex
+) |
+/usr/local/lib/autodefs.elisp |
+/usr/local/lib/finduses |
+/usr/local/lib/noidx |
+/usr/local/lib/totex
+\end{verbatim}
+\end{quote}
+
+Ergo, the simplified pipeline---using Emacs Lisp autodefinitions provided in
+\textsc{Knoweb} (written by \textsc{Joseph S. Riel})---is as follows:
+
+\begin{verbatim}
+  markup whs.nw | autodefs.elisp | finduses | noidx
+\end{verbatim}
+
+%% TODO: rename and revise this section.
+\subsubsection{In-development}
+For an existing project (during development, that is WHS) to be loaded, it must
+minimally be:
+\begin{enumerate}
+  \item Parsed, then stored in a database
+  \item Navigable with WHS
+    \begin{enumerate}
+    \item Frame and Windows
+    \item Navigation buttons... at least for modules
+    \end{enumerate}
+\end{enumerate}
+
+This means diagramming the database schema, creating it in EmacSQL,
+creating validating functions for existing databases, exceptions for
+malformed databases, and documenting that in \LaTeX.
+
+Navigation with WHS is multi-part:
+\begin{enumerate}
+\item Query the database for a list of modules, and
+\item Create a buffer for the text content retrieved
+\end{enumerate}
+
+Exporting a project from the database and editing the project in an in-memory
+state are further objectives, but they will be achived after the above two have
+been implemented in a basic form.
+
+\subsubsection{TODO}
+The following features need to be implemented:
+\begin{enumerate}
+  \item Project export from database to Noweb format
+  \item Editing of modules, documentation, and Awk code
+  \item Navigation with indices
+  \item Implement indices widgets
+\end{enumerate}
+
+\section{Parsing}
+This section covers the actual parsing of the tool syntax. Production of
+the tool syntax from a Noweb project is covered in §\ref{Projects}. The
+following LISP code uses the \textsc{peg} Emacs Lisp package to provide
+a parser that matches the lexed tokens and executes actions.
+
+\subsection{PEG rules}\label{rules}
+It appears, unfortunately, that there are issues with the PEG I have
+defined, or with the library itself. With an expression like [[(+ (not (null)))]]
+or [[(+ (not (eol)))]], the return value when these are
+wrapped with a substring stack action is [[""]], an empty string. Using
+the rule [[file]] fails because it only matches [["@file "]] for some
+reason, like that reason the return value is [[""]] in the previous clause.
+
+<<parse the buffer with PEG rules>>=
+;;;; Parsing expression grammar (PEG) rules
+(with-peg-rules
+    (<<PEG rules>>)
+  (goto-char 0)
+  (peg-run (peg noweb)))
+@ 
+
+The [[noweb]] rule defines the root expression, or starting expression,
+for the grammar. The tool syntax of Noweb is simply a list of one or
+more files, which are composed of chunks.
+
+<<PEG rules>>=
+(noweb (bob) (list (+ file)) (* line) (eob))
+(line (bol) (eol))
+(file
+ ;; (bol)
+ "@file" [space]
+      ;; Filename
+ (substring (and (not (or "." (eol))) (+ [word])) "." (and (not (eol)) (+ [word])))
+ ;; (eol)
+      ;; The chunks of that file
+      (list (+ chunk))
+      `(filename chunks -- (cons filename chunks)))
+(chunk (list begin (* keyword) end))
+@ 
+
+%%  NOTE: it would be helpful to construct this sort of parse tree at
+%%  the CHUNK level, and this information can be directly sent to the
+%%  database.
+%% `((n . ,n)
+%%   (name . ,substr)
+%%   ;; Displacement: count of @nl encountered in this file so far.
+%%   (offset . ,offset)
+%%   (file . ,file)
+%%   (section . ,section)) ;; Discover a single LaTeX sectioning command
+%%                         ;; in the @text commands which are prior to
+%%                         ;; this module's definition, as that is the
+%%                         ;; direct parent section of this module.
+%%  SQL attributes in the `module' table
+%% module_number; module_name; displacement; file_name; section_name
+
+The result of parsing the beginning and end of a chunk are pushed onto
+the stack as a list.
+
+The definition of a Noweb file, given by Ramsey, is simply a file
+containing one or more chunks; minimally, a Noweb file will contain the
+default documentation chunk.
+
+Because chunks must not overlap, but can nest, the beginnings of chunks
+need to be pushed to the parsing stack and the end of a chunk needs to
+be popped off of it. The push operations in [[kind]] and
+%% TODO: zordinal
+[[ordinal]]
+implement the beginning of a chunk, and the stack actions in the [[end]]
+rule check that the chunk elements on the stack are balanced.
+
+The PEG library's stack operations may be a little confusing, so they
+will be discussed now.
+
+%% FIXME: verify this behaviour by examining the code of the PEG library.
+Stack manipulating operations, such as [[substring]], push their
+matching PEX input text to the stack. Labels in the left half of the
+stack actions pop elements off of the stack and let-bind them, making
+them easier to use in the right hand side. The right hand side uses
+let-bound variables and pushes its results back to the stack. Further,
+it is valid to pop elements of the stack without pushing them back
+(discarding them); it is also valid to push elements to the stack
+without popping anything off the stack.
+
+<<PEG rules>>=
+(begin (bol) "@begin" [space] kind [space] ordinal (eol))
+(end (bol) "@end" [space] kind [space] ordinal (eol)
+     `(k1 z1 keywords k2 z2 --
+          (if (and (= z1 z2) (string= k1 k2))
+              ;;; Push the contents of the chunk to the stack in a cons
+              ;;; cell with the car being a list of the kind and number.
+              ;;;; E.g.:
+              ;; (("code" 3) . (@text @nl @text @nl))
+              (cons (list k1 z1) keywords)
+            (error "There was an issue with unbalanced or improperly nested chunks."))))
+@
+
+Further rules needed to parse a chunk are an ordinal and the kind of
+chunk: code or documentation. An ordinal, in this sense, is any positive
+integer; it is a counting number. The kinds of chunks are represented by
+the strings ``code'' and ``docs''.
+
+<<PEG rules>>=
+(ordinal (substring (and [0-9] (* [0-9])))
+         `(number -- (string-to-number number)))
+(kind (substring (or "code" "docs")))
+@
+
+%% TODO: introduce the structural, tagging, and error keywords with a small amount of prose.
+
+<<PEG rules>>=
+(keyword
+ (substring (or
+   ;; structural
+   text
+   nl
+   defn
+   use ;; NOTE: related to the `identifier-used-in-module' table.
+   beginquote
+   endquote
+
+   ;; tagging
+   line
+   language
+   index
+   xref
+
+   ;; user error
+   header
+   trailer
+
+   ;; error
+   fatal)))
+@
+
+<<PEG rules>>=
+;; strings containing spaces must match: "filename containing spaces.txt"
+(text (bol) "@text" [space] (opt (any)) (eol))
+(nl (bol) "@nl" (eol))
+(use (bol) "@use" [space] (any) (eol))
+(beginquote (bol) "@quote" (eol))
+(endquote (bol) "@endquote" (eol))
+
+(line (bol) "@line" [space] ordinal (eol))
+(language (bol) "@language" [space] (any) (eol))
+(index (bol) "@index" (opt (and [space] index-keyword)) (eol))
+(xref (bol) "@xref" (opt (and [space] xref-keyword)) (eol))
+
+;; indexing keywords
+(index-keyword
+ (or
+  i-defn
+  i-localdefn
+  i-use
+  i-nl
+
+  i-begindefs
+  i-isused
+  i-defitem
+  i-enddefs
+
+  i-beginuses
+  i-isdefined
+  i-useitem
+  i-enduses
+
+  i-beginindex
+  i-entrybegin
+  i-entryuse
+  i-entrydefn
+  i-entryend
+  i-endindex))
+@
+
+%% TODO: there should be some discussion on multi-word-string.
+
+<<PEG rules>>=
+(multi-word-string (+ [word]) (* (and [space] (+ [word]))))
+
+<<PEG rules>>=
+;; Rules that use multi-word-string follow.
+(i-defn "defn" [space] multi-word-string)
+(i-localdefn "localdefn" [space] multi-word-string)
+(i-use "use" [space] multi-word-string)
+(i-nl "nl" [space] multi-word-string)
+
+(i-begindefs "begindefs")
+(i-isused "isused" [space] multi-word-string)
+(i-defitem "defitem" [space] multi-word-string)
+(i-enddefs "enddefs")
+
+(i-beginuses "beginuses")
+(i-isdefined "isdefined" [space] (+ [word]))
+(i-useitem "useitem" [space] multi-word-string)
+(i-enduses "enduses")
+
+(i-beginindex "beginindex")
+(i-entrybegin "entrybegin" [space] (+ [word]) [space] multi-word-string)
+(i-entryuse "entryuse" [space] (+ [word]))
+(i-entrydefn "entrydefn" [space] (+ [word]))
+(i-endentry "entryend")
+(i-endindex "endindex")
+
+;; cross-referencing keywords
+(xref-keyword
+ (or
+  x-label
+  x-ref
+
+  x-prevdef
+  x-nextdef
+
+  x-begindefs
+  x-defitem
+  x-enddefs
+
+  x-beginuses
+  x-useitem
+  x-enduses
+  x-notused
+
+  x-beginchunks
+  x-chunkbegin
+  x-chunkuse
+  x-chunkdefn
+  x-chunkend
+  x-endchunks
+
+  x-tag))
+
+(x-label
+  "label" [space] (+ [word]))
+(x-ref
+  "ref" [space] (+ [word]))
+
+(x-prevdef
+  "prevdef" [space] (+ [word]))
+(x-nextdef
+  "nextdef" [space] (+ [word]))
+
+(x-beginuses
+  "beginuses")
+(x-useitem
+  "useitem" [space] (+ [word]))
+(x-enduses
+  "enduses")
+(x-notused
+  "notused" [space] multi-word-string)
+
+(x-beginchunks
+  "beginindex")
+(x-chunkbegin
+  "chunkbegin" [space] (+ [word]) [space] multi-word-string)
+(x-chunkuse
+  "chunkuse" [space] (+ [word]))
+(x-chunkdefn
+  "chunkdefn" [space] (+ [word]))
+(x-chunkend
+  "chunkend")
+(x-endchunks
+  "endchunks")
+
+;; Associates label with tag (word with multi-word-string)
+(x-tag
+  "tag" [space] (+ [word]) [space] multi-word-string)
+
+;; User-errors (header and trailer) and tool-error (fatal)
+(header (bol) "@header" [space] (+ (not (null))) (eol)
+        (action (error <<user error text>>)))
+(trailer (bol) "@trailer" [space] (+ (not (null))) (eol)
+         (action (error <<user error text>>)))
+(fatal (bol) "@fatal" (* (any))
+       (action (error <<tool error text>>)))
+
+@
+
+<<user error text>>=
+"User error. Do not use totex or tohtml in your noweave pipeline."
+@ 
+<<tool error text>>=
+"There was a fatal error in the pipeline. Debug the tools."
+@ 
+
+\section{Packaging}
+Installing an Emacs Lisp package is quite easy if the system is
+distributed through the GNU Emacs Lisp Package Archive (GNU ELPA), and
+only slightly less easy if it is distributed through MELPA
+(Milkypostman's Emacs Lisp Package Archvie). Other package archives have
+existed, but they are all ephemeral. The most popular alternative to GNU
+ELPA, Non-GNU ELPA, and MELPA is direct distribution of files through
+Git servers and the use of a package by the end user to install directly
+from such.
+
+This software is in-development, so it will only be distributed directly
+through Git.
+
+WHS follows the form of ``simple'', single-file packages documented in
+the Emacs Lisp Reference Manual. The package file, \texttt{whs.el}, is
+emitted by \texttt{notangle} which is called by the Makefile in every
+target but [[clean]]. All source development occurs in \texttt{whs.nw}
+using \textsc{Polymode}.
+
+The makefile distributed alongside whs.nw in the tarball contains the
+command-line used to tangle and weave WHS.
+
+<<whs.el>>=
+<<Emacs Lisp package headers>>
+<<Licensing and copyright>>
+<<Commentary>>
+<<Code>>
+<<EOF>>
+<<Emacs Lisp package headers>>=
+;;; whs.el --- WEB Hypertext System -*- mode: emacs-lisp; lexical-binding: t; no-byte-compile: t; no-native-compile: t; -*-
+
+;; Copyright © 2023 Bryce Carson
+
+;; Author: Bryce Carson <bcars268@mtroyal.ca>
+;; Created 2023-06-18
+;; Keywords: tools tex hypermedia
+;; URL: https://cyberscientist.ca/whs
+;; Package-Version: 0.1.0
+;; Package-Requires: ((emacs "25.1") (emacsql "20230220") (dash "20230617") (peg "1.0.1") (cl-lib "1.0") (ts "20220822"))
+
+<<Licensing and copyright>>=
+;; This program is free software: you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+;; General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program. If not, see
+;; <https://www.gnu.org/licenses/>.
+
+;; If you cannot contact the author by electronic mail at the address
+;; provided in the author field above, you may address mail to be
+;; delivered to
+
+;; Bryce Carson
+;; Research Assistant
+;; Dept. of Biology
+
+;; Mount Royal University
+;; 4825 Mount Royal Gate SW
+;; Calgary, Alberta, Canada
+;; T3E 6K6
+
+<<Commentary>>=
+;;; Commentary:
+;; WHS was described by Brown and Czedjo in _A Hypertext for Literate
+;; Programming_ (1991).
+;;
+;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming.
+;;    In: Akl, S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in
+;;    Computing and Information — ICCI '90. ICCI 1990. Lecture Notes in
+;;    Computer Science, vol 468. Springer, Berlin, Heidelberg.
+;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
+;;
+;; A paper describing this implementation---written in Noweb and browsable,
+;; editable, and auditable with WHS, or readable in the printed form---is
+;; hoped to be submitted to The Journal of Open Source Software (JOSS)
+;; before the year 2024. N.B.: the paper will include historical
+;; information about literate programming, and citations (especially
+;; of those given credit here for ideating WHS itself).
+
+<<Code>>=
+;;; Code:
+;;;; Compiler directives
+(eval-when-compile (require 'wid-edit))
+
+;;;; Internals
+<<Customization and global variables>>
+<<Widgets>>
+<<WHS project structure>>
+
+;;;; Commands
+;;;###autoload
+<<WHS>>
+
+<<EOF>>=
+(provide 'whs)
+;;; whs.el ends here
+@
+
+\section{Indices}
+\subsection{Chunks}
+\nowebchunks
+\subsection{Identifiers}
+\nowebindex
+
+\section{Appendices}
+\subsection{A user-suggested functionality: \texttt{whs-with-project}}\label{HistoryWithProject}
+It was suggested during early development that [[<<API-like functions>>]] such
+as [[whs-with-project]] be written. An early version of such
+functionality is provided in [[whs-with-project]].
+
+<<API-like functions>>=
+;; This chunk intentionally left blank at this time.
+@ 
+
+\end{document}

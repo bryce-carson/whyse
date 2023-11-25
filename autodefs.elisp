@@ -1,0 +1,20 @@
+#!/usr/bin/gawk --file
+# An awk filter for auto-indexing an Elisp noweb source file.
+# This file was generated from the noweb source file autodefs.nw.
+# The source documentation is in autodefs.pdf.
+# Copyright (c) 2005-2015 by Joseph S. Riel.  All rights reserved.
+BEGIN {
+    codeflag = 0
+    regex = "^@text[ \t]+\\(def(un|var|const|group|alias|subsubst|macro|custom|advice|image|ine-(minor-mode|derived-mode|abbrev|category|prefix-command|key-after))[ \t]+([^ \t\n()]+)"
+    subgroup = 3
+}
+($0 ~ /^@(begin|end) code /) {
+    codeflag = !codeflag
+    {print;next}
+}
+!codeflag {print;next}
+!match($0, regex, arr) {print;next}
+{ print "@index defn", arr[subgroup]
+  print
+}
+END {}
