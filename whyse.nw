@@ -118,6 +118,8 @@ struct used during runtime.
   :require 'widget
   :tag "WHYSE Registered Projects")
 
+(defvar w--parse-success t
+  "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
 @
 
 The Widget feature is required by the registered projects variable, but
@@ -602,8 +604,10 @@ produced by the project shell script.
       (peg-run
        (peg noweb)
        (lambda (lst)
-         (message "Parsing failed in buffer %S.\nPEXes which failed:\n%S"
-                  (current-buffer) lst))))))
+         (setq w--parse-success nil)
+         (pop-to-buffer (with-current-buffer (generate-new-buffer "<WHYSE Parse failure log>")
+            (insert (format "PEXes which failed:\n%S" lst))
+            (current-buffer))))))))
 @ 
 
 The grammar can be broken into five sections, each covering some part of
@@ -628,12 +632,19 @@ defined.
 ;;; Overall Noweb structure
 (noweb (bob)
        (not header)
-       (+ (and file (opt (or (and x-chunks i-identifiers)
-                             (and i-identifiers x-chunks)))))
+       (+ (and file (* nwnl)
+               (or (and x-chunks i-identifiers)
+                   (and i-identifiers x-chunks))))
        ;; Trailing documentation chunk and new-lines
        (opt chunk)
-       (opt (* nl))
+       (opt (+ nl))
        (not trailer)
+
+       ;;; DONE: whilst the "no merge error method for (guard t)" issue
+       ;;; persists, removing this check for the EOB resolves the issue
+       ;;; and lets my own calls to `error' surface. The issue seems to
+       ;;; arise from the fact that I did not handle detection of being
+       ;;; within a code chunk properly.
        (eob))
 @
 
@@ -691,9 +702,14 @@ stack are balanced.
 
 <<chunks and their boundaries>>=
 (chunk begin (list (* chunk-contents)) end)
-(begin (bol) "@begin" spc kind spc ordinal (eol) nl
-       (action (setq w--peg-parser-within-codep t)))
-(end (bol) "@end" spc kind spc ordinal (eol) nl
+(begin (bol) "@begin" spc kind
+       ;; (action (message "A chunk was entered; kind: %s" (cl-first peg--stack)))
+       spc ordinal (eol) nl
+       (action (if (string= (cl-second peg--stack) "code")
+                   (setq w--peg-parser-within-codep t))))
+(end (bol) "@end" spc kind
+     ;; (action (message "A chunk was exited; kind: %s" (cl-first peg--stack)))
+     spc ordinal (eol) nl
      (action (setq w--peg-parser-within-codep nil))
      `(kind-one ordinal-one keywords kind-two ordinal-two --
                 (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
@@ -798,8 +814,7 @@ to) a chunk are important keywords.
 (defn "@defn" spc (substring !eol) nl
   `(name -- (cons "chunk" name)))
 
-(use (bol) "@use" spc (action (message "\"@use \" matched"))
-     (substring !eol) nl
+(use (bol) "@use" spc (substring !eol) nl
      `(chunk-name -- (if chunk-name
                          (cons "Chunk usage (child)" chunk-name)
                        (error "UH-OH! There's a syntax error in the tool output!"))))
@@ -926,7 +941,7 @@ those recognized by the autodefinitions filter).
                (list (+ i-entry))
                idx "endindex" nl)
 (i-entry idx "entrybegin" spc (substring label spc !eol) nl
-         (list (+ (and entrydefn (+ entryuse))))
+         (list (+ (or i-entrydefn i-entryuse)))
          idx "entryend" nl
          `(e l -- (cons e l)))
 (i-entrydefn idx (substring "entrydefn") spc (substring label) nl
@@ -959,7 +974,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
  xr "begindefs" nl
  (list (+ (and xr (substring "defitem") spc (substring label) nl)))
  ;; NOTE: development statement only; remove this before release.
- (action (message "peg--stack := \n%S" peg--stack))
+ ;; (action (message "peg--stack := \n%S" peg--stack))
  xr "enddefs" nl)
 
 (x-usages
@@ -967,12 +982,13 @@ WHYSE. See the Noweb Hacker's Guide for more information.
  (list (+ (and xr "useitem" spc (substring label) nl)))
  xr "enduses" nl)
 
-(x-notused xr "notused" spc !eol nl)
+(x-notused xr "notused" spc (substring !eol) nl
+           `(chunk-name -- (cons "notused" chunk-name)))
 
 (x-chunks xr "beginchunks" nl
           (+ x-chunk)
           xr "endchunks" nl)
-(x-chunk xr "chunkbegin" spc (substring label) (substring !eol) nl
+(x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
          (list (+ (list (and xr
                              (substring (or "chunkuse" "chunkdefn"))
                              spc
@@ -1194,6 +1210,9 @@ documentation so that regressions can be caught when changes are made.
 \subsection{Parsing Tests}
 \subsubsection{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=
+(defvar w--parse-success t
+  "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
+
 <<buffer parsing function>>
 
 (with-temp-buffer
@@ -1201,7 +1220,11 @@ documentation so that regressions can be caught when changes are made.
            "make --silent --file ~/src/whs/Makefile tool-syntax"))
   (goto-char (point-min))
   (w--parse-current-buffer-with-rules)
-  (pop-to-buffer (clone-buffer (generate-new-buffer-name "<WHYSE FAILURE> Parsing tool syntax with a temporary buffer"))))
+  (pop-to-buffer
+   (clone-buffer
+    (generate-new-buffer-name
+     (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
+             (if w--parse-success "SUCCESS" "FAILURE"))))))
 
 ;; Local Variables:
 ;; mode: lisp-interaction
