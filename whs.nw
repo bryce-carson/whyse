@@ -89,7 +89,7 @@ may also submit your edition by email to the package maintainer.
 
 Users of WHS in Emacs are expected to be familiar with Noweb; this does
 not include how Noweb is built from source (that is arcane, supposedly)
-or how filters are implemented with Sed, Awk, or other languages. Users
+or how filters are implemented with Sed, AWK, or other languages. Users
 must know, however, how to write a custom command-line for Noweave (read
 the manual section regarding the \texttt{-v} option).
 
@@ -116,6 +116,7 @@ struct used during runtime.
   :type '(repeat whs--project-widget)
   :require 'widget
   :tag "WHS Registered Projects")
+
 @
 
 The Widget feature is required by the registered projects variable, but
@@ -184,6 +185,11 @@ source only!''. I don't say that, especially for an Emacs application.
 
 The sole interactive command---[[whs]]---loads the first element of
 [[whs-registered-projects]], considering it the default project.
+
+<<Quotation custom-set-variables>>=
+'(whs-registered-projects
+   '(("Noweb Hypertext System" "~/Desktop/whs.nw" "make -C ~/Desktop --silent --file ~/src/whs/Makefile tool-syntax")) nil (widget))
+@ 
 
 <<WHS>>=
 (defun whs ()
@@ -876,7 +882,7 @@ command-line used to tangle and weave WHS.
 <<Code>>
 <<EOF>>
 <<Emacs Lisp package headers>>=
-;;; whs.el --- WEB Hypertext System -*- <<file-local variables>> -*-
+;;; whs.el --- WEB Hypertext System -*- lexical-binding: t -*-
 
 ;; Copyright © 2023 Bryce Carson
 
@@ -884,9 +890,15 @@ command-line used to tangle and weave WHS.
 ;; Created 2023-06-18
 ;; Keywords: tools tex hypermedia
 ;; URL: https://cyberscientist.ca/whs
-;; Package-Version: 0.1.0
-;; Package-Requires: (<<required packages>>)
+
+;; This file is not part of GNU Emacs.
+
 @
+
+<<whs-pkg.el>>=
+(define-package "whs" "0.1" "WEB Hypertext System"
+  '(<<required packages>>))
+@ 
 
 The Emacs Lisp Manual states, regarding the \texttt{Package-Requires}
 element of an Emacs Lisp package header:
@@ -909,20 +921,7 @@ is followed for the [[<<file-local variables>>]].
 (peg "1.0.1")
 (cl-lib "1.0")
 (ts "20220822")
-
 @
-
-The difference between how a Noweb filter will handle the following
-chunk and how it would handle the previous is by appending a semicolon
-to every line in the following list of variables, and then joining every
-line by deleting all new line characters.
-
-<<file-local variables>>=
-mode: emacs-lisp
-lexical-binding: t
-no-byte-compile: t
-no-native-compile: t
-@ 
 
 <<Licensing and copyright>>=
 ;; This program is free software: you can redistribute it and/or
@@ -986,8 +985,17 @@ no-native-compile: t
 
 <<EOF>>=
 (provide 'whs)
-;;; whs.el ends here
+
+<<file local variables>>
 @
+
+<<file local variables>>=
+;; Local Variables:
+;; mode: emacs-lisp
+;; no-byte-compile: t
+;; no-native-compile: t
+;; End:
+@ 
 
 \section{Indices}
 \subsection{Chunks}
