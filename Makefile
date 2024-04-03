@@ -22,4 +22,8 @@ clean:
 	rm -rf whyse-*/
 
 tool-syntax:
-	/usr/lib/noweb/markup ~/src/whs/whyse.nw | /usr/lib/noweb/autodefs.elisp | /usr/lib/noweb/finduses | /usr/lib/noweb/noidx -delay
+	/usr/lib/noweb/markup ~/src/whs/whyse.nw | \
+  /usr/lib/noweb/autodefs.elisp | \
+  /usr/lib/noweb/finduses | \
+  ~/src/whs/clean-docs.awk | \
+  /usr/lib/noweb/noidx -delay

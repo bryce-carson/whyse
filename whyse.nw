@@ -829,11 +829,13 @@ to) a chunk are important keywords.
 \end{quotation}
 
 <<quotations>>=
-(quotation (bol) (substring "@quote") nl
+(quotation (bol) "@quote" nl
            (action (when w--peg-parser-within-codep
                      (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
-           (list (* (or text nwnl defn i-define-or-use x-ref use)))
-           (bol) (substring "@endquote") nl)
+           (substring (+ (and (not "@endquote") (any))))
+           ;; (list (* (or text nwnl defn use i-define-or-use x-ref)))
+           (bol) "@endquote" nl
+           `(lst -- (cons "Quotation" lst)))
 @
 
 <<keyword definitions>>=
@@ -1220,11 +1222,12 @@ documentation so that regressions can be caught when changes are made.
            "make --silent --file ~/src/whs/Makefile tool-syntax"))
   (goto-char (point-min))
   (w--parse-current-buffer-with-rules)
-  (pop-to-buffer
-   (clone-buffer
-    (generate-new-buffer-name
-     (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
-             (if w--parse-success "SUCCESS" "FAILURE"))))))
+  ;; (pop-to-buffer
+  ;;  (clone-buffer
+  ;;   (generate-new-buffer-name
+  ;;    (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
+  ;;            (if w--parse-success "SUCCESS" "FAILURE")))))
+  )
 
 ;; Local Variables:
 ;; mode: lisp-interaction
