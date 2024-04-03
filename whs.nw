@@ -1,4 +1,5 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
+%% FIXME: finduses.nw and the recognizer.nw need some tweaking to better support LISP identifiers. It may be as simple as moving `-' from SYMBOLS to ALPHANUMERIC.
 % Copyright © 2023 Bryce Carson
 \documentclass{article}
 
@@ -275,7 +276,7 @@ the database, and finally creates the IDE frame.
     <<run the project shell script to obtain the tool syntax>>
 
     ;; Go to the beginning of the buffer, then parse according to the PEG.
-    (goto-char (point-min))
+    (goto-char 0)
     <<parse the buffer with PEG rules>>))
 @ 
 
@@ -541,19 +542,23 @@ following LISP code uses the \textsc{peg} Emacs Lisp package to provide
 a parser that matches the lexed tokens and executes actions.
 
 \subsection{PEG rules}\label{rules}
-It appears, unfortunately, that there are issues with the PEG I have
-defined, or with the library itself. With an expression like [[(+ (not (null)))]]
-or [[(+ (not (eol)))]], the return value when these are
-wrapped with a substring stack action is [[""]], an empty string. Using
-the rule [[file]] fails because it only matches [["@file "]] for some
-reason, like that reason the return value is [[""]] in the previous clause.
+%% NOTE: to match the new line character in a text stream, the string
+%% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
+%% of line by guarding the boolean return value of the standard Emacs
+%% Lisp (eolp). To test if point is at the end of a line, use (eol), to
+%% match the end of line, and permit parsing the next line of input,
+%% include the string literal "\n".
 
 <<parse the buffer with PEG rules>>=
 ;;;; Parsing expression grammar (PEG) rules
 (with-peg-rules
     (<<PEG rules>>)
   (goto-char 0)
-  (peg-run (peg noweb)))
+  (peg-run (peg noweb)
+           (lambda (&rest args)
+             (message "FAILURE:\n\n%s" args))
+           (lambda (&rest args)
+             (message "SUCCESS:\n\n%s" args))))
 @ 
 
 The [[noweb]] rule defines the root expression, or starting expression,
@@ -561,18 +566,21 @@ for the grammar. The tool syntax of Noweb is simply a list of one or
 more files, which are composed of chunks.
 
 <<PEG rules>>=
-(noweb (bob) (list (+ file)) (* line) (eob))
-(line (bol) (eol))
-(file
- ;; (bol)
- "@file" [space]
-      ;; Filename
- (substring (and (not (or "." (eol))) (+ [word])) "." (and (not (eol)) (+ [word])))
- ;; (eol)
-      ;; The chunks of that file
-      (list (+ chunk))
-      `(filename chunks -- (cons filename chunks)))
-(chunk (list begin (* keyword) end))
+;; Helper's
+(empty-line (bol) (eol) "\n")
+(new-line (eol) "\n")
+
+;; Overall Noweb structure
+(noweb (bob)
+       (list (+ file))
+       (* line)
+       (eob))
+(file "@file" [space] file-path
+      (+ chunk))
+(file-path path file-name)
+(path (+ (and (not "\n") (or "/" "\\") (+ [word]))))
+(file-name (and (not "\n") (+ [word])) "." (and (not "\n") (+ [word])))
+(chunk begin (list (* keyword)) end)
 @ 
 
 %%  NOTE: it would be helpful to construct this sort of parse tree at
@@ -599,9 +607,7 @@ default documentation chunk.
 
 Because chunks must not overlap, but can nest, the beginnings of chunks
 need to be pushed to the parsing stack and the end of a chunk needs to
-be popped off of it. The push operations in [[kind]] and
-%% TODO: zordinal
-[[ordinal]]
+be popped off of it. The push operations in [[kind]] and [[ordinal]]
 implement the beginning of a chunk, and the stack actions in the [[end]]
 rule check that the chunk elements on the stack are balanced.
 
@@ -619,8 +625,8 @@ it is valid to pop elements of the stack without pushing them back
 without popping anything off the stack.
 
 <<PEG rules>>=
-(begin (bol) "@begin" [space] kind [space] ordinal (eol))
-(end (bol) "@end" [space] kind [space] ordinal (eol)
+(begin (bol) "@begin" [space] kind [space] ordinal new-line)
+(end (bol) "@end" [space] kind [space] ordinal new-line
      `(k1 z1 keywords k2 z2 --
           (if (and (= z1 z2) (string= k1 k2))
               ;;; Push the contents of the chunk to the stack in a cons
@@ -671,16 +677,16 @@ the strings ``code'' and ``docs''.
 
 <<PEG rules>>=
 ;; strings containing spaces must match: "filename containing spaces.txt"
-(text (bol) "@text" [space] (opt (any)) (eol))
-(nl (bol) "@nl" (eol))
-(use (bol) "@use" [space] (any) (eol))
-(beginquote (bol) "@quote" (eol))
-(endquote (bol) "@endquote" (eol))
+(text (bol) "@text" [space] (opt (any)) new-line)
+(nl (bol) "@nl" new-line)
+(use (bol) "@use" [space] (any) nl)
+(beginquote (bol) "@quote" new-line)
+(endquote (bol) "@endquote" new-line)
 
-(line (bol) "@line" [space] ordinal (eol))
-(language (bol) "@language" [space] (any) (eol))
-(index (bol) "@index" (opt (and [space] index-keyword)) (eol))
-(xref (bol) "@xref" (opt (and [space] xref-keyword)) (eol))
+(line (bol) "@line" [space] ordinal new-line)
+(language (bol) "@language" [space] (any) new-line)
+(index (bol) "@index" (opt (and [space] index-keyword)) new-line)
+(xref (bol) "@xref" (opt (and [space] xref-keyword)) new-line)
 
 ;; indexing keywords
 (index-keyword
@@ -801,9 +807,9 @@ the strings ``code'' and ``docs''.
   "tag" [space] (+ [word]) [space] multi-word-string)
 
 ;; User-errors (header and trailer) and tool-error (fatal)
-(header (bol) "@header" [space] (+ (not (null))) (eol)
+(header (bol) "@header" [space] (+ (not (null))) new-line
         (action (error <<user error text>>)))
-(trailer (bol) "@trailer" [space] (+ (not (null))) (eol)
+(trailer (bol) "@trailer" [space] (+ (not (null))) new-line
          (action (error <<user error text>>)))
 (fatal (bol) "@fatal" (* (any))
        (action (error <<tool error text>>)))
