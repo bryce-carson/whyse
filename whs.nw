@@ -547,27 +547,38 @@ The following features need to be implemented:
 \end{enumerate}
 
 \section{Parsing}
-This section covers the actual parsing of the tool syntax. Production of
-the tool syntax from a Noweb project is covered in §\ref{Projects}. The
-following LISP code uses the \textsc{peg} Emacs Lisp package to provide
-a parser that matches the lexed tokens and executes actions.
+This section covers the parsing of the Noweb tool syntax produced by a
+project shell script (described in §\ref{Projects}). The following
+blocks of LISP code use the \textsc{peg} Emacs Lisp package to provide
+for automatic parser generation from a formal PEG grammar based off of
+the exhaustive description given in the Noweb Hacker's Guide.
 
-\begin{center}
-  Learning the PEG library was somewhat of a challenge, and deriving a
-  working set of PEXes, rules, for parsing the Noweb tool syntax
-  produced by \texttt{markup} was difficult. For this reason, the first
-  working version of a grammar which parses a subset of the tool syntax
-  is memorialized both in the git repository and in the [[<<test-pex>>]]
-  chunk in the appendices of this document.
-\end{center}
+%% \begin{center}
+%%   Learning the PEG library was a challenge, and deriving a working set
+%%   of PEXes---rules---for parsing the Noweb tool syntax was difficult.
+%% \end{center}
 
-\subsection{PEG rules}\label{rules}
+%%% FIXME: the technobabble here is unhelpful.
+Parsing the tool syntax allows for the generation of an
+partially--directed graph, a digraph, of the network of chunks which
+have hierarchical, self and non-self references, with their sequential
+ordering and non-sequential orderings available for navigation (see
+\href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
+    Knowledge Organization}} for futher information).
+
 %% NOTE: to match the new line character in a text stream, the string
 %% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
 %% of line by guarding the boolean return value of the standard Emacs
 %% Lisp (eolp). To test if point is at the end of a line, use (eol), to
 %% match the end of line, and permit parsing the next line of input,
 %% include the string literal "\n".
+\subsection{PEG rules}\label{rules}
+Every character of an input text to be parsed by parsing expressions in
+a PEG must be defined in terminal rules of the formal grammar. The root
+rule in the grammar for Noweb tool syntax is the appropriately named
+[[noweb]] rule. Beginning [[with-peg-rules]] brought into scope, the
+root rule [[noweb]] is ran on the buffer containing the tool syntax
+produced by the project shell script.
 
 <<parse the buffer with PEG rules>>=
 ;;;; Parsing expression grammar (PEG) rules
@@ -575,71 +586,299 @@ a parser that matches the lexed tokens and executes actions.
     (<<PEG rules>>)
   (peg-run (peg noweb)
            (lambda (lst)
-             (message "Parsing failed in buffer:=%S.\nPEG expressions which failed:=%S" buffer lst))))
+             (message "Parsing failed in buffer:=%S.\nPEXes which failed:=%S" buffer lst))))
 @ 
 
-The [[noweb]] rule defines the root expression, or starting expression,
-for the grammar. The tool syntax of Noweb is simply a list of one or
-more files, which are each composed of at least one chunk.
+The grammar can be broken into five sections, each covering some part of
+parsing.
 
 <<PEG rules>>=
+<<high-level Noweb tool syntax structure>>
+<<files and their paths>>
+<<chunks and their boundaries>>
+<<keywords>>
+<<meta rules>>
+@ 
+
+As stated, the [[noweb]] rule defines the root expression, or starting
+expression, for the grammar. The tool syntax of Noweb is simply a list
+of one or more files, which are each composed of at least one chunk.
+Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
+defined.
+
+<<high-level Noweb tool syntax structure>>=
 ;; Overall Noweb structure
-(noweb (bob)
-       (list (+ file))
-       (* empty-line)
-       (eob))
+(noweb (bob) (+ file) (if (eob))
+       (action (message "End of buffer encountered while parsing.")))
 @
 
-Whilst the [[<<test-pex>>]] works, the main PEG defined in the Noweb
-file does not work. It fails very early.
+The grammar needs to address the fact that the syntax of the Noweb tool
+format is highly line-oriented, given the influence of AWK on the design
+(and usage) of Noweb. The following [[<<meta rules>>]] define rules
+which organize the constructs of a line-oriented, or data-oriented,
+syntax.
 
-<<PEG rules>>=
+<<meta rules>>=
 ;; Helpers
 (empty-line (bol) (eol) "\n")
-(new-line (eol) "\n")
-(not-eol (+ (if (any) (not (or "\n" (eol))))))
+(new-line (eol) "\n"
+          (action (message "A new line was matched.")))
+(not-eol (+ (not "\n") (any)))
 (many-before-eol not-eol new-line)
 @
 
-A
+With the [[<<meta rules>>]] enabling easier definitions of what a given
+``keyword'' looks like, the concept of a file needs to be defined. A
+file is anything that \textit{looks like a file} to Noweb, however, by
+default only the [[@<<*>>]] chunk is tangled when no specific root chunk
+is given on the command line.
 
-<<PEG rules>>=
-(file (bol) "@file" [space] path (eol) "\n"
-      (list (+ chunk)))
-@
+<<files and their paths>>=
+(file (bol) "@file" [space] (substring path) new-line
+      (list (+ chunk))
+      `(path chunk-list -- (list path chunk-list)))
 
-Writing PEXes for matching file names was the most difficult part I have
-encountered so far, as it has forced me to understand that a first
-reading of documentation is usually not sufficient to understand a
-complex library in an area of programming I have not practiced in before
-(language parsing).
-
-<<PEG rules>>=
-;;; Valid filenames the PEX was tested against.
-;; /home/bryce/src/whs/whs.nw
-       ;;; and,
-;; ../whs.nw
-(path (substring (opt (or ".." ".")) (* path-component) file-name))
+(path (opt (or ".." ".")) (* path-component) file-name)
 (path-component (and path-separator (+ [word])))
 (path-separator ["\\/"])
 (file-name (+ (or [word] ".")))
-@ 
+@
 
-<<PEG rules>>=
+%% Writing PEXes for matching file names was the most difficult part I have
+%% encountered so far, as it has forced me to understand that a first
+%% reading of documentation is usually not sufficient to understand a
+%% complex library in an area of programming I have not practiced in before
+%% (language parsing).
+
+<<chunks and their boundaries>>=
 (chunk begin (list (* keyword)) end)
-(begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
+(begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n"
+       (action (message "Chunk @begin matched.")))
 (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
-     `(k1 z1 keywords k2 z2 --
-          (if (and (= z1 z2) (string= k1 k2))
-              ;;; Push the contents of the chunk to the stack in a cons
-              ;;; cell with the car being a list of the kind and number.
-              ;;;; E.g.:
-              ;; (("code" 3) . (@text @nl @text @nl))
-              (cons (list k1 z1) keywords)
-            (error "There was an issue with unbalanced or improperly nested chunks."))))
+     (action (message "Chunk @end matched."))
+     (opt (if begin)
+          (action (message "[DEBUG] A begin [unconsumed] follows this end.")))
+     `(kind-one ordinal-one keywords kind-two ordinal-two --
+                (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
+                             ;;; Push the contents of the chunk to the stack in a cons
+                             ;;; cell with the car being a list of the kind and number.
+                             ;;;; E.g.:
+                    ;; (("code" 3) . (@text @nl @text @nl))
+                    (cons (list kind-one ordinal-one) keywords)
+                  (error "There was an issue with unbalanced or improperly nested chunks."))))
 (ordinal (substring [0-9] (* [0-9]))
          `(number -- (string-to-number number)))
 (kind (substring (or "code" "docs")))
+@ 
+
+<<keywords>>=
+(keyword
+ (or
+  ;; Keywords in the strict sense
+  <<structural keywords>>
+  <<tagging keywords>>
+
+  ;; Keywords in the same strict sense, but which cause failures.
+  <<usage errors>>
+  <<tool errors>>))
+
+<<keyword definitions>>
+@ 
+
+<<structural keywords>>=
+;; structural
+text
+nl
+defn
+use ;; NOTE: related to the `identifier-used-in-module' table.
+quotation
+@ 
+
+<<tagging keywords>>=
+;; tagging
+line
+language
+index
+xref
+@ 
+
+<<usage errors>>=
+;; user error
+header
+trailer
+@ 
+
+<<tool errors>>=
+;; error
+fatal
+@ 
+
+<<keyword definitions>>=
+(text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
+(nl (bol) "@nl" (eol) "\n")
+
+(defn "@defn" [space] (substring not-eol) new-line
+  `(cdefn -- (cons "Chunk definition" cdefn)))
+
+(use (bol) "@use" [space] (action (message "\"@use \" matched"))
+     (substring not-eol) new-line
+     `(chunk-name -- (if chunk-name
+                         (cons "Chunk usage (child)" chunk-name)
+                       (error "UH-OH! There's a syntax error in the tool output!"))))
+
+(quotation beginquote (list (* keyword)) endquote)
+(beginquote (bol) (substring "@quote") new-line)
+(endquote (bol) (substring "@endquote") new-line
+          `(bq kw eq -- (if (and (string= bq "@quote")
+                                 (string= eq "@endquote"))
+                            (cons "Quotation" kw)
+                          (error "UH-OH! There's a parsing bug related to quotations."))))
+
+(line (bol) "@line" [space] (substring ordinal) new-line
+      `(o -- (cons "@line" o)))
+
+(language (bol) "@language" [space] (substring many-before-eol))
+
+;; NOTE: alike xref-keyword, index-keyword tokens handle the end of the
+;; line regardless. The index token handles only the beginning of the
+;; line.
+(index (bol) "@index" [space] (opt index-keyword))
+
+       ;;; FIXME: why did I define it with optionally? Is there a possibility
+       ;;; that @xref can be followed by a newline directly?
+(xref (bol) "@xref" [space]
+      (action (message "\"@xref \" matched"))
+      ;; NOTE: each xref-keyword individually handles the end of the
+      ;; line, since it composes the remainder of the line regardless.
+      (opt xref-keyword))
+
+;; indexing keywords
+(index-keyword
+ (or
+  i-defn
+  i-localdefn
+  i-use
+  i-nl
+
+  i-begindefs
+  i-isused
+  i-defitem
+  i-enddefs
+
+  i-beginuses
+  i-isdefined
+  i-useitem
+  i-enduses
+
+  i-beginindex
+  i-entrybegin
+  i-entryuse
+  i-entrydefn
+  i-entryend
+  i-endindex)
+
+ ;; IMPORTANT
+ new-line)
+
+(i-defn "defn" [space] (substring not-eol))
+(i-localdefn "localdefn" [space] (substring not-eol))
+(i-use "use" [space] (substring not-eol))
+(i-nl "nl" [space] (substring not-eol))
+
+(i-begindefs "begindefs")
+(i-isused "isused" [space] (substring not-eol))
+(i-defitem "defitem" [space] (substring not-eol))
+(i-enddefs "enddefs")
+
+(i-beginuses "beginuses")
+(i-isdefined "isdefined" [space] (substring not-eol))
+(i-useitem "useitem" [space] (substring not-eol))
+(i-enduses "enduses")
+
+(i-beginindex "beginindex")
+(i-entrybegin "entrybegin" [space] (+ [word]) [space] (substring not-eol))
+(i-entryuse "entryuse" [space] (substring not-eol))
+(i-entrydefn "entrydefn" [space] (substring not-eol))
+(i-endentry "entryend")
+(i-endindex "endindex")
+
+;; cross-referencing keywords
+(xref-keyword
+ (or
+  x-label
+  x-ref
+
+  x-begindefs
+  x-prevdef
+  x-nextdef
+  x-defitem
+  x-enddefs
+
+  x-beginuses
+  x-useitem
+  x-enduses
+  x-notused
+
+  x-beginchunks
+  x-chunkbegin
+  x-chunkuse
+  x-chunkdefn
+  x-chunkend
+  x-endchunks
+
+  x-tag)
+
+ ;; IMPORTANT
+ new-line
+ (action (message "An xref-keyword was matched.")))
+
+(x-label
+ "label" [space] (substring not-eol))
+(x-ref
+ "ref" [space] (substring not-eol)
+ `(reference -- (cons "XREF" reference)))
+
+;; FIXME: TODO:
+(x-begindefs (substring not-eol))
+
+(x-prevdef
+ "prevdef" [space] (substring not-eol))
+(x-nextdef
+ "nextdef" [space] (substring not-eol))
+
+(x-beginuses
+ "beginuses")
+(x-useitem
+ "useitem" [space] (substring not-eol))
+(x-enduses
+ "enduses")
+(x-notused
+ "notused" [space] (substring not-eol))
+
+(x-beginchunks
+ "beginindex")
+(x-chunkbegin
+ "chunkbegin" [space] (+ [word]) [space] not-eol)
+(x-chunkuse
+ "chunkuse" [space] (+ [word]))
+(x-chunkdefn
+ "chunkdefn" [space] (+ [word]))
+(x-chunkend
+ "chunkend")
+(x-endchunks
+ "endchunks")
+
+;; Associates label with tag (word with not-eol)
+(x-tag
+ "tag" [space] (+ [word]) [space] not-eol)
+
+;; User-errors (header and trailer) and tool-error (fatal)
+(header (bol) "@header"
+        (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+(trailer (bol) "@trailer"
+         (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+(fatal (bol) "@fatal"
+       (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHS, and other relevant tools."))))
 @ 
 
 %%  NOTE: it would be helpful to construct this sort of parse tree at
@@ -687,179 +926,6 @@ Further rules needed to parse a chunk are an ordinal and the kind of
 chunk: code or documentation. An ordinal, in this sense, is any positive
 integer; it is a counting number. The kinds of chunks are represented by
 the strings ``code'' and ``docs''.
-
-%% TODO: introduce the structural, tagging, and error keywords with a small amount of prose.
-<<PEG rules>>=
-(keyword
- (substring (or
-             ;; structural
-             text
-             nl
-             defn
-             use ;; NOTE: related to the `identifier-used-in-module' table.
-             beginquote
-             endquote
-
-             ;; tagging
-             line
-             language
-             index
-             xref
-
-             ;; user error
-             header
-             trailer
-
-             ;; error
-             fatal)))
-@
-
-<<PEG rules>>=
-;; strings containing spaces must match: "filename containing spaces.txt"
-(text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
-(nl (bol) "@nl" (eol) "\n")
-
-(defn "@defn" [space] (substring many-before-eol)
-  `(cdefn -- (cons "Chunk definition" cdefn)))
-
-(use (bol) "@use" [space] (substring many-before-eol))
-(beginquote (bol) "@quote" (substring many-before-eol))
-(endquote (bol) "@endquote" (substring many-before-eol))
-
-(line (bol) "@line" [space] (substring ordinal) new-line
-      `(o -- (cons "@line" o)))
-
-(language (bol) "@language" [space] (substring many-before-eol))
-(index (bol) "@index" (opt (and [space] index-keyword)) new-line)
-(xref (bol) "@xref" (opt (and [space] xref-keyword)) new-line)
-
-;; indexing keywords
-(index-keyword
- (or
-  i-defn
-  i-localdefn
-  i-use
-  i-nl
-
-  i-begindefs
-  i-isused
-  i-defitem
-  i-enddefs
-
-  i-beginuses
-  i-isdefined
-  i-useitem
-  i-enduses
-
-  i-beginindex
-  i-entrybegin
-  i-entryuse
-  i-entrydefn
-  i-entryend
-  i-endindex))
-@
-
-<<PEG rules>>=
-(i-defn "defn" [space] many-before-eol)
-(i-localdefn "localdefn" [space] many-before-eol)
-(i-use "use" [space] many-before-eol)
-(i-nl "nl" [space] many-before-eol)
-
-(i-begindefs "begindefs")
-(i-isused "isused" [space] many-before-eol)
-(i-defitem "defitem" [space] many-before-eol)
-(i-enddefs "enddefs")
-
-(i-beginuses "beginuses")
-(i-isdefined "isdefined" [space] (+ [word]))
-(i-useitem "useitem" [space] many-before-eol)
-(i-enduses "enduses")
-
-(i-beginindex "beginindex")
-(i-entrybegin "entrybegin" [space] (+ [word]) [space] many-before-eol)
-(i-entryuse "entryuse" [space] (+ [word]))
-(i-entrydefn "entrydefn" [space] (+ [word]))
-(i-endentry "entryend")
-(i-endindex "endindex")
-
-;; cross-referencing keywords
-(xref-keyword
- (or
-  x-label
-  x-ref
-
-  x-prevdef
-  x-nextdef
-
-  x-begindefs
-  x-defitem
-  x-enddefs
-
-  x-beginuses
-  x-useitem
-  x-enduses
-  x-notused
-
-  x-beginchunks
-  x-chunkbegin
-  x-chunkuse
-  x-chunkdefn
-  x-chunkend
-  x-endchunks
-
-  x-tag))
-
-(x-label
-  "label" [space] (+ [word]))
-(x-ref
-  "ref" [space] (+ [word]))
-
-(x-prevdef
-  "prevdef" [space] (+ [word]))
-(x-nextdef
-  "nextdef" [space] (+ [word]))
-
-(x-beginuses
-  "beginuses")
-(x-useitem
-  "useitem" [space] (+ [word]))
-(x-enduses
-  "enduses")
-(x-notused
-  "notused" [space] many-before-eol)
-
-(x-beginchunks
-  "beginindex")
-(x-chunkbegin
-  "chunkbegin" [space] (+ [word]) [space] many-before-eol)
-(x-chunkuse
-  "chunkuse" [space] (+ [word]))
-(x-chunkdefn
-  "chunkdefn" [space] (+ [word]))
-(x-chunkend
-  "chunkend")
-(x-endchunks
-  "endchunks")
-
-;; Associates label with tag (word with many-before-eol)
-(x-tag
-  "tag" [space] (+ [word]) [space] many-before-eol)
-
-;; User-errors (header and trailer) and tool-error (fatal)
-(header (bol) "@header" [space] (+ (not (null))) new-line
-        (action (error <<user error text>>)))
-(trailer (bol) "@trailer" [space] (+ (not (null))) new-line
-         (action (error <<user error text>>)))
-(fatal (bol) "@fatal" (* (any))
-       (action (error <<tool error text>>)))
-@
-
-<<user error text>>=
-"User error. Do not use totex or tohtml in your noweave pipeline."
-@ 
-<<tool error text>>=
-"There was a fatal error in the pipeline. Debug the tools."
-@ 
 
 \section{Packaging}
 Installing an Emacs Lisp package is quite easy if the system is
@@ -1023,81 +1089,85 @@ early version of such functionality is provided in [[whs-with-project]].
 @ 
 
 \subsection{Testing the PEX grammar for Noweb's tool syntax}
-<<test-pex>>=
-@@file /home/bryce/src/whs/whs.nw
-@@begin docs 0
-@@text The Bluetooth Device has been connected successfully.
-@@nl
-@@text The Bluetooth Device has been connected successfully.
-@@nl
-@@text The Bluetooth Device has been connected successfully.
-@@text The Bluetooth Device has been connected successfully.
-@@text The Bluetooth Device has been connected successfully.
-@@nl
-@@nl
-@@nl
-@@nl
-@@end docs 0
-@@begin docs 1
-@@text The Bluetooth Device has been connected successfully.
-@@nl
-@@end docs 1
-@@file ../whs.nw
-@@begin docs 0
-@@text Hello, world of literate programming.
-@@nl
-@@end docs 0
+The following source text (given with {\LaTeX}'s verbatim block, rather
+than a Noweb code block) is a prior version of a working parse of
+Noweb's tool syntax.
 
-(defun test-pex ()
-  (with-peg-rules
-      ((noweb (+ file))
-       (file (bol) "@file" [space] path (eol) "\n"
-             (list (+ chunk))
-             `(filename chunks -- (cons filename chunks)))
+\begin{verbatim}
+ @file /home/bryce/src/whs/whs.nw
+ @begin docs 0
+ @text The Bluetooth Device has been connected successfully.
+ @nl
+ @text The Bluetooth Device has been connected successfully.
+ @nl
+ @text The Bluetooth Device has been connected successfully.
+ @text The Bluetooth Device has been connected successfully.
+ @text The Bluetooth Device has been connected successfully.
+ @nl
+ @nl
+ @nl
+ @nl
+ @end docs 0
+ @begin docs 1
+ @text The Bluetooth Device has been connected successfully.
+ @nl
+ @end docs 1
+ @file ../whs.nw
+ @begin docs 0
+ @text Hello, world of literate programming.
+ @nl
+ @end docs 0
 
-       ;;; Valid filenames the PEX was tested against.
-       ;; /home/bryce/src/whs/whs.nw
-       ;;; and,
-       ;; ../whs.nw
-       (path (substring (opt (or ".." ".")) (* path-component) file-name))
-       (path-component (and path-separator (+ [word])))
-       (path-separator ["\\/"])
-       (file-name (+ (or [word] ".")))
+ (defun test-pex ()
+    (with-peg-rules
+       ((noweb (+ file))
+        (file (bol) "@file" [space] path (eol) "\n"
+              (list (+ chunk))
+              `(filename chunks -- (cons filename chunks)))
 
-       (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
-       (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
-            `(k1 z1 keywords k2 z2 --
-                 (if (and (= z1 z2) (string= k1 k2))
-              ;;; Push the contents of the chunk to the stack in a cons
-              ;;; cell with the car being a list of the kind and number.
-              ;;;; E.g.:
-                     ;; (("code" 3) . (@text @nl @text @nl))
-                     (cons (list k1 z1) keywords)
-                   (error "There was an issue with unbalanced or improperly nested chunks."))))
-       (ordinal (substring [0-9] (* [0-9]))
-                `(number -- (string-to-number number)))
-       (kind (substring (or "code" "docs")))
+        ;;; Valid filenames the PEX was tested against.
+        ;; /home/bryce/src/whs/whs.nw
+        ;;; and,
+        ;; ../whs.nw
+        (path (substring (opt (or ".." ".")) (* path-component) file-name))
+        (path-component (and path-separator (+ [word])))
+        (path-separator ["\\/"])
+        (file-name (+ (or [word] ".")))
 
-       ;; Chunk keyword definitions for what is in pextest.el (this file).
-       (chunk begin
-              ;; keywords
-              (list (* (or text nl)))
-              end)
-       (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
-       (nl (bol) "@nl" (eol) "\n"))
-    (goto-char 0)
-    (peg-run (peg noweb)
-             ;; (lambda (&rest args)
-             ;;   (message "failure\n%s" args))
-             ;; (lambda (&rest args)
-             ;;   (message "success\n%S" args))
-             )))
+        (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
+        (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
+             `(k1 z1 keywords k2 z2 --
+                  (if (and (= z1 z2) (string= k1 k2))
+               ;;; Push the contents of the chunk to the stack in a cons
+               ;;; cell with the car being a list of the kind and number.
+               ;;;; E.g.:
+                      ;; (("code" 3) . (@text @nl @text @nl))
+                      (cons (list k1 z1) keywords)
+                    (error "There was an issue with unbalanced or improperly nested chunks."))))
+        (ordinal (substring [0-9] (* [0-9]))
+                 `(number -- (string-to-number number)))
+        (kind (substring (or "code" "docs")))
 
-(test-pex)
+        ;; Chunk keyword definitions for what is in pextest.el (this file).
+        (chunk begin
+               ;; keywords
+               (list (* (or text nl)))
+               end)
+        (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
+        (nl (bol) "@nl" (eol) "\n"))
+     (goto-char 0)
+     (peg-run (peg noweb)
+              ;; (lambda (&rest args)
+              ;;   (message "failure\n%s" args))
+              ;; (lambda (&rest args)
+              ;;   (message "success\n%S" args))
+              )))
 
-;; Local Variables:
-;; major-mode: lisp-interaction
-;; End:
-@ 
+ (test-pex)
+
+ ;; Local Variables:
+ ;; major-mode: lisp-interaction
+ ;; End:
+\end{verbatim}
 
 \end{document}

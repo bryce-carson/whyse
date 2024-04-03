@@ -1,7 +1,17 @@
-(defun test-pex ()
+If you do not have Noweb installed, simply concatenate the chunks in
+their order of \textit{reference} (the first chunk begins with a
+reference to another chunk, so it is ``referenced'' second because its
+definition follows another chunk's reference). If you have Noweb
+installed simply tangle [[<<PEG-test.el>>]]. Evaluate the defun and call
+the function at the end of the file.
+
+<<PEG-test.el>>=
+<<tangled-mess>>
+
+(defun test-PEG ()
   (with-peg-rules
       ;; Overall Noweb structure
-      ((noweb (bob) (+ file) (if (eob)) (action (message "End of buffer encountered while parsing.")))
+      ((noweb (bob) (+ file))
 
        ;; Helpers
        (empty-line (bol) (eol) "\n")
@@ -10,7 +20,9 @@
        (not-eol (+ (not "\n") (any)))
        (many-before-eol not-eol new-line)
 
-       (file (bol) "@file" [space] (substring path) new-line
+       (file (bol) "@file" [space] (substring path) (eol) "\n"
+             ;; FIXME: certain input is preventing the parser from reading all
+             ;; the input text.
              (list (+ chunk))
              `(path chunk-list -- (list path chunk-list)))
 
@@ -22,6 +34,8 @@
        (chunk begin (list (* keyword)) end)
        (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n"
               (action (message "Chunk @begin matched.")))
+       ;; FIXME: a sequence of one or more chunks can be recognized, but parsing stops when a second chunk is found (with this example input).
+       ;; [DEBUG] The result of successful parsing is:#[0 "\212\301!)\207" [peg--actions peg-postprocess] 2]
        (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
             (action (message "Chunk @end matched."))
             (opt (if begin)
@@ -34,6 +48,7 @@
                      ;; (("code" 3) . (@text @nl @text @nl))
                    (cons (list kind-one ordinal-one) keywords)
                    (error "There was an issue with unbalanced or improperly nested chunks."))))
+
        (ordinal (substring [0-9] (* [0-9]))
                 `(number -- (string-to-number number)))
        (kind (substring (or "code" "docs")))
@@ -68,11 +83,9 @@
 
        (use (bol) "@use" [space] (action (message "\"@use \" matched"))
             (substring not-eol) new-line
-            `(chunk-name -- (if chunk-name
-                                (cons "Chunk usage (child)" chunk-name)
-                              (error "UH-OH! There's a syntax error in the tool output!"))))
+            `(chunk-name -- (cons "Chunk usage (child)" chunk-name)))
 
-       (quotation beginquote (list (* keyword)) endquote)
+       (quotation beginquote (list (+ keyword)) endquote)
        (beginquote (bol) (substring "@quote") new-line)
        (endquote (bol) (substring "@endquote") new-line
                  `(bq kw eq -- (if (and (string= bq "@quote")
@@ -137,14 +150,14 @@
        (i-enddefs "enddefs")
 
        (i-beginuses "beginuses")
-       (i-isdefined "isdefined" [space] (substring not-eol))
+       (i-isdefined "isdefined" [space] (+ [word]))
        (i-useitem "useitem" [space] (substring not-eol))
        (i-enduses "enduses")
 
        (i-beginindex "beginindex")
        (i-entrybegin "entrybegin" [space] (+ [word]) [space] (substring not-eol))
-       (i-entryuse "entryuse" [space] (substring not-eol))
-       (i-entrydefn "entrydefn" [space] (substring not-eol))
+       (i-entryuse "entryuse" [space] (+ [word]))
+       (i-entrydefn "entrydefn" [space] (+ [word]))
        (i-endentry "entryend")
        (i-endindex "endindex")
 
@@ -176,6 +189,7 @@
 
         ;; IMPORTANT
         new-line
+
         (action (message "An xref-keyword was matched.")))
 
        (x-label
@@ -185,7 +199,8 @@
         `(reference -- (cons "XREF" reference)))
 
        ;; FIXME: TODO:
-       (x-begindefs (substring not-eol))
+       (x-begindefs
+        (action (ignore)))
 
        (x-prevdef
         "prevdef" [space] (substring not-eol))
@@ -204,7 +219,7 @@
        (x-beginchunks
         "beginindex")
        (x-chunkbegin
-        "chunkbegin" [space] (+ [word]) [space] not-eol)
+        "chunkbegin" [space] (+ [word]) [space] many-before-eol)
        (x-chunkuse
         "chunkuse" [space] (+ [word]))
        (x-chunkdefn
@@ -214,9 +229,9 @@
        (x-endchunks
         "endchunks")
 
-       ;; Associates label with tag (word with not-eol)
+       ;; Associates label with tag (word with many-before-eol)
        (x-tag
-        "tag" [space] (+ [word]) [space] not-eol)
+        "tag" [space] (+ [word]) [space] many-before-eol)
 
        ;; User-errors (header and trailer) and tool-error (fatal)
        (header (bol) "@header"
@@ -229,51 +244,113 @@
     (goto-char 0)
     (peg-run (peg noweb)
              (lambda (lst)
-               (message "[ERROR] The following PEXes failed:%S" lst)))))
+               (message "[ERROR] The following PEXes failed:%S" lst))
+             (lambda (fun)
+               (message "[DEBUG] The result of successful parsing is:%S\n" (funcall fun))))))
 
+<<EVALUATE ME>>
+@ 
+
+<<EVALUATE ME>>=
 ;; EVAL
-(test-pex)
+(test-PEG)
+@ 
 
-;; Copyright © 2023 Bryce Carson
-
-;; This file is not part of GNU Emacs.
-
-;; This file is part of WHS, an Emacs Lisp package in-development. As the file
-;; will possibly contribute towards an academic publication, usages of the code
-;; above which do not respect academic integrity and honesty are considered
-;; immoral by the author. Please don't violate academic integrity by deriving
-;; published work from the above code without contacting the original author and
-;; considering cooperation towards a greater academic work together. Thank you.
-
-;; This program is free software: you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation, either version 3 of the
-;; License, or (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful, but
-;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-;; General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program. If not, see
-;; <https://www.gnu.org/licenses/>.
-
-;; If you cannot contact the author by electronic mail at the address
-;; provided in the author field above, you may address mail to be
-;; delivered to
-
-;; Bryce A. Carson
-;; Research Assistant
-;; Deparment of Biology
-
-;; Mount Royal University
-;; 4825 Mount Royal Gate SW
-;; Calgary, Alberta, Canada
-;; T3E 6K6
-
-;; Local Variables:
-;; major-mode: lisp-interaction
-;; no-byte-compile: t
-;; auto-compile-native-compile: nil
-;; End:
+<<tangled-mess>>=
+@@file test.nw
+@@begin docs 0
+@@text The first two chunks are defined in the chained manner, with only a single closing 
+@@quote
+@@text @
+@@endquote
+@@text .
+@@nl
+@@text 
+@@nl
+@@end docs 0
+@@begin code 1
+@@defn a
+@@nl
+@@use b
+@@text 
+@@nl
+@@text C
+@@nl
+@@end code 1
+@@begin code 2
+@@defn b
+@@nl
+@@text A
+@@nl
+@@use C
+@@text 
+@@nl
+@@end code 2
+@@begin docs 3
+@@text 
+@@nl
+@@text 
+@@nl
+@@text The following chunk is defined without any chaining.
+@@nl
+@@text 
+@@nl
+@@end docs 3
+@@begin code 4
+@@defn C
+@@nl
+@@text B
+@@nl
+@@end code 4
+@@begin docs 5
+@@text 
+@@nl
+@@text 
+@@nl
+@@end docs 5
+@ 
+%% Copyright © 2023 Bryce Carson
+%%
+%% This file is not part of GNU Emacs.
+%%
+%% This file is part of WHS, an Emacs Lisp package in-development. As the file
+%% will possibly contribute towards an academic publication, usages of the code
+%% above which do not respect academic integrity and honesty are considered
+%% immoral by the author. Please don't violate academic integrity by deriving
+%% published work from the above code without contacting the original author and
+%% considering cooperation towards a greater academic work together. Thank you.
+%%
+%% This program is free software: you can redistribute it and/or
+%% modify it under the terms of the GNU General Public License as
+%% published by the Free Software Foundation, either version 3 of the
+%% License, or (at your option) any later version.
+%%
+%% This program is distributed in the hope that it will be useful, but
+%% WITHOUT ANY WARRANTY; without even the implied warranty of
+%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+%% General Public License for more details.
+%%
+%% You should have received a copy of the GNU General Public License
+%% along with this program. If not, see
+%% <https://www.gnu.org/licenses/>.
+%%
+%% If you cannot contact the author by electronic mail at the address
+%% provided in the author field above, you may address mail to be
+%% delivered to
+%%
+%% Bryce A. Carson
+%% Research Assistant
+%% Deparment of Biology
+%%
+%% Mount Royal University
+%% 4825 Mount Royal Gate SW
+%% Calgary, Alberta, Canada
+%% T3E 6K6
+%%
+%% Local Variables:
+%% major-mode: Poly-Noweb
+%% noweb-code-mode: emacs-lisp-mode
+%% fill-column: 72
+%% no-byte-compile: t
+%% auto-compile-native-compile: nil
+%% End:
