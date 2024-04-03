@@ -29,10 +29,14 @@
              (list (+ chunk))
              `(filename chunks -- (cons filename chunks)))
 
-       (file-name (and  (+ (or [word] "."))))
-       (path-separator ["\\/"])
+       ;;; Valid filenames the PEX was tested against.
+       ;; /home/bryce/src/whs/whs.nw
+       ;;; and,
+       ;; ../whs.nw
+       (path (substring (opt (or ".." ".")) (* path-component) file-name))
        (path-component (and path-separator (+ [word])))
-       (path (substring (* path-component) file-name))
+       (path-separator ["\\/"])
+       (file-name (+ (or [word] ".")))
 
        (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
        (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
@@ -56,12 +60,7 @@
        (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
        (nl (bol) "@nl" (eol) "\n"))
     (goto-char 0)
-    (peg-run (peg noweb)
-             ;; (lambda (&rest args)
-             ;;   (message "failure\n%s" args))
-             ;; (lambda (&rest args)
-             ;;   (message "success\n%S" args))
-             )))
+    (peg-run (peg noweb))))
 
 (test-pex)
 

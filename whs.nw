@@ -216,7 +216,8 @@ its group of variables."
   :tag "Load default project when `whs' is invoked?")
 
 <<open Customize to register projects>>=
-    (message "No WHS projects registered, or `whs-load-default-project?' is nil. %s" (customize-group 'whs))
+(message "No WHS projects registered, or `whs-load-default-project?' is nil. %s"
+         (customize-group 'whs))
 @
 
 When [[whs]] is invoked, an instance of the project struct is created,
@@ -541,6 +542,15 @@ the tool syntax from a Noweb project is covered in §\ref{Projects}. The
 following LISP code uses the \textsc{peg} Emacs Lisp package to provide
 a parser that matches the lexed tokens and executes actions.
 
+\begin{center}
+  Learning the PEG library was somewhat of a challenge, and deriving a
+  working set of PEXes, rules, for parsing the Noweb tool syntax
+  produced by \texttt{markup} was difficult. For this reason, the first
+  working version of a grammar which parses a subset of the tool syntax
+  is memorialized both in the git repository and in the [[<<test-pex>>]]
+  chunk in the appendices of this document.
+\end{center}
+
 \subsection{PEG rules}\label{rules}
 %% NOTE: to match the new line character in a text stream, the string
 %% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
@@ -553,12 +563,7 @@ a parser that matches the lexed tokens and executes actions.
 ;;;; Parsing expression grammar (PEG) rules
 (with-peg-rules
     (<<PEG rules>>)
-  (goto-char 0)
-  (peg-run (peg noweb)
-           (lambda (&rest args)
-             (message "FAILURE:\n\n%s" args))
-           (lambda (&rest args)
-             (message "SUCCESS:\n\n%s" args))))
+  (peg-run (peg noweb)))
 @ 
 
 The [[noweb]] rule defines the root expression, or starting expression,
@@ -566,21 +571,59 @@ for the grammar. The tool syntax of Noweb is simply a list of one or
 more files, which are composed of chunks.
 
 <<PEG rules>>=
-;; Helper's
-(empty-line (bol) (eol) "\n")
-(new-line (eol) "\n")
-
 ;; Overall Noweb structure
 (noweb (bob)
        (list (+ file))
-       (* line)
+       (* empty-line)
        (eob))
-(file "@file" [space] file-path
-      (+ chunk))
-(file-path path file-name)
-(path (+ (and (not "\n") (or "/" "\\") (+ [word]))))
-(file-name (and (not "\n") (+ [word])) "." (and (not "\n") (+ [word])))
+@
+
+<<PEG rules>>=
+;; Helper's
+(empty-line (bol) (eol) "\n")
+(new-line (eol) "\n")
+@
+
+A
+
+<<PEG rules>>=
+(file (bol) "@file" [space] path (eol) "\n"
+      (list (+ chunk))
+      `(filename chunks -- (cons filename chunks)))
+@
+
+Writing PEXes for matching file names was the most difficult part I have
+encountered so far, as it has forced me to understand that a first
+reading of documentation is usually not sufficient to understand a
+complex library in an area of programming I have not practiced in before
+(language parsing).
+
+<<PEG rules>>=
+;;; Valid filenames the PEX was tested against.
+;; /home/bryce/src/whs/whs.nw
+       ;;; and,
+;; ../whs.nw
+(path (substring (opt (or ".." ".")) (* path-component) file-name))
+(path-component (and path-separator (+ [word])))
+(path-separator ["\\/"])
+(file-name (+ (or [word] ".")))
+@ 
+
+<<PEG rules>>=
 (chunk begin (list (* keyword)) end)
+(begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
+(end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
+     `(k1 z1 keywords k2 z2 --
+          (if (and (= z1 z2) (string= k1 k2))
+              ;;; Push the contents of the chunk to the stack in a cons
+              ;;; cell with the car being a list of the kind and number.
+              ;;;; E.g.:
+              ;; (("code" 3) . (@text @nl @text @nl))
+              (cons (list k1 z1) keywords)
+            (error "There was an issue with unbalanced or improperly nested chunks."))))
+(ordinal (substring [0-9] (* [0-9]))
+         `(number -- (string-to-number number)))
+(kind (substring (or "code" "docs")))
 @ 
 
 %%  NOTE: it would be helpful to construct this sort of parse tree at
@@ -624,61 +667,42 @@ it is valid to pop elements of the stack without pushing them back
 (discarding them); it is also valid to push elements to the stack
 without popping anything off the stack.
 
-<<PEG rules>>=
-(begin (bol) "@begin" [space] kind [space] ordinal new-line)
-(end (bol) "@end" [space] kind [space] ordinal new-line
-     `(k1 z1 keywords k2 z2 --
-          (if (and (= z1 z2) (string= k1 k2))
-              ;;; Push the contents of the chunk to the stack in a cons
-              ;;; cell with the car being a list of the kind and number.
-              ;;;; E.g.:
-              ;; (("code" 3) . (@text @nl @text @nl))
-              (cons (list k1 z1) keywords)
-            (error "There was an issue with unbalanced or improperly nested chunks."))))
-@
-
 Further rules needed to parse a chunk are an ordinal and the kind of
 chunk: code or documentation. An ordinal, in this sense, is any positive
 integer; it is a counting number. The kinds of chunks are represented by
 the strings ``code'' and ``docs''.
 
-<<PEG rules>>=
-(ordinal (substring (and [0-9] (* [0-9])))
-         `(number -- (string-to-number number)))
-(kind (substring (or "code" "docs")))
-@
-
 %% TODO: introduce the structural, tagging, and error keywords with a small amount of prose.
-
 <<PEG rules>>=
 (keyword
  (substring (or
-   ;; structural
-   text
-   nl
-   defn
-   use ;; NOTE: related to the `identifier-used-in-module' table.
-   beginquote
-   endquote
+             ;; structural
+             text
+             nl
+             defn
+             use ;; NOTE: related to the `identifier-used-in-module' table.
+             beginquote
+             endquote
 
-   ;; tagging
-   line
-   language
-   index
-   xref
+             ;; tagging
+             line
+             language
+             index
+             xref
 
-   ;; user error
-   header
-   trailer
+             ;; user error
+             header
+             trailer
 
-   ;; error
-   fatal)))
+             ;; error
+             fatal)))
 @
 
 <<PEG rules>>=
 ;; strings containing spaces must match: "filename containing spaces.txt"
-(text (bol) "@text" [space] (opt (any)) new-line)
-(nl (bol) "@nl" new-line)
+(text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
+(nl (bol) "@nl" (eol) "\n")
+
 (use (bol) "@use" [space] (any) nl)
 (beginquote (bol) "@quote" new-line)
 (endquote (bol) "@endquote" new-line)
@@ -852,7 +876,7 @@ command-line used to tangle and weave WHS.
 <<Code>>
 <<EOF>>
 <<Emacs Lisp package headers>>=
-;;; whs.el --- WEB Hypertext System -*- mode: emacs-lisp; lexical-binding: t; no-byte-compile: t; no-native-compile: t; -*-
+;;; whs.el --- WEB Hypertext System -*- <<file-local variables>> -*-
 
 ;; Copyright © 2023 Bryce Carson
 
@@ -861,7 +885,44 @@ command-line used to tangle and weave WHS.
 ;; Keywords: tools tex hypermedia
 ;; URL: https://cyberscientist.ca/whs
 ;; Package-Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (emacsql "20230220") (dash "20230617") (peg "1.0.1") (cl-lib "1.0") (ts "20220822"))
+;; Package-Requires: (<<required packages>>)
+@
+
+The Emacs Lisp Manual states, regarding the \texttt{Package-Requires}
+element of an Emacs Lisp package header:
+
+\begin{quote}
+  Its format is a list of lists on a single line.
+\end{quote}
+
+Thus, to prevent spill--over in the printed document, the
+[[<<required packages>>]] are given on separate lines in the literate
+document. When the file is tangled, however, a Noweb filter will be used
+to ensure that all required packages are on a single line by simply
+removing the new lines from the following code chunk. The same principle
+is followed for the [[<<file-local variables>>]].
+
+<<required packages>>=
+(emacs "25.1")
+(emacsql "20230220")
+(dash "20230617")
+(peg "1.0.1")
+(cl-lib "1.0")
+(ts "20220822")
+
+@
+
+The difference between how a Noweb filter will handle the following
+chunk and how it would handle the previous is by appending a semicolon
+to every line in the following list of variables, and then joining every
+line by deleting all new line characters.
+
+<<file-local variables>>=
+mode: emacs-lisp
+lexical-binding: t
+no-byte-compile: t
+no-native-compile: t
+@ 
 
 <<Licensing and copyright>>=
 ;; This program is free software: you can redistribute it and/or
@@ -942,6 +1003,84 @@ functionality is provided in [[whs-with-project]].
 
 <<API-like functions>>=
 ;; This chunk intentionally left blank at this time.
+@ 
+
+\subsection{Testing the PEX grammar for Noweb's tool syntax}
+<<test-pex>>=
+@@file /home/bryce/src/whs/whs.nw
+@@begin docs 0
+@@text The Bluetooth Device has been connected successfully.
+@@nl
+@@text The Bluetooth Device has been connected successfully.
+@@nl
+@@text The Bluetooth Device has been connected successfully.
+@@text The Bluetooth Device has been connected successfully.
+@@text The Bluetooth Device has been connected successfully.
+@@nl
+@@nl
+@@nl
+@@nl
+@@end docs 0
+@@begin docs 1
+@@text The Bluetooth Device has been connected successfully.
+@@nl
+@@end docs 1
+@@file ../whs.nw
+@@begin docs 0
+@@text Hello, world of literate programming.
+@@nl
+@@end docs 0
+
+(defun test-pex ()
+  (with-peg-rules
+      ((noweb (+ file))
+       (file (bol) "@file" [space] path (eol) "\n"
+             (list (+ chunk))
+             `(filename chunks -- (cons filename chunks)))
+
+       ;;; Valid filenames the PEX was tested against.
+       ;; /home/bryce/src/whs/whs.nw
+       ;;; and,
+       ;; ../whs.nw
+       (path (substring (opt (or ".." ".")) (* path-component) file-name))
+       (path-component (and path-separator (+ [word])))
+       (path-separator ["\\/"])
+       (file-name (+ (or [word] ".")))
+
+       (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
+       (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
+            `(k1 z1 keywords k2 z2 --
+                 (if (and (= z1 z2) (string= k1 k2))
+              ;;; Push the contents of the chunk to the stack in a cons
+              ;;; cell with the car being a list of the kind and number.
+              ;;;; E.g.:
+                     ;; (("code" 3) . (@text @nl @text @nl))
+                     (cons (list k1 z1) keywords)
+                   (error "There was an issue with unbalanced or improperly nested chunks."))))
+       (ordinal (substring [0-9] (* [0-9]))
+                `(number -- (string-to-number number)))
+       (kind (substring (or "code" "docs")))
+
+       ;; Chunk keyword definitions for what is in pextest.el (this file).
+       (chunk begin
+              ;; keywords
+              (list (* (or text nl)))
+              end)
+       (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
+       (nl (bol) "@nl" (eol) "\n"))
+    (goto-char 0)
+    (peg-run (peg noweb)
+             ;; (lambda (&rest args)
+             ;;   (message "failure\n%s" args))
+             ;; (lambda (&rest args)
+             ;;   (message "success\n%S" args))
+             )))
+
+(test-pex)
+
+;; Local Variables:
+;; major-mode: lisp-interaction
+;; End:
 @ 
 
 \end{document}
