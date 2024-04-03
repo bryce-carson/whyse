@@ -14,4 +14,7 @@ clean:
 	$(RM) whs.el
 
 tool-syntax:
-	/usr/lib/noweb/markup whs.nw | /usr/lib/noweb/autodefs.elisp | /usr/lib/noweb/finduses | /usr/lib/noweb/noidx -delay
+	/usr/lib/noweb/markup ~/src/whs/whs.nw | \
+	/usr/lib/noweb/autodefs.elisp | \
+	/usr/lib/noweb/finduses | \
+	/usr/lib/noweb/noidx -delay
