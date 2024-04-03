@@ -1,27 +1,28 @@
 VERSION = 0.1
 
 weave: clean
-	noweave -delay -autodefs elisp -index whs.nw > whs.tex
+	noweave -delay -autodefs elisp -index whyse.nw > whyse.tex
 
 compile-pdf: tangle weave
-	latexmk --lualatex --interaction=nonstopmode -f whs.tex
-	lualatex whs.tex
+	latexmk --lualatex --interaction=nonstopmode -f whyse.tex
+	lualatex whyse.tex
 
 tangle: clean
-	notangle -Rwhs.el whs.nw > whs.el
-	notangle -Rwhs-pkg.el whs.nw > whs-pkg.el
-	mkdir whs-${VERSION}
-	mv -t whs-${VERSION} whs.el whs-pkg.el
-	tar --create --file whs-${VERSION}.tar whs-${VERSION}
-	tar --list --file whs-${VERSION}.tar
+	notangle -Rwhyse.el whyse.nw > whyse.el
+	notangle -Rwhyse-pkg.el whyse.nw > whyse-pkg.el
+	notangle -Rtest.el whyse.nw > test.el
+	mkdir whyse-${VERSION}
+	mv -t whyse-${VERSION} whyse.el whyse-pkg.el
+	tar --create --file whyse-${VERSION}.tar whyse-${VERSION}
+	tar --list --file whyse-${VERSION}.tar
 
 # Remove backup files and LaTeX garbage and cache files.
 clean:
 	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml *.tex *.toc *.xdy
-	rm -rf whs-*/
+	rm -rf whyse-*/
 
 tool-syntax:
-	/usr/lib/noweb/markup ~/src/whs/whs.nw | \
+	/usr/lib/noweb/markup ~/src/whs/whyse.nw | \
 	/usr/lib/noweb/autodefs.elisp | \
 	/usr/lib/noweb/finduses | \
 	/usr/lib/noweb/noidx -delay

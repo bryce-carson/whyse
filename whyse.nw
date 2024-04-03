@@ -3,14 +3,18 @@
 % Copyright © 2023 Bryce Carson
 \documentclass{article}
 
+%% FONT
+\usepackage[T1]{fontenc}
+\usepackage{tgbonum}
+
 %% MARGIN
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=1.5in]{geometry}
 \usepackage{mparhack}
 \usepackage{mathptmx}
 
 %% FIXME: biblatex causes knoweb to be unable to compile.
 %% \usepackage{biblatex}
-%% \addbibresource{\whs.bib}
+%% \addbibresource{\whyse.bib}
 
 \usepackage[smallcode,nohyperidents]{knoweb}
 \usepackage[colorlinks,backref]{hyperref}
@@ -20,10 +24,8 @@
 \usepackage{paralist}
 \usepackage{color}
 
-%% NOTE: used in the figure of the WHS frame layout.
+%% NOTE: used in the figure of the WHYSE frame layout.
 \usepackage{fancyvrb}
-
-\newcommand{\historicalRef}[1]{For some commentary on the development history of WHS related to this text, see §\ref{#1}.}
 
 %% BEGIN
 \pagestyle{noweb}
@@ -31,15 +33,15 @@
 
 %% \section{Preface}
 %% A paper describing this implementation---written in Noweb and browsable,
-%% editable, and auditable with WHS, or readable in the printed form---is
+%% editable, and auditable with WHYSE, or readable in the printed form---is
 %% hoped to be submitted to The Journal of Open Source Software (JOSS)
 %% before the year 2024. N.B.: the paper will include historical
 %% information about literate programming, and citations (especially of
-%% those given credit in the [[<<Commentary>>]] for ideating WHS itself).
+%% those given credit in the [[<<Commentary>>]] for ideating WHYSE itself).
 
 %% \subsection{On literate programming}
 %% Literate programs can be organized in multiple ways; particularly, I
-%% note these forms of organization here. How WHS implementations may
+%% note these forms of organization here. How WHYSE implementations may
 %% influence literate programming style, taste, or form will be interesting
 %% to observe (as it is a multi-langual art and will benefit from both the
 %% traditional language arts greatly as well as ``code smell'' [a strange
@@ -59,12 +61,12 @@
 %% or less.
 
 \section{Projects}\label{Projects}
-WEB Hypertext System's Emacs implementation (WHS) is a project-based
-application. Projects are lists registered with WHS using the ``Easy
+\textsc{(no)Web HYpertext System in Emacs} (WHYSE) is a project-based
+application. Projects are lists registered with WHYSE using the ``Easy
 Customization Interface'', which provides a simple way to make the
-necessary information known to WHS. Users register a literate
-programming project (only Noweb–based programming is supported) as an
-item in the customization variable [[whs-registered-projects]]; further
+necessary information known to WHYSE. Users register a literate
+programming project (only Noweb–-based programming is supported) as an
+item in the customization variable [[w-registered-projects]]; further
 project data is contained in a Common Lisp struct during runtime.
 
 In short, a project is composed of several things:
@@ -73,7 +75,6 @@ In short, a project is composed of several things:
 \item a name,
 \item a Noweb source file,
 \item a shell command to run a user-defined script
-  %% FIXME: textsc is not working in an unordered list
 \item an \textsc{SQLite3} database, and a connection thereto,
 \item a frame,
 \item and date-time information (creation, edition, and export).
@@ -84,38 +85,38 @@ but other information is generated at runtime (such as the filename of
 the database). These items are each explained in this section. If some
 item is not well-enough explained in this section, please try editing
 the Noweb source and improving the explanataion and creating a
-pull-request against the WHS Emacs Lisp repository on its Git forge; you
+pull-request against the WHYSE Emacs Lisp repository on its Git forge; you
 may also submit your edition by email to the package maintainer.
 
-Users of WHS in Emacs are expected to be familiar with Noweb; this does
+Users of WHYSE in Emacs are expected to be familiar with Noweb; this does
 not include how Noweb is built from source (that is arcane, supposedly)
 or how filters are implemented with Sed, AWK, or other languages. Users
 must know, however, how to write a custom command-line for Noweave (read
 the manual section regarding the \texttt{-v} option).
 
-Developers of WHS extensions (in either SQL or Emacs Lisp) should read
+Developers of WHYSE extensions (in either SQL or Emacs Lisp) should read
 the Noweb Hacker's Guide until they understand it, afterwards reading
 this documentation several times until the full implementation is
 understood. I recommend modifying the system using itself to keep
 organized, and writing literately; you'll thank yourself later for doing
 so.
 
-A customization group for WHS is defined to organize its customization
+A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
 struct used during runtime.
 
 <<Customization and global variables>>=
-(defgroup whs nil
-  "The WEB Hypertext System."
-  :tag "WHS"
+(defgroup whyse nil
+  "noWeb HYpertext System in Emacs"
+  :tag "WHYSE"
   :group 'applications)
 
-(defcustom whs-registered-projects nil
-  "This variable stores all of the projects that are known to WHS."
-  :group 'whs
-  :type '(repeat whs--project-widget)
+(defcustom w-registered-projects nil
+  "This variable stores all of the projects that are known to WHYSE."
+  :group 'whyse
+  :type '(repeat w--project-widget)
   :require 'widget
-  :tag "WHS Registered Projects")
+  :tag "WHYSE Registered Projects")
 
 @
 
@@ -123,7 +124,7 @@ The Widget feature is required by the registered projects variable, but
 may be redundant because the Easy Customization Interface is itself
 implemented with The Emacs Widget Library. Requiring the library may be
 undesireable, as [[(require 'widget)]] will be eagerly evaluated upon
-Emacs' initialization when [[whs-registered-projects]] is set to its
+Emacs' initialization when [[w-registered-projects]] is set to its
 saved custom value. However, there may be a good reason to eagerly
 evaluate that form: the Widget feature will be available immediately,
 and widgets will be used in buffers to provide TUI buttons for
@@ -132,19 +133,19 @@ design of the program at this point in development), so having this
 feature available sooner than later is okay. The feature is required by
 the package regardless.
 
-The [[whs--project-widget]] type used for the registered projects
+The [[w--project-widget]] type used for the registered projects
 variable is a simple list widget containing the name of the project and
 its Noweb source file, along with a filename for a shell script which
 generates the Noweb tool syntax for this project. Each Noweb project has
 a different command-line, and some are complex enough to have a
 Makefile, or multiple Makefiles! Noweb itself is an example of that
-level of complexity. The shell script is later executed by WHS upon
+level of complexity. The shell script is later executed by WHYSE upon
 loading the project, and the standard output captured for parsing by a
 PEG parser.
 
 <<Widgets>>=
-(define-widget 'whs--project-widget 'list
-  "The WHS project widget type."
+(define-widget 'w--project-widget 'list
+  "The WHYSE project widget type."
   :format "\n%v\n"
   :offset 0
   :indent 0
@@ -172,7 +173,7 @@ PEG parser.
            noweave should be included, but totex should of course
            be excluded from this script. The script should output
            the full syntax to standard output. See the Noweb
-           implementation of WHS for explanation."
+           implementation of WHYSE for explanation."
            :value "")))
 
 @
@@ -183,61 +184,62 @@ general principles of literate programming; other authors write warnings
 into their tangled source files: ``Don't read this file! Read the Noweb
 source only!''. I don't say that, especially for an Emacs application.
 
-The sole interactive command---[[whs]]---loads the first element of
-[[whs-registered-projects]], considering it the default project.
+The sole interactive command---[[whyse]]---loads the first element of
+[[w-registered-projects]], considering it the default project.
 
 <<Quotation custom-set-variables>>=
-'(whs-registered-projects
+'(w-registered-projects
   '(("Noweb Hypertext System"
-     "~/Desktop/whs.nw"
-     "make -C ~/Desktop --silent --file ~/src/whs/Makefile tool-syntax"))
+     "~/Desktop/whyse.nw"
+     "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
   nil
   (widget))
 @ 
 
-<<WHS>>=
-(defun whs ()
+The [[whyse]] command is very simple, it checks if projects have been
+defined in the Customize interface, and if so uses the first one to
+\textit{initialize a new project}. If no projects are defined or there
+are any nil values in the procedure, the Customize interface is opened.
+
+<<WHYSE>>=
+(defun whyse ()
   (interactive)
-  (if-let ((whs-load-default-project?)
-           (default-project (cl-first whs-registered-projects))
-           (project (make-whs-project :name (nth 0 default-project)
+  (if-let ((w-load-default-project?)
+           (default-project (cl-first w-registered-projects))
+           (project (make-w-project :name (nth 0 default-project)
                                       :noweb (nth 1 default-project)
                                       :script (nth 2 default-project))))
-      <<System Initialization>>
+      <<convert the Noweb to tool format and parse it with the PEG>>
       <<open Customize to register projects>>))
 
 @
 
-WHS is likely to be useful for very large literate programs, so the
+WHYSE is likely to be useful for very large literate programs, so the
 command is designed to initialize from an existing project without
-prompt. In more verbose terms: unless [[whs-load-default-project?]] is
-non-nil and [[whs-registered-projects]] includes at least one element,
-Customize will be opened to customize the WHS group when [[whs]] is
+prompt. In more verbose terms: unless [[w-load-default-project?]] is
+non-nil and [[w-registered-projects]] includes at least one element,
+Customize will be opened to customize the WHYSE group when [[whyse]] is
 invoked.
 
 <<Customization and global variables>>=
-(defcustom whs-load-default-project? t
+(defcustom w-load-default-project? t
   "Non-nil values mean the system will load the default project.
 
-nil will cause the interactive command `whs' to open Customize on
+nil will cause the interactive command `whyse' to open Customize on
 its group of variables."
   :type 'boolean
-  :group 'whs
-  :tag "Load default project when `whs' is invoked?")
+  :group 'whyse
+  :tag "Load default project when `whyse' is invoked?")
 
 <<open Customize to register projects>>=
-(message "No WHS projects registered, or `whs-load-default-project?' is nil. %s"
-         (customize-group 'whs))
+(message
+ "No WHYSE projects registered, or `w-load-default-project?' is nil. %s"
+ (customize-group 'whyse))
 @
 
-When [[whs]] is invoked, an instance of the project struct is created,
-and as
-%% TODO:
-a design goal is persisted using serialization after WHS exits.
-
-<<WHS project structure>>=
-(cl-defstruct whs-project
-  "A WHS project"
+<<WHYSE project structure>>=
+(cl-defstruct w-project
+  "A WHYSE project"
   ;; Fundamental
   name
   noweb
@@ -265,50 +267,56 @@ given values when appropriate later in operation (such as
 [[date-last-exported]]) or upon initalization ([[frame]]).
 
 Initialization when the interactive command is called is covered next;
-to sumamrize: [[whs-project-load-hook]] is run.
+to sumamrize: [[w-project-load-hook]] is run.
 
 \section{System initialization from new projects}\label{Initialization}
-To summarize this section, since it is longer than the previous
-section, the object is the definition of [[<<System Initialization>>]],
-which is a chunk used in [[whs]].
+To summarize this section, since it is longer than the previous section,
+the object is the definition of [[<<convert the Noweb to tool format and
+parse it with the PEG>>]], which is a chunk used in [[whyse]].
 
 In more explicit words, this section describes the actions that occur
-when a user invokes [[whs]] interactively (with \textit{M-x}) and the
-preconditions have been met; the [[whs]] function has already been
+when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
+preconditions have been met; the [[whyse]] function has already been
 introduced, and only the ``meaty'' business end of its operation has
-been left undefined until now. Ergo, [[<<System Initialization>>]]
-gathers together the functionality that converts a Noweb to its tool
-syntax with a project's specified shell script, sends the parsed text to
-the database, and finally creates the IDE frame.
+been left undefined until now. Ergo, [[<<convert the Noweb to tool
+format and parse it with the PEG>>]] gathers together the functionality
+that converts a Noweb to its tool syntax with a project's specified
+shell script, sends the parsed text to the database, and finally creates
+the IDE frame.
 
-<<System Initialization>>=
-(let ((buffer (generate-new-buffer "WHS tool syntax generation shell output")))
-  (with-current-buffer buffer
-    <<run the project shell script to obtain the tool syntax>>
-
-    ;; Go to the beginning of the buffer, then parse according to the PEG.
-    (goto-char 0)
-    <<parse the buffer with PEG rules>>))
+<<convert the Noweb to tool format and parse it with the PEG>>=
+(with-temp-buffer
+  (insert (shell-command-to-string (w-project-script project)))
+  (goto-char (point-min))
+  (w--parse-current-buffer-with-rules))
+;; (let ((buffer (generate-new-buffer "WHYSE tool syntax generation shell output")))
+;;   (with-current-buffer buffer
+;;     <<run the project shell script to obtain the tool syntax>>
+;;
+;;     ;; Go to the beginning of the buffer, then parse according to the PEG.
+;;     (goto-char 0)
+;;     @<<parse the buffer with PEG rules>>))
 @ 
 
 \subsection{Conversion to tool syntax}\label{toolconversion}
-WHS could have been written to call the \texttt{noweave} programs
+WHYSE could have been written to call the \texttt{noweave} programs
 itself, but that is less configurable than providing the opportunity to
 let the user configure this on their own. It respects Noweb's pipelines
 architecture, and keeps things as transparent as possible. What is
 needed to be Emacs Lisp is, and what is not isn't. The tool syntax is
 thus obtained by running the shell script configured for the project by
 calling it with the command-line provided in the third element of an
-entry in [[whs-registered-projects]].
+entry in [[w-registered-projects]].
 
 <<run the project shell script to obtain the tool syntax>>=
 (make-process
- :name "whs-tool-generation"
+ :name "w-tool-generation"
  :buffer (get-buffer buffer)
  :command `("bash" ;; likely BASH on a GNU system, hoping for the `command-string' option.
            "-c"
-           (,@(whs-project-script project)))
- :stderr (generate-new-buffer "WHS tool generation standard error stream")
+           (,@(w-project-script project)))
+
+ :stderr (generate-new-buffer "WHYSE tool generation standard error stream")
  :sentinel (lambda (process event-string)
              (message "%S: %s" process event-string)))
 @ 
@@ -336,7 +344,7 @@ as returning the string unchanged.
  (when (f-directory? (expand-file-name ".cache" user-emacs-directory))
    ".cache")
  ;; PROJECT-NAME.db
- (concat (whs-project-name project)
+ (concat (w-project-name project)
          ".db"))
 @
 
@@ -346,15 +354,15 @@ connect to the database and store the connection object in the
 appropriate slot of the project struct.
 
 <<create the database>>=
-(setf (whs-project-database-connection project)
+(setf (w-project-database-connection project)
       (emacsql-sqlite
-       (whs-project-database-file <<return a filename for the project database>>)))
+       (w-project-database-file <<return a filename for the project database>>)))
 @ 
 
 The only thing left to do is establish the schema of the tables, which
 is done by mapping over several \textsc{EmacSQL} s-expressions.
 
-%% To create an (SQLite) database from scratch for use with WHS, the schema
+%% To create an (SQLite) database from scratch for use with WHYSE, the schema
 %% must be applied to the database using data definition language (DDL).
 %% With the four tables created, data is provided to the database after the
 %% parsing expression grammar (PEG) has finished its work on the tool
@@ -364,7 +372,7 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 %% TODO: ensure that this database is in 3NF and make a nice database
 %% planning documents for it.
 <<map over SQL s-expressions, creating the tables>>=
-(--map (emacsql (whs-project-database-connection project) it)
+(--map (emacsql (w-project-database-connection project) it)
 
       ;; A list of SQL s-expressions to create the tables.
       '([:create-table module
@@ -419,33 +427,33 @@ A frame like in Figure \ref{fig1} should be created.
 +--------------------------------+-------+
 \end{BVerbatim}
 \end{center}
-\caption{Simple drawing of WHS frame layout}
+\caption{Simple drawing of WHYSE frame layout}
 \end{figure}
 
 
 <<Get project frame>>=
 (progn
-  (select-frame (whs-project-frame project))
-  (switch-to-buffer (generate-new-buffer (whs-project-name project)) nil 'force-same-window)
+  (select-frame (w-project-frame project))
+  (switch-to-buffer (generate-new-buffer (w-project-name project)) nil 'force-same-window)
   (let* ((window-right (split-window-right))
          (parent-window (window-parent window-right)))
     (window-make-atom parent-window)
     (display-buffer-in-atom-window
-     (get-buffer-create (format "Module Index<%s>" (whs-project-name project)))
+     (get-buffer-create (format "Module Index<%s>" (w-project-name project)))
      `((window . ,parent-window) (window-height . 8)))))
 
 @
 
 \section{System initialization from existing projects}
-WHS loads a project by running the shell script stored in the third
+WHYSE loads a project by running the shell script stored in the third
 element of the project list (which is pointed to by the script slot in
 the struct).
 
 \subsection{Initializing from an existing project}
-With a default project available, WHS runs [[whs-project-load-hook]]
+With a default project available, WHYSE runs [[w-project-load-hook]]
 with the struct of the default project let-bound as [[project]]. Much of
-the functionality of WHS is implemented with the default hook, and
-extensions to WHS should be implemented by editing the WHS Noweb source
+the functionality of WHYSE is implemented with the default hook, and
+extensions to WHYSE should be implemented by editing the WHYSE Noweb source
 and recompiling it, or extending the existing system with more hook
 functions added to the aforementioned hook list variable.
 
@@ -455,17 +463,17 @@ exists, the first module is loaded and the database is not changed.
 
 <<delete the database if it already exists, but only if it's an empty file>>=
 ;; Unless the SQLite database's size is zero or it doesn't exist, move it to the user's trash directory.
-(let ((whs--dbfile (whs-project-database-file project)))
-  (unless (or (not (file-exists-p whs--dbfile))
-              (= 0 (file-attribute-size (file-attributes whs--dbfile))))
+(let ((w--dbfile (w-project-database-file project)))
+  (unless (or (not (file-exists-p w--dbfile))
+              (= 0 (file-attribute-size (file-attributes w--dbfile))))
 
     ;; TODO: Is there a better way to do this? `backup-buffer'?
-    (copy-file whs--dbfile (concat whs--dbfile "~") t)
+    (copy-file w--dbfile (concat w--dbfile "~") t)
 
     ;; TODO: ensure that this AREA of code is reasonable before release.
     ;; It may have been written to ease development only.
     (let ((delete-by-moving-to-trash t))
-      (delete-file whs--dbfile t)))
+      (delete-file w--dbfile t)))
 
 @ 
 
@@ -479,7 +487,7 @@ autodefinitions, usages, or indexing by default. Those are further
 stages in the UNIX pipeline defined by the user with \texttt{noweave}
 command-line program options and flags.
 
-The WHS system parses the tool syntax emitted by \texttt{markup}, and
+The WHYSE system parses the tool syntax emitted by \texttt{markup}, and
 early development versions
 %% TODO: set a version.
 (prior to version \texttt{0.n-devel})
@@ -489,11 +497,11 @@ An example of a \textsc{Noweb} command-line a user may call is given next.
 
 \begin{quote}
 \begin{verbatim}
-[bryce@fedora whs]$ noweave -v -autodefs elisp -index whs.nw 1>/dev/null
+[bryce@fedora whyse]$ noweave -v -autodefs elisp -index whyse.nw 1>/dev/null
 RCS version name $Name:  $
 RCS id $Id: noweave.nw,v 1.7 2008/10/06 01:03:24 nr Exp $
 (echo @header latex
-/usr/local/lib/markup whs.nw
+/usr/local/lib/markup whyse.nw
 echo @trailer latex
 ) |
 /usr/local/lib/autodefs.elisp |
@@ -507,16 +515,16 @@ Ergo, the simplified pipeline---using Emacs Lisp autodefinitions provided in
 \textsc{Knoweb} (written by \textsc{Joseph S. Riel})---is as follows:
 
 \begin{verbatim}
-  markup whs.nw | autodefs.elisp | finduses | noidx
+  markup whyse.nw | autodefs.elisp | finduses | noidx
 \end{verbatim}
 
 %% TODO: rename and revise this section.
 \subsubsection{In-development}
-For an existing project (during development, that is WHS) to be loaded, it must
+For an existing project (during development, that is WHYSE) to be loaded, it must
 minimally be:
 \begin{enumerate}
   \item Parsed, then stored in a database
-  \item Navigable with WHS
+  \item Navigable with WHYSE
     \begin{enumerate}
     \item Frame and Windows
     \item Navigation buttons... at least for modules
@@ -527,7 +535,7 @@ This means diagramming the database schema, creating it in EmacSQL,
 creating validating functions for existing databases, exceptions for
 malformed databases, and documenting that in \LaTeX.
 
-Navigation with WHS is multi-part:
+Navigation with WHYSE is multi-part:
 \begin{enumerate}
 \item Query the database for a list of modules, and
 \item Create a buffer for the text content retrieved
@@ -553,18 +561,13 @@ blocks of LISP code use the \textsc{peg} Emacs Lisp package to provide
 for automatic parser generation from a formal PEG grammar based off of
 the exhaustive description given in the Noweb Hacker's Guide.
 
-%% \begin{center}
-%%   Learning the PEG library was a challenge, and deriving a working set
-%%   of PEXes---rules---for parsing the Noweb tool syntax was difficult.
-%% \end{center}
-
 %%% FIXME: the technobabble here is unhelpful.
-Parsing the tool syntax allows for the generation of an
-partially--directed graph, a digraph, of the network of chunks which
-have hierarchical, self and non-self references, with their sequential
-ordering and non-sequential orderings available for navigation (see
-\href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
-    Knowledge Organization}} for futher information).
+%% Parsing the tool syntax allows for the generation of an
+%% partially--directed graph, a digraph, of the network of chunks which
+%% have hierarchical, self and non-self references, with their sequential
+%% ordering and non-sequential orderings available for navigation (see
+%% \href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
+%%     Knowledge Organization}} for futher information).
 
 %% NOTE: to match the new line character in a text stream, the string
 %% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
@@ -580,13 +583,18 @@ rule in the grammar for Noweb tool syntax is the appropriately named
 root rule [[noweb]] is ran on the buffer containing the tool syntax
 produced by the project shell script.
 
-<<parse the buffer with PEG rules>>=
+<<buffer parsing function>>=
 ;;;; Parsing expression grammar (PEG) rules
-(with-peg-rules
-    (<<PEG rules>>)
-  (peg-run (peg noweb)
-           (lambda (lst)
-             (message "Parsing failed in buffer:=%S.\nPEXes which failed:=%S" buffer lst))))
+(defun w--parse-current-buffer-with-rules ()
+  "Parse the current buffer with the PEG defined for Noweb tool syntax."
+  (with-peg-rules
+      (<<PEG rules>>)
+    (let (w--peg-parser-within-codep)
+      (peg-run
+       (peg noweb)
+       (lambda (lst)
+         (message "Parsing failed in buffer:=%S.\nPEXes which failed:=%S"
+                  (current-buffer) lst))))))
 @ 
 
 The grammar can be broken into five sections, each covering some part of
@@ -596,7 +604,8 @@ parsing.
 <<high-level Noweb tool syntax structure>>
 <<files and their paths>>
 <<chunks and their boundaries>>
-<<keywords>>
+<<quotations>>
+<<keyword definitions>>
 <<meta rules>>
 @ 
 
@@ -607,10 +616,20 @@ Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
 defined.
 
 <<high-level Noweb tool syntax structure>>=
-;; Overall Noweb structure
-(noweb (bob) (+ file) (if (eob))
-       (action (message "End of buffer encountered while parsing.")))
+;;; Overall Noweb structure
+(noweb (bob)
+       (not header)
+       (+ (and file (opt (or (and x-chunks i-identifiers)
+                             (and i-identifiers x-chunks)))))
+       ;; Trailing documentation chunk
+       (opt chunk)
+       (not trailer)
+       (eob))
 @
+
+It is a fatal error for WHYSE if the header or trailer wrapper keywords
+appear in the text it is to parse. They are totally irrelevant, and only
+matter for the final backends (\TeX, \LaTeX, or HTML).
 
 The grammar needs to address the fact that the syntax of the Noweb tool
 format is highly line-oriented, given the influence of AWK on the design
@@ -620,11 +639,9 @@ syntax.
 
 <<meta rules>>=
 ;; Helpers
-(empty-line (bol) (eol) "\n")
-(new-line (eol) "\n"
-          (action (message "A new line was matched.")))
-(not-eol (+ (not "\n") (any)))
-(many-before-eol not-eol new-line)
+(nl (eol) "\n")
+(!eol (+ (not "\n") (any)))
+(spc " ")
 @
 
 With the [[<<meta rules>>]] enabling easier definitions of what a given
@@ -634,28 +651,40 @@ default only the [[@<<*>>]] chunk is tangled when no specific root chunk
 is given on the command line.
 
 <<files and their paths>>=
-(file (bol) "@file" [space] (substring path) new-line
+;; Technically, file is a tagging keyword, but that classification only
+;; makes sense in the Hacker's guide, not in the syntax.
+(file (bol) "@file" spc (substring path) nl
       (list (+ chunk))
       `(path chunk-list -- (list path chunk-list)))
-
 (path (opt (or ".." ".")) (* path-component) file-name)
 (path-component (and path-separator (+ [word])))
 (path-separator ["\\/"])
 (file-name (+ (or [word] ".")))
 @
 
-%% Writing PEXes for matching file names was the most difficult part I have
-%% encountered so far, as it has forced me to understand that a first
-%% reading of documentation is usually not sufficient to understand a
-%% complex library in an area of programming I have not practiced in before
-%% (language parsing).
+\marginpar[Writing PEXes for matching file names was the most difficult
+  part I have encountered so far, as it has forced me to understand that
+  a first reading of documentation is usually not sufficient to
+  understand a complex library in an area of programming I have not
+  practiced in before (language parsing).]{Writing PEXes for matching
+  file names was the most difficult part I have encountered so far, as
+  it has forced me to understand that a first reading of documentation
+  is usually not sufficient to understand a complex library in an area
+  of programming I have not practiced in before (language parsing).}
+
+Because chunks must not overlap, but can nest, the beginnings of chunks
+need to be pushed to the parsing stack and the end of a chunk needs to
+be popped off of it. The stack pushing operations in [[kind]] and
+[[ordinal]] delimit chunks by their kinds and number, and the stack
+actions in the [[end]] rule check that the chunk-releated tokens on the
+stack are balanced.
 
 <<chunks and their boundaries>>=
-(chunk begin (list (* keyword)) end)
-(begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n"
-       (action (message "Chunk @begin matched.")))
-(end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
-     (action (message "Chunk @end matched."))
+(chunk begin (list (* chunk-contents)) end)
+(begin (bol) "@begin" spc kind spc ordinal (eol) "\n"
+       (action (setq w--peg-parser-within-codep t)))
+(end (bol) "@end" spc kind spc ordinal (eol) "\n"
+     (action (setq w--peg-parser-within-codep nil))
      (opt (if begin)
           (action (message "[DEBUG] A begin [unconsumed] follows this end.")))
      `(kind-one ordinal-one keywords kind-two ordinal-two --
@@ -671,26 +700,53 @@ is given on the command line.
 (kind (substring (or "code" "docs")))
 @ 
 
-<<keywords>>=
-(keyword
+Valid [[chunk-contents]] is somewhat confusing, because chunks
+can contain many types of information other than text and new
+lines. The definition of what is valid follows.
+
+\begin{enumerate}
+\item \texttt{text}
+\item \texttt{nl}
+\item \texttt{defn \textit{name}}
+\item \texttt{use \textit{name}}
+\item \texttt{line \textit{n}}
+\item \texttt{language \textit{language}}
+\item \texttt{index \ldots}
+\item \texttt{xref \ldots}
+\end{enumerate}
+
+Any other keywords are invalid inside a code block. An example of an
+invalid keyword is anything related to quotations!
+
+<<chunks and their boundaries>>=
+(chunk-contents
  (or
-  ;; Keywords in the strict sense
-  <<structural keywords>>
+  <<structural keywords (except quotations)>>
   <<tagging keywords>>
-
-  ;; Keywords in the same strict sense, but which cause failures.
-  <<usage errors>>
+  <<cross-referencing keywords>>
   <<tool errors>>))
-
-<<keyword definitions>>
 @ 
 
-<<structural keywords>>=
+It is easier to handle the fatal keyword appearing inside chunks when it
+is a permissible keyword to appear inside a chunk; this allows the
+parser to consider a chunk with fatal inside of it \textit{as a valid
+  chunk}, but that does not mean that a chunk with a fatal keyword
+inside it does not invalidate a Noweb, it still does: the fatal keyword
+causes a fatal crash in parsing regardless. Those structural keywords
+which may be used inside the contents of a chunk are given next.
+
+<<structural keywords (except quotations)>>=
 ;; structural
 text
-nl
+nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
 defn
 use ;; NOTE: related to the `identifier-used-in-module' table.
+@ 
+
+\textit{All} structural keywords, then, are:
+
+<<structural keywords>>=
+<<structural keywords (except quotations)>>
 quotation
 @ 
 
@@ -698,8 +754,12 @@ quotation
 ;; tagging
 line
 language
-index
-xref
+@ 
+
+<<cross-referencing keywords>>=
+x-prev-or-next-def
+x-continued-definitions-of-the-current-chunk
+x-usages
 @ 
 
 <<usage errors>>=
@@ -713,172 +773,228 @@ trailer
 fatal
 @ 
 
-<<keyword definitions>>=
-(text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
-(nl (bol) "@nl" (eol) "\n")
+The fundamental keywords are text and nwnl (new line, per Noweb
+convetion). Text keywords contain source text, and any new lines in the
+source text are replaced with the appropriate number of nwnl keywords
+(per convention).
 
-(defn "@defn" [space] (substring not-eol) new-line
-  `(cdefn -- (cons "Chunk definition" cdefn)))
+<<chunks and their boundaries>>=
+(text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl)
+(nwnl (bol) "@nl" nl)
+@
 
-(use (bol) "@use" [space] (action (message "\"@use \" matched"))
-     (substring not-eol) new-line
+Nowebs are built from chunks, so the definition and usage of (references
+to) a chunk are important keywords.
+
+<<chunks and their boundaries>>=
+(defn "@defn" spc (substring !eol) nl
+  `(name -- (cons "chunk" name)))
+
+(use (bol) "@use" spc (action (message "\"@use \" matched"))
+     (substring !eol) nl
      `(chunk-name -- (if chunk-name
                          (cons "Chunk usage (child)" chunk-name)
                        (error "UH-OH! There's a syntax error in the tool output!"))))
+@
 
-(quotation beginquote (list (* keyword)) endquote)
-(beginquote (bol) (substring "@quote") new-line)
-(endquote (bol) (substring "@endquote") new-line
-          `(bq kw eq -- (if (and (string= bq "@quote")
-                                 (string= eq "@endquote"))
-                            (cons "Quotation" kw)
-                          (error "UH-OH! There's a parsing bug related to quotations."))))
+\begin{quotation}
+  Documentation may contain text and newlines, represented by @text and
+  [@nwnl]. It may also contain quoted code bracketed by @quote . . .
+  @endquote. Every @quote must be terminated by an @endquote within the
+  same chunk. Quoted code corresponds to the [[…]] construct in
+  the noweb source.
+\end{quotation}
 
-(line (bol) "@line" [space] (substring ordinal) new-line
+<<quotations>>=
+(quotation (bol) (substring "@quote") nl
+           ;; TODO: improve the supported keywords as parsing errors are
+           ;; encountered which do not violate the assumptions of
+           ;; quotations as stated in the Noweb Hacker's Guide.
+           (list (* (or text nwnl defn use)))
+           (bol) (substring "@endquote") nl)
+@
+
+<<keyword definitions>>=
+(line (bol) "@line" spc (substring ordinal) nl
       `(o -- (cons "@line" o)))
 
-(language (bol) "@language" [space] (substring many-before-eol))
+(language (bol) "@language" spc (substring words-eol))
 
-;; NOTE: alike xref-keyword, index-keyword tokens handle the end of the
-;; line regardless. The index token handles only the beginning of the
-;; line.
-(index (bol) "@index" [space] (opt index-keyword))
+;; Index keywords
+i-usages
+i-identifiers
+i-localdefn ;; UNSUPPORTED
+i-nl ;; DEPRECATED in Noweb 2.10
 
-       ;;; FIXME: why did I define it with optionally? Is there a possibility
-       ;;; that @xref can be followed by a newline directly?
-(xref (bol) "@xref" [space]
-      (action (message "\"@xref \" matched"))
-      ;; NOTE: each xref-keyword individually handles the end of the
-      ;; line, since it composes the remainder of the line regardless.
-      (opt xref-keyword))
+;; Cross-reference keywords
+x-label
+x-ref
+x-beginuses
+x-useitem
+x-enduses
+x-notused
+x-beginchunks
+x-chunkbegin
+x-chunkuse
+x-chunkdefn
+x-chunkend
+x-endchunks
+x-tag
+@
 
-;; indexing keywords
-(index-keyword
- (or
-  i-defn
-  i-localdefn
-  i-use
-  i-nl
+The indexing and cross-referencing abilities of Noweb are excellent
+features which enable a reader to navigate through a printed (off-line)
+or on-line version of the literate document quite nicely. These
+functionalities each begin with a rule which matches only part of a line
+of the tool syntax since there are many indexing and cross-referencing
+keywords. The common part of each line is a rule which merely matches
+the [[@index]] or [[@xref]] keyword. The rest of the lines are handled
+by a list of rules in [[index-keyword]] or [[xref-keyword]].
 
-  i-begindefs
-  i-isused
-  i-defitem
-  i-enddefs
 
-  i-beginuses
-  i-isdefined
-  i-useitem
-  i-enduses
+The \textit{Noweb Hacker's Guide} lists these two lines in the ``Tagging
+keywords'' table, indicating that it's unlikely (or forbidden) that the
+index or xref keywords would appear alone without any subsequent
+information on the same line.
 
-  i-beginindex
-  i-entrybegin
-  i-entryuse
-  i-entrydefn
-  i-entryend
-  i-endindex)
+\begin{quotation}
+  @index ... Index information.
 
- ;; IMPORTANT
- new-line)
+  @xref ... Cross-reference information
+\end{quotation}
 
-(i-defn "defn" [space] (substring not-eol))
-(i-localdefn "localdefn" [space] (substring not-eol))
-(i-use "use" [space] (substring not-eol))
-(i-nl "nl" [space] (substring not-eol))
+There are many keywords defined by the Noweb tool syntax, so they
+are referenced in this block and defined and documented
+separately. Some of these keywords are delimiters, so they are
+not given full ``keyword'' status (defined as a PEX rule) but
+exist as constants in the definition of a rule that defines the
+grouping.
 
-(i-begindefs "begindefs")
-(i-isused "isused" [space] (substring not-eol))
-(i-defitem "defitem" [space] (substring not-eol))
-(i-enddefs "enddefs")
+<<keyword definitions>>=
+;; Index
+<<indexing and cross-referencing set-off words>>
+<<fundamental indexing keywords, which are restricted to within a code chunk>>
+<<the index of identifiers>>
+<<unsupported indexing keywords>>
 
-(i-beginuses "beginuses")
-(i-isdefined "isdefined" [space] (substring not-eol))
-(i-useitem "useitem" [space] (substring not-eol))
-(i-enduses "enduses")
+;; Cross-reference
+@
 
-(i-beginindex "beginindex")
-(i-entrybegin "entrybegin" [space] (+ [word]) [space] (substring not-eol))
-(i-entryuse "entryuse" [space] (substring not-eol))
-(i-entrydefn "entrydefn" [space] (substring not-eol))
-(i-endentry "entryend")
-(i-endindex "endindex")
+\subsection{indexing}
 
-;; cross-referencing keywords
-(xref-keyword
- (or
-  x-label
-  x-ref
+<<indexing and cross-referencing set-off words>>=
+(idx (bol) "@index" spc)
+(xr (bol) "@xref" spc)
 
-  x-begindefs
-  x-prevdef
-  x-nextdef
-  x-defitem
-  x-enddefs
+<<fundamental indexing keywords, which are restricted to within a code chunk>>=
+(i-define-or-use
+ idx
+ (substring (or "defn" "use")) spc (substring !eol) nl
+ (action
+  (if (not w--peg-parser-within-codep)
+      (error "WHYSE parse error: index definition or index usage occured outside of a code chunk.")))
+ `(s1 s2 -- (cons s1 s2)))
 
-  x-beginuses
-  x-useitem
-  x-enduses
-  x-notused
+<<identifiers defined in a chunk>>
+<<identifiers used in a chunk>>
 
-  x-beginchunks
-  x-chunkbegin
-  x-chunkuse
-  x-chunkdefn
-  x-chunkend
-  x-endchunks
+<<identifiers defined in a chunk>>=
+(i-definitions idx "begindefs" nl
+               (list (+ (and (+ i-isused) i-defitem)))
+               idx "enddefs" nl
+               `(definitions -- (cons "definitions" definitions)))
+(i-isused idx (substring "isused") spc (substring label) nl
+          `(u l -- (cons u l)))
+(i-defitem idx (substring "defitem") spc (substring !eol) nl
+           `(d i -- (cons d i)))
 
-  x-tag)
+<<identifiers used in a chunk>>=
+(i-usages idx "beginuses" nl
+          (list (+ (and (+ i-isdefined) i-useitem)))
+          idx "enduses" nl
+          `(usages -- (cons "usages" usages)))
+(i-isdefined idx (substring "isdefined" spc label) nl)
+(i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
 
- ;; IMPORTANT
- new-line
- (action (message "An xref-keyword was matched.")))
+<<the index of identifiers>>=
+(i-identifiers idx "beginindex" nl
+               (list (+ i-entry))
+               idx "endindex" nl)
+(i-entry idx "entrybegin" spc (substring label spc !eol) nl
+         (list (+ (and entrydefn (+ entryuse))))
+         idx "entryend" nl
+         `(e l -- (cons e l)))
+(i-entrydefn idx (substring "entrydefn") spc (substring label) nl
+             `(d l -- (cons d l)))
+(i-entryuse idx (substring "entryuse") spc (substring label) nl
+            `(u l -- (cons u l)))
+@
 
-(x-label
- "label" [space] (substring not-eol))
-(x-ref
- "ref" [space] (substring not-eol)
- `(reference -- (cons "XREF" reference)))
+The following chunk's name is documentation enough for the purposes of
+WHYSE. See the Noweb Hacker's Guide for more information.
 
-;; FIXME: TODO:
-(x-begindefs (substring not-eol))
+<<unsupported indexing keywords>>=
+;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
+;; widely used (assumedly) nor well-documented, so it is unsupported by
+;; WHYSE (contributions for improved support are welcomed).
+(i-localdefn idx "localdefn" spc !eol nl)
+(i-nl idx "nl" spc !eol nl (action (error <<index nl error message>>)))
+@
 
-(x-prevdef
- "prevdef" [space] (substring not-eol))
-(x-nextdef
- "nextdef" [space] (substring not-eol))
+\subsection{cross referencing}
+<<cross-referencing keywords>>=
+(x-label xr (substring "label" spc label) nl)
+(x-ref xr (substring "ref" spc label) nl)
 
-(x-beginuses
- "beginuses")
-(x-useitem
- "useitem" [space] (substring not-eol))
-(x-enduses
- "enduses")
-(x-notused
- "notused" [space] (substring not-eol))
+(x-prev-or-next-def
+ xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
+ `(chunk-defn label -- (append chunk-defn label)))
 
-(x-beginchunks
- "beginindex")
-(x-chunkbegin
- "chunkbegin" [space] (+ [word]) [space] not-eol)
-(x-chunkuse
- "chunkuse" [space] (+ [word]))
-(x-chunkdefn
- "chunkdefn" [space] (+ [word]))
-(x-chunkend
- "chunkend")
-(x-endchunks
- "endchunks")
+(x-continued-definitions-of-the-current-chunk
+ xr "begindefs" nl
+ (list (+ (and xr (substring "defitem") spc (substring label) nl)))
+ ;; NOTE: development statement only; remove this before release.
+ (action (message "peg--stack := \n%S" peg--stack))
+ xr "enddefs" nl)
 
-;; Associates label with tag (word with not-eol)
-(x-tag
- "tag" [space] (+ [word]) [space] not-eol)
+(x-usages
+ xr "beginuses" nl
+ (or (list (+ (and xr "useitem" spc (substring label) nl)))
+     (and xr "notused" spc (substring label) nl))
+ xr "enduses" nl)
+
+(x-chunks xr "beginchunks" nl
+          (+ x-chunk)
+          xr "endchunks" nl)
+(x-chunk xr "chunkbegin" spc (substring label) (substring !eol) nl
+         (list (+ (list (and xr
+                             (substring (or "chunkuse" "chunkdefn"))
+                             spc
+                             (substring label)
+                             nl))))
+         xr "chunkend" nl)
+
+;; Associates label with tag (@xref tag $LABEL $TAG)
+(x-tag xr "tag" spc label spc !eol nl)
+(label (+ [A-Za-z0-9\-])) ;; A label never contains whitespace.
 
 ;; User-errors (header and trailer) and tool-error (fatal)
-(header (bol) "@header"
+;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
+(header (bol) "@header" ;; formatter options
         (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-(trailer (bol) "@trailer"
+(trailer (bol) "@trailer" ;; formatter
          (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
 (fatal (bol) "@fatal"
-       (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHS, and other relevant tools."))))
+       (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
+@ 
+
+<<index nl error message>>=
+(string-join
+ '("\"@index nl\" detected."
+  "This indicates hand-written @ %def syntax in the Noweb source."
+  "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
+  "Write an autodefs AWK script for the language you are using.")
+ "\n")
 @ 
 
 %%  NOTE: it would be helpful to construct this sort of parse tree at
@@ -896,36 +1012,9 @@ fatal
 %%  SQL attributes in the `module' table
 %% module_number; module_name; displacement; file_name; section_name
 
-The result of parsing the beginning and end of a chunk are pushed onto
-the stack as a list.
-
-The definition of a Noweb file, given by Ramsey, is simply a file
-containing one or more chunks; minimally, a Noweb file will contain the
-default documentation chunk.
-
-Because chunks must not overlap, but can nest, the beginnings of chunks
-need to be pushed to the parsing stack and the end of a chunk needs to
-be popped off of it. The push operations in [[kind]] and [[ordinal]]
-implement the beginning of a chunk, and the stack actions in the [[end]]
-rule check that the chunk elements on the stack are balanced.
-
-The PEG library's stack operations may be a little confusing, so they
-will be discussed now.
-
-%% FIXME: verify this behaviour by examining the code of the PEG library.
-Stack manipulating operations, such as [[substring]], push their
-matching PEX input text to the stack. Labels in the left half of the
-stack actions pop elements off of the stack and let-bind them, making
-them easier to use in the right hand side. The right hand side uses
-let-bound variables and pushes its results back to the stack. Further,
-it is valid to pop elements of the stack without pushing them back
-(discarding them); it is also valid to push elements to the stack
-without popping anything off the stack.
-
-Further rules needed to parse a chunk are an ordinal and the kind of
-chunk: code or documentation. An ordinal, in this sense, is any positive
-integer; it is a counting number. The kinds of chunks are represented by
-the strings ``code'' and ``docs''.
+%% The definition of a Noweb file, given by Ramsey, is simply a file
+%% containing one or more chunks; minimally, a Noweb file will contain the
+%% default documentation chunk.
 
 \section{Packaging}
 Installing an Emacs Lisp package is quite easy if the system is
@@ -940,37 +1029,37 @@ from such.
 This software is in-development, so it will only be distributed directly
 through Git.
 
-WHS follows the form of ``simple'', single-file packages documented in
-the Emacs Lisp Reference Manual. The package file, \texttt{whs.el}, is
+WHYSE follows the form of ``simple'', single-file packages documented in
+the Emacs Lisp Reference Manual. The package file, \texttt{whyse.el}, is
 emitted by \texttt{notangle} which is called by the Makefile in every
-target but [[clean]]. All source development occurs in \texttt{whs.nw}
+target but [[clean]]. All source development occurs in \texttt{whyse.nw}
 using \textsc{Polymode}.
 
-The makefile distributed alongside whs.nw in the tarball contains the
-command-line used to tangle and weave WHS.
+The makefile distributed alongside whyse.nw in the tarball contains the
+command-line used to tangle and weave WHYSE.
 
-<<whs.el>>=
+<<whyse.el>>=
 <<Emacs Lisp package headers>>
 <<Licensing and copyright>>
 <<Commentary>>
 <<Code>>
 <<EOF>>
 <<Emacs Lisp package headers>>=
-;;; whs.el --- WEB Hypertext System -*- lexical-binding: t -*-
+;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: t -*-
 
 ;; Copyright © 2023 Bryce Carson
 
 ;; Author: Bryce Carson <bcars268@mtroyal.ca>
 ;; Created 2023-06-18
 ;; Keywords: tools tex hypermedia
-;; URL: https://cyberscientist.ca/whs
+;; URL: https://cyberscientist.ca/whyse
 
 ;; This file is not part of GNU Emacs.
 
 @
 
-<<whs-pkg.el>>=
-(define-package "whs" "0.1" "WEB Hypertext System"
+<<whyse-pkg.el>>=
+(define-package "whyse" "0.1" "noWeb HYpertext System in Emacs"
   '(<<required packages>>))
 @ 
 
@@ -1027,7 +1116,7 @@ is followed for the [[<<file-local variables>>]].
 
 <<Commentary>>=
 ;;; Commentary:
-;; WHS was described by Brown and Czedjo in _A Hypertext for Literate
+;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
 ;; Programming_ (1991).
 ;;
 ;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming.
@@ -1037,11 +1126,11 @@ is followed for the [[<<file-local variables>>]].
 ;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
 ;;
 ;; A paper describing this implementation---written in Noweb and browsable,
-;; editable, and auditable with WHS, or readable in the printed form---is
+;; editable, and auditable with WHYSE, or readable in the printed form---is
 ;; hoped to be submitted to The Journal of Open Source Software (JOSS)
 ;; before the year 2024. N.B.: the paper will include historical
 ;; information about literate programming, and citations (especially
-;; of those given credit here for ideating WHS itself).
+;; of those given credit here for ideating WHYSE itself).
 
 <<Code>>=
 ;;; Code:
@@ -1051,14 +1140,15 @@ is followed for the [[<<file-local variables>>]].
 ;;;; Internals
 <<Customization and global variables>>
 <<Widgets>>
-<<WHS project structure>>
+<<WHYSE project structure>>
+<<buffer parsing function>>
 
 ;;;; Commands
 ;;;###autoload
-<<WHS>>
+<<WHYSE>>
 
 <<EOF>>=
-(provide 'whs)
+(provide 'whyse)
 
 <<file local variables>>
 @
@@ -1078,96 +1168,30 @@ is followed for the [[<<file-local variables>>]].
 \nowebindex
 
 \section{Appendices}
-\subsection{A user-suggested functionality: \texttt{whs-with-project}}
+\subsection{A user-suggested functionality: \texttt{w-with-project}}
 \label{HistoryWithProject}
 It was suggested during early development that
-[[<<API-like functions>>]] such as [[whs-with-project]] be written. An
-early version of such functionality is provided in [[whs-with-project]].
+[[<<API-like functions>>]] such as [[w-with-project]] be written. An
+early version of such functionality is provided in [[w-with-project]].
 
 <<API-like functions>>=
 ;; This chunk intentionally left blank at this time.
 @ 
 
-\subsection{Testing the PEX grammar for Noweb's tool syntax}
-The following source text (given with {\LaTeX}'s verbatim block, rather
-than a Noweb code block) is a prior version of a working parse of
-Noweb's tool syntax.
+<<test.el>>=
+<<buffer parsing function>>
 
-\begin{verbatim}
- @file /home/bryce/src/whs/whs.nw
- @begin docs 0
- @text The Bluetooth Device has been connected successfully.
- @nl
- @text The Bluetooth Device has been connected successfully.
- @nl
- @text The Bluetooth Device has been connected successfully.
- @text The Bluetooth Device has been connected successfully.
- @text The Bluetooth Device has been connected successfully.
- @nl
- @nl
- @nl
- @nl
- @end docs 0
- @begin docs 1
- @text The Bluetooth Device has been connected successfully.
- @nl
- @end docs 1
- @file ../whs.nw
- @begin docs 0
- @text Hello, world of literate programming.
- @nl
- @end docs 0
+(with-temp-buffer
+  (insert (shell-command-to-string
+           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
+  (goto-char (point-min))
+  (w--parse-current-buffer-with-rules))
 
- (defun test-pex ()
-    (with-peg-rules
-       ((noweb (+ file))
-        (file (bol) "@file" [space] path (eol) "\n"
-              (list (+ chunk))
-              `(filename chunks -- (cons filename chunks)))
-
-        ;;; Valid filenames the PEX was tested against.
-        ;; /home/bryce/src/whs/whs.nw
-        ;;; and,
-        ;; ../whs.nw
-        (path (substring (opt (or ".." ".")) (* path-component) file-name))
-        (path-component (and path-separator (+ [word])))
-        (path-separator ["\\/"])
-        (file-name (+ (or [word] ".")))
-
-        (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
-        (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
-             `(k1 z1 keywords k2 z2 --
-                  (if (and (= z1 z2) (string= k1 k2))
-               ;;; Push the contents of the chunk to the stack in a cons
-               ;;; cell with the car being a list of the kind and number.
-               ;;;; E.g.:
-                      ;; (("code" 3) . (@text @nl @text @nl))
-                      (cons (list k1 z1) keywords)
-                    (error "There was an issue with unbalanced or improperly nested chunks."))))
-        (ordinal (substring [0-9] (* [0-9]))
-                 `(number -- (string-to-number number)))
-        (kind (substring (or "code" "docs")))
-
-        ;; Chunk keyword definitions for what is in pextest.el (this file).
-        (chunk begin
-               ;; keywords
-               (list (* (or text nl)))
-               end)
-        (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
-        (nl (bol) "@nl" (eol) "\n"))
-     (goto-char 0)
-     (peg-run (peg noweb)
-              ;; (lambda (&rest args)
-              ;;   (message "failure\n%s" args))
-              ;; (lambda (&rest args)
-              ;;   (message "success\n%S" args))
-              )))
-
- (test-pex)
-
- ;; Local Variables:
- ;; major-mode: lisp-interaction
- ;; End:
-\end{verbatim}
+;; Local Variables:
+;; mode: lisp-interaction-mode
+;; no-byte-compile: t
+;; no-native-compile: t
+;; End:
+@ 
 
 \end{document}
