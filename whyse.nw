@@ -84,14 +84,14 @@ The struct keeps some information during runtime, like the connection,
 but other information is generated at runtime (such as the filename of
 the database). These items are each explained in this section. If some
 item is not well-enough explained in this section, please try editing
-the Noweb source and improving the explanataion and creating a
+the Noweb source and improving the explanation and creating a
 pull-request against the WHYSE Emacs Lisp repository on its Git forge; you
 may also submit your edition by email to the package maintainer.
 
 Users of WHYSE in Emacs are expected to be familiar with Noweb; this does
 not include how Noweb is built from source (that is arcane, supposedly)
 or how filters are implemented with Sed, AWK, or other languages. Users
-must know, however, how to write a custom command-line for Noweave (read
+must know, however, how to write a custom command-line for noweave (read
 the manual section regarding the \texttt{-v} option).
 
 Developers of WHYSE extensions (in either SQL or Emacs Lisp) should read
@@ -123,7 +123,7 @@ struct used during runtime.
 The Widget feature is required by the registered projects variable, but
 may be redundant because the Easy Customization Interface is itself
 implemented with The Emacs Widget Library. Requiring the library may be
-undesireable, as [[(require 'widget)]] will be eagerly evaluated upon
+undesirable, as [[(require 'widget)]] will be eagerly evaluated upon
 Emacs' initialization when [[w-registered-projects]] is set to its
 saved custom value. However, there may be a good reason to eagerly
 evaluate that form: the Widget feature will be available immediately,
@@ -138,7 +138,7 @@ variable is a simple list widget containing the name of the project and
 its Noweb source file, along with a filename for a shell script which
 generates the Noweb tool syntax for this project. Each Noweb project has
 a different command-line, and some are complex enough to have a
-Makefile, or multiple Makefiles! Noweb itself is an example of that
+makefile, or multiple makefiles! Noweb itself is an example of that
 level of complexity. The shell script is later executed by WHYSE upon
 loading the project, and the standard output captured for parsing by a
 PEG parser.
@@ -255,7 +255,7 @@ its group of variables."
   date-last-edited
   date-last-exported
 
-  ;; TODO: limit with a cutomization variable so that it does not grow too large.
+  ;; TODO: limit with a customization variable so that it does not grow too large.
   history-sql-commands)
 @
 
@@ -264,10 +264,10 @@ Instances of this struct are only initialized with a few values:
 either have default values dependent upon the input data (like
 the database-file, database-connection, and date-created), or are
 given values when appropriate later in operation (such as
-[[date-last-exported]]) or upon initalization ([[frame]]).
+[[date-last-exported]]) or upon initialization ([[frame]]).
 
 Initialization when the interactive command is called is covered next;
-to sumamrize: [[w-project-load-hook]] is run.
+to summarize: [[w-project-load-hook]] is run.
 
 \section{System initialization from new projects}\label{Initialization}
 To summarize this section, since it is longer than the previous section,
@@ -322,10 +322,10 @@ script, and this value consumed by the parent of this chunk.
 Every project should have a database file located somewhere within the
 user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
 cache directory is used, otherwise the database is made in the user's
-Emacs directory and not a subdirectory thereof.
+Emacs directory and not a sub-directory thereof.
 
 The form used to create the absolute path for the location of the
-database joins three things: the user's emacs directory, \texttt{nil} or
+database joins three things: the user's Emacs directory, \texttt{nil} or
 Spacemacs' cache directory, and the name of the project with ``.db''
 appended. Note that concatenating \texttt{nil} with a string is the same
 as returning the string unchanged.
@@ -342,7 +342,7 @@ as returning the string unchanged.
          ".db"))
 @
 
-For \textsc{SQLite}, the pathname of the database to connect to or
+For \textsc{SQLite}, the path name of the database to connect to or
 create is sufficient to establish a connection, so the next step is to
 connect to the database and store the connection object in the
 appropriate slot of the project struct.
@@ -539,7 +539,7 @@ Navigation with WHYSE is multi-part:
 \end{enumerate}
 
 Exporting a project from the database and editing the project in an in-memory
-state are further objectives, but they will be achived after the above two have
+state are further objectives, but they will be archived after the above two have
 been implemented in a basic form.
 
 \subsubsection{TODO}
@@ -627,7 +627,7 @@ defined.
 
 It is a fatal error for WHYSE if the header or trailer wrapper keywords
 appear in the text it is to parse. They are totally irrelevant, and only
-matter for the final backends (\TeX, \LaTeX, or HTML).
+matter for the final back-ends (\TeX, \LaTeX, or HTML).
 
 The grammar needs to address the fact that the syntax of the Noweb tool
 format is highly line-oriented, given the influence of AWK on the design
@@ -674,7 +674,7 @@ Because chunks must not overlap, but can nest, the beginnings of chunks
 need to be pushed to the parsing stack and the end of a chunk needs to
 be popped off of it. The stack pushing operations in [[kind]] and
 [[ordinal]] delimit chunks by their kinds and number, and the stack
-actions in the [[end]] rule check that the chunk-releated tokens on the
+actions in the [[end]] rule check that the chunk-related tokens on the
 stack are balanced.
 
 <<chunks and their boundaries>>=
@@ -764,7 +764,7 @@ fatal
 @ 
 
 The fundamental keywords are text and nwnl (new line, per Noweb
-convetion). Text keywords contain source text, and any new lines in the
+convention). Text keywords contain source text, and any new lines in the
 source text are replaced with the appropriate number of nwnl keywords
 (per convention).
 
@@ -875,7 +875,7 @@ better explanation of the differences.
  (substring (or "defn" "use")) spc (substring !eol) nl
  (action
   (if (not w--peg-parser-within-codep)
-      (error "WHYSE parse error: index definition or index usage occured outside of a code chunk.")))
+      (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
  `(s1 s2 -- (cons s1 s2)))
 
 <<identifiers defined in a chunk>>
@@ -1009,7 +1009,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 Installing an Emacs Lisp package is quite easy if the system is
 distributed through the GNU Emacs Lisp Package Archive (GNU ELPA), and
 only slightly less easy if it is distributed through MELPA
-(Milkypostman's Emacs Lisp Package Archvie). Other package archives have
+(Milkypostman's Emacs Lisp Package Archive). Other package archives have
 existed, but they are all ephemeral. The most popular alternative to GNU
 ELPA, Non-GNU ELPA, and MELPA is direct distribution of files through
 Git servers and the use of a package by the end user to install directly
