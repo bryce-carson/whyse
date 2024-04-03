@@ -188,7 +188,11 @@ The sole interactive command---[[whs]]---loads the first element of
 
 <<Quotation custom-set-variables>>=
 '(whs-registered-projects
-   '(("Noweb Hypertext System" "~/Desktop/whs.nw" "make -C ~/Desktop --silent --file ~/src/whs/Makefile tool-syntax")) nil (widget))
+  '(("Noweb Hypertext System"
+     "~/Desktop/whs.nw"
+     "make -C ~/Desktop --silent --file ~/src/whs/Makefile tool-syntax"))
+  nil
+  (widget))
 @ 
 
 <<WHS>>=
@@ -569,12 +573,14 @@ a parser that matches the lexed tokens and executes actions.
 ;;;; Parsing expression grammar (PEG) rules
 (with-peg-rules
     (<<PEG rules>>)
-  (peg-run (peg noweb)))
+  (peg-run (peg noweb)
+           (lambda (lst)
+             (message "Parsing failed in buffer:=%S.\nPEG expressions which failed:=%S" buffer lst))))
 @ 
 
 The [[noweb]] rule defines the root expression, or starting expression,
 for the grammar. The tool syntax of Noweb is simply a list of one or
-more files, which are composed of chunks.
+more files, which are each composed of at least one chunk.
 
 <<PEG rules>>=
 ;; Overall Noweb structure
@@ -584,18 +590,22 @@ more files, which are composed of chunks.
        (eob))
 @
 
+Whilst the [[<<test-pex>>]] works, the main PEG defined in the Noweb
+file does not work. It fails very early.
+
 <<PEG rules>>=
-;; Helper's
+;; Helpers
 (empty-line (bol) (eol) "\n")
 (new-line (eol) "\n")
+(not-eol (+ (if (any) (not (or "\n" (eol))))))
+(many-before-eol not-eol new-line)
 @
 
 A
 
 <<PEG rules>>=
 (file (bol) "@file" [space] path (eol) "\n"
-      (list (+ chunk))
-      `(filename chunks -- (cons filename chunks)))
+      (list (+ chunk)))
 @
 
 Writing PEXes for matching file names was the most difficult part I have
@@ -709,12 +719,17 @@ the strings ``code'' and ``docs''.
 (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
 (nl (bol) "@nl" (eol) "\n")
 
-(use (bol) "@use" [space] (any) nl)
-(beginquote (bol) "@quote" new-line)
-(endquote (bol) "@endquote" new-line)
+(defn "@defn" [space] (substring many-before-eol)
+  `(cdefn -- (cons "Chunk definition" cdefn)))
 
-(line (bol) "@line" [space] ordinal new-line)
-(language (bol) "@language" [space] (any) new-line)
+(use (bol) "@use" [space] (substring many-before-eol))
+(beginquote (bol) "@quote" (substring many-before-eol))
+(endquote (bol) "@endquote" (substring many-before-eol))
+
+(line (bol) "@line" [space] (substring ordinal) new-line
+      `(o -- (cons "@line" o)))
+
+(language (bol) "@language" [space] (substring many-before-eol))
 (index (bol) "@index" (opt (and [space] index-keyword)) new-line)
 (xref (bol) "@xref" (opt (and [space] xref-keyword)) new-line)
 
@@ -744,30 +759,24 @@ the strings ``code'' and ``docs''.
   i-endindex))
 @
 
-%% TODO: there should be some discussion on multi-word-string.
-
 <<PEG rules>>=
-(multi-word-string (+ [word]) (* (and [space] (+ [word]))))
-
-<<PEG rules>>=
-;; Rules that use multi-word-string follow.
-(i-defn "defn" [space] multi-word-string)
-(i-localdefn "localdefn" [space] multi-word-string)
-(i-use "use" [space] multi-word-string)
-(i-nl "nl" [space] multi-word-string)
+(i-defn "defn" [space] many-before-eol)
+(i-localdefn "localdefn" [space] many-before-eol)
+(i-use "use" [space] many-before-eol)
+(i-nl "nl" [space] many-before-eol)
 
 (i-begindefs "begindefs")
-(i-isused "isused" [space] multi-word-string)
-(i-defitem "defitem" [space] multi-word-string)
+(i-isused "isused" [space] many-before-eol)
+(i-defitem "defitem" [space] many-before-eol)
 (i-enddefs "enddefs")
 
 (i-beginuses "beginuses")
 (i-isdefined "isdefined" [space] (+ [word]))
-(i-useitem "useitem" [space] multi-word-string)
+(i-useitem "useitem" [space] many-before-eol)
 (i-enduses "enduses")
 
 (i-beginindex "beginindex")
-(i-entrybegin "entrybegin" [space] (+ [word]) [space] multi-word-string)
+(i-entrybegin "entrybegin" [space] (+ [word]) [space] many-before-eol)
 (i-entryuse "entryuse" [space] (+ [word]))
 (i-entrydefn "entrydefn" [space] (+ [word]))
 (i-endentry "entryend")
@@ -817,12 +826,12 @@ the strings ``code'' and ``docs''.
 (x-enduses
   "enduses")
 (x-notused
-  "notused" [space] multi-word-string)
+  "notused" [space] many-before-eol)
 
 (x-beginchunks
   "beginindex")
 (x-chunkbegin
-  "chunkbegin" [space] (+ [word]) [space] multi-word-string)
+  "chunkbegin" [space] (+ [word]) [space] many-before-eol)
 (x-chunkuse
   "chunkuse" [space] (+ [word]))
 (x-chunkdefn
@@ -832,9 +841,9 @@ the strings ``code'' and ``docs''.
 (x-endchunks
   "endchunks")
 
-;; Associates label with tag (word with multi-word-string)
+;; Associates label with tag (word with many-before-eol)
 (x-tag
-  "tag" [space] (+ [word]) [space] multi-word-string)
+  "tag" [space] (+ [word]) [space] many-before-eol)
 
 ;; User-errors (header and trailer) and tool-error (fatal)
 (header (bol) "@header" [space] (+ (not (null))) new-line
@@ -843,7 +852,6 @@ the strings ``code'' and ``docs''.
          (action (error <<user error text>>)))
 (fatal (bol) "@fatal" (* (any))
        (action (error <<tool error text>>)))
-
 @
 
 <<user error text>>=
@@ -1004,10 +1012,11 @@ is followed for the [[<<file-local variables>>]].
 \nowebindex
 
 \section{Appendices}
-\subsection{A user-suggested functionality: \texttt{whs-with-project}}\label{HistoryWithProject}
-It was suggested during early development that [[<<API-like functions>>]] such
-as [[whs-with-project]] be written. An early version of such
-functionality is provided in [[whs-with-project]].
+\subsection{A user-suggested functionality: \texttt{whs-with-project}}
+\label{HistoryWithProject}
+It was suggested during early development that
+[[<<API-like functions>>]] such as [[whs-with-project]] be written. An
+early version of such functionality is provided in [[whs-with-project]].
 
 <<API-like functions>>=
 ;; This chunk intentionally left blank at this time.
