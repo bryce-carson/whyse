@@ -206,9 +206,9 @@ are any nil values in the procedure, the Customize interface is opened.
   (interactive)
   (if-let ((w-load-default-project?)
            (default-project (cl-first w-registered-projects))
-           (project (make-w-project :name (nth 0 default-project)
-                                      :noweb (nth 1 default-project)
-                                      :script (nth 2 default-project))))
+           (project (make-w-project :name (cl-first default-project)
+                                    :noweb (cl-second default-project)
+                                    :script (cl-third default-project))))
       <<convert the Noweb to tool format and parse it with the PEG>>
       <<open Customize to register projects>>))
 
