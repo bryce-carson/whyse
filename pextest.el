@@ -1,16 +1,41 @@
-@file whs.nw
+@file /home/bryce/src/whs/whs.nw
 @begin docs 0
 @text The Bluetooth Device has been connected successfully.
+@nl
+@text The Bluetooth Device has been connected successfully.
+@nl
+@text The Bluetooth Device has been connected successfully.
+@text The Bluetooth Device has been connected successfully.
+@text The Bluetooth Device has been connected successfully.
+@nl
+@nl
+@nl
+@nl
+@end docs 0
+@begin docs 1
+@text The Bluetooth Device has been connected successfully.
+@nl
+@end docs 1
+@file ../whs.nw
+@begin docs 0
+@text Hello, world of literate programming.
 @nl
 @end docs 0
 
 (defun test-pex ()
   (with-peg-rules
-      ((noweb (list (+ file)))
-       (file (bol) "@file" [space] (substring (and (not (or "." (eol))) (+ [word])) "." (and (not (eol)) (+ [word]))) (eol) (list chunk (* chunk)))
-       (chunk begin (substring (* (any))) end)
-       (begin (bol) "@begin" [space] kind [space] ordinal (eol))
-       (end (bol) "@end" [space] kind [space] ordinal (eol)
+      ((noweb (+ file))
+       (file (bol) "@file" [space] path (eol) "\n"
+             (list (+ chunk))
+             `(filename chunks -- (cons filename chunks)))
+
+       (file-name (and  (+ (or [word] "."))))
+       (path-separator ["\\/"])
+       (path-component (and path-separator (+ [word])))
+       (path (substring (* path-component) file-name))
+
+       (begin (bol) "@begin" [space] kind [space] ordinal (eol) "\n")
+       (end (bol) "@end" [space] kind [space] ordinal (eol) "\n"
             `(k1 z1 keywords k2 z2 --
                  (if (and (= z1 z2) (string= k1 k2))
               ;;; Push the contents of the chunk to the stack in a cons
@@ -21,10 +46,22 @@
                    (error "There was an issue with unbalanced or improperly nested chunks."))))
        (ordinal (substring [0-9] (* [0-9]))
                 `(number -- (string-to-number number)))
-       (kind (substring (or "code" "docs"))))
-    (goto-char 0)
-    (peg-run (peg noweb))))
+       (kind (substring (or "code" "docs")))
 
+       ;; Chunk keyword definitions for what is in pextest.el (this file).
+       (chunk begin
+              ;; keywords
+              (list (* (or text nl)))
+              end)
+       (text (bol) "@text" [space] (substring (* (and (not "\n") (any)))) (eol) "\n")
+       (nl (bol) "@nl" (eol) "\n"))
+    (goto-char 0)
+    (peg-run (peg noweb)
+             ;; (lambda (&rest args)
+             ;;   (message "failure\n%s" args))
+             ;; (lambda (&rest args)
+             ;;   (message "success\n%S" args))
+             )))
 
 (test-pex)
 
