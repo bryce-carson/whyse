@@ -295,12 +295,13 @@ create the atomic window for the IDE in the active frame.
 \subsection{Conversion to tool syntax}\label{toolconversion}
 WHYSE could have been written to call the \texttt{noweave} programs
 itself, but that is less configurable than providing the opportunity to
-let the user configure this on their own. It respects Noweb's pipelines
-architecture, and keeps things as transparent as possible. What is
-needed to be Emacs Lisp is, and what is not isn't. The tool syntax is
-thus obtained by running the shell script configured for the project by
-calling it with the command-line provided in the third element of an
-entry in [[w-registered-projects]].
+let the user configure this on their own. It respects Noweb's pipelined
+architecture, and keeps things as transparent as possible. What should
+be written in Emacs Lisp is written therein, and what shouldn't be
+implemented in Elisp is not. The tool syntax is thus obtained by running
+the shell script configured for the project by calling it with the
+command-line provided in the third element of an entry in
+[[w-registered-projects]].
 
 <<run the project shell script to obtain the tool syntax>>=
 (make-process
@@ -317,6 +318,17 @@ entry in [[w-registered-projects]].
 
 The PEG for Noweb's tool syntax is run on the result of the shell
 script, and this value consumed by the parent of this chunk.
+
+%% NOTE: what the chunk calls, in effect.
+%% tool-syntax:
+%% 	/usr/lib/noweb/markup ~/src/whs/whyse.nw | \
+%% 	/usr/lib/noweb/autodefs.elisp | \
+%% 	/usr/lib/noweb/finduses | \
+%% 	/usr/lib/noweb/noidx -delay
+
+%% NOTE: Improved, assuming the Noweb libray tools are on the PATH.
+%% tool-syntax:
+%%   markup ~/src/whs/whyse.nw | autodefs.elisp | finduses | noidx - delay
 
 \subsection{Database initialization}
 Every project should have a database file located somewhere within the
@@ -712,13 +724,16 @@ lines. The definition of what is valid follows.
 \end{enumerate}
 
 Any other keywords are invalid inside a code block. An example of an
-invalid keyword is anything related to quotations!
+invalid keyword is anything related to quotations! \textit{This
+restriction only applies to code blocks, however, and documentation
+chunks may contain quotations, of course.}
 
 <<chunks and their boundaries>>=
 (chunk-contents
  (or
-  <<structural keywords (except quotations)>>
+  <<structural keywords>>
   <<tagging keywords>>
+  x-notused
   <<tool errors>>))
 @ 
 
@@ -740,7 +755,6 @@ use ;; NOTE: related to the `identifier-used-in-module' table.
 
 \textit{All} structural keywords, then, are:
 
-%% NOTE: not meant to be referenced anywhere!
 <<structural keywords>>=
 <<structural keywords (except quotations)>>
 quotation
@@ -752,10 +766,14 @@ line
 language
 ;; index
 i-define-or-use
+i-definitions
 ;; xref
 x-prev-or-next-def
 x-continued-definitions-of-the-current-chunk
+i-usages
 x-usages
+x-label
+x-ref
 @ 
 
 <<tool errors>>=
@@ -797,10 +815,9 @@ to) a chunk are important keywords.
 
 <<quotations>>=
 (quotation (bol) (substring "@quote") nl
-           ;; TODO: improve the supported keywords as parsing errors are
-           ;; encountered which do not violate the assumptions of
-           ;; quotations as stated in the Noweb Hacker's Guide.
-           (list (* (or text nwnl defn use)))
+           (action (when w--peg-parser-within-codep
+                     (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
+           (list (* (or text nwnl defn i-define-or-use x-ref use)))
            (bol) (substring "@endquote") nl)
 @
 
@@ -874,7 +891,7 @@ better explanation of the differences.
  idx
  (substring (or "defn" "use")) spc (substring !eol) nl
  (action
-  (if (not w--peg-parser-within-codep)
+  (unless w--peg-parser-within-codep
       (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
  `(s1 s2 -- (cons s1 s2)))
 
@@ -947,9 +964,10 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 
 (x-usages
  xr "beginuses" nl
- (or (list (+ (and xr "useitem" spc (substring label) nl)))
-     (and xr "notused" spc (substring label) nl))
+ (list (+ (and xr "useitem" spc (substring label) nl)))
  xr "enduses" nl)
+
+(x-notused xr "notused" spc !eol nl)
 
 (x-chunks xr "beginchunks" nl
           (+ x-chunk)
@@ -1167,19 +1185,29 @@ early version of such functionality is provided in [[w-with-project]].
 ;; This chunk intentionally left blank at this time.
 @ 
 
-<<test.el>>=
+\section{Tests}
+\em{TODO:} adopt the ERT (Emacs Regression Tests) package to test WHYSE
+features as they are developed and become featureful. When a feature is
+implemented a test should be written which conforms to the current
+documentation so that regressions can be caught when changes are made.
+
+\subsection{Parsing Tests}
+\subsubsection{Parsing tool syntax within a temporary buffer}
+<<test-parser-with-temporary-buffer.el>>=
 <<buffer parsing function>>
 
 (with-temp-buffer
   (insert (shell-command-to-string
-           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
+           "make --silent --file ~/src/whs/Makefile tool-syntax"))
   (goto-char (point-min))
-  (w--parse-current-buffer-with-rules))
+  (w--parse-current-buffer-with-rules)
+  (pop-to-buffer (clone-buffer (generate-new-buffer-name "<WHYSE FAILURE> Parsing tool syntax with a temporary buffer"))))
 
 ;; Local Variables:
-;; mode: lisp-interaction-mode
+;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
+;; eval: (read-only-mode)
 ;; End:
 @ 
 

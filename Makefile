@@ -10,7 +10,7 @@ compile-pdf: tangle weave
 tangle: clean
 	notangle -Rwhyse.el whyse.nw > whyse.el
 	notangle -Rwhyse-pkg.el whyse.nw > whyse-pkg.el
-	notangle -Rtest.el whyse.nw > test.el
+	notangle -Rtest-parser-with-temporary-buffer.el whyse.nw > test-parser-with-temporary-buffer.el
 	mkdir whyse-${VERSION}
 	mv -t whyse-${VERSION} whyse.el whyse-pkg.el
 	tar --create --file whyse-${VERSION}.tar whyse-${VERSION}
@@ -22,7 +22,4 @@ clean:
 	rm -rf whyse-*/
 
 tool-syntax:
-	/usr/lib/noweb/markup ~/src/whs/whyse.nw | \
-	/usr/lib/noweb/autodefs.elisp | \
-	/usr/lib/noweb/finduses | \
-	/usr/lib/noweb/noidx -delay
+	/usr/lib/noweb/markup ~/src/whs/whyse.nw | /usr/lib/noweb/autodefs.elisp | /usr/lib/noweb/finduses | /usr/lib/noweb/noidx -delay
