@@ -7,8 +7,9 @@
               (not header)
               (+ (and file (opt (or (and x-chunks i-identifiers)
                                     (and i-identifiers x-chunks)))))
-              ;; Trailing documentation chunk
+              ;; Trailing documentation chunk and new-lines
               (opt chunk)
+              (opt (* nl))
               (not trailer)
               (eob))
        ;; Technically, file is a tagging keyword, but that classification only
@@ -21,19 +22,17 @@
        (path-separator ["\\/"])
        (file-name (+ (or [word] ".")))
        (chunk begin (list (* chunk-contents)) end)
-       (begin (bol) "@begin" spc kind spc ordinal (eol) "\n"
+       (begin (bol) "@begin" spc kind spc ordinal (eol) nl
               (action (setq w--peg-parser-within-codep t)))
-       (end (bol) "@end" spc kind spc ordinal (eol) "\n"
+       (end (bol) "@end" spc kind spc ordinal (eol) nl
             (action (setq w--peg-parser-within-codep nil))
-            (opt (if begin)
-                 (action (message "[DEBUG] A begin [unconsumed] follows this end.")))
             `(kind-one ordinal-one keywords kind-two ordinal-two --
                        (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
                                     ;;; Push the contents of the chunk to the stack in a cons
                                     ;;; cell with the car being a list of the kind and number.
                                     ;;;; E.g.:
                            ;; (("code" 3) . (@text @nl @text @nl))
-                           (cons (list kind-one ordinal-one) keywords)
+                           (cons (cons kind-one ordinal-one) keywords)
                          (error "There was an issue with unbalanced or improperly nested chunks."))))
        (ordinal (substring [0-9] (* [0-9]))
                 `(number -- (string-to-number number)))
@@ -48,52 +47,12 @@
          ;; tagging
          line
          language
+         ;; index
+         i-define-or-use
+         ;; xref
          x-prev-or-next-def
          x-continued-definitions-of-the-current-chunk
          x-usages
-         (x-label xr (substring "label" spc label) nl)
-         (x-ref xr (substring "ref" spc label) nl)
-
-         (x-prev-or-next-def
-          xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
-          `(chunk-defn label -- (append chunk-defn label)))
-
-         (x-continued-definitions-of-the-current-chunk
-          xr "begindefs" nl
-          (list (+ (and xr (substring "defitem") spc (substring label) nl)))
-          ;; NOTE: development statement only; remove this before release.
-          (action (message "peg--stack := \n%S" peg--stack))
-          xr "enddefs" nl)
-
-         (x-usages
-          xr "beginuses" nl
-          (or (list (+ (and xr "useitem" spc (substring label) nl)))
-              (and xr "notused" spc (substring label) nl))
-          xr "enduses" nl)
-
-         (x-chunks xr "beginchunks" nl
-                   (+ x-chunk)
-                   xr "endchunks" nl)
-         (x-chunk xr "chunkbegin" spc (substring label) (substring !eol) nl
-                  (list (+ (list (and xr
-                                      (substring (or "chunkuse" "chunkdefn"))
-                                      spc
-                                      (substring label)
-                                      nl))))
-                  xr "chunkend" nl)
-
-         ;; Associates label with tag (@xref tag $LABEL $TAG)
-         (x-tag xr "tag" spc label spc !eol nl)
-         (label (+ [A-Za-z0-9\-])) ;; A label never contains whitespace.
-
-         ;; User-errors (header and trailer) and tool-error (fatal)
-         ;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
-         (header (bol) "@header" ;; formatter options
-                 (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-         (trailer (bol) "@trailer" ;; formatter
-                  (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-         (fatal (bol) "@fatal"
-                (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
          ;; error
          fatal))
        (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl)
@@ -116,27 +75,6 @@
              `(o -- (cons "@line" o)))
 
        (language (bol) "@language" spc (substring words-eol))
-
-       ;; Index keywords
-       i-usages
-       i-identifiers
-       i-localdefn ;; UNSUPPORTED
-       i-nl ;; DEPRECATED in Noweb 2.10
-
-       ;; Cross-reference keywords
-       x-label
-       x-ref
-       x-beginuses
-       x-useitem
-       x-enduses
-       x-notused
-       x-beginchunks
-       x-chunkbegin
-       x-chunkuse
-       x-chunkdefn
-       x-chunkend
-       x-endchunks
-       x-tag
        ;; Index
        (idx (bol) "@index" spc)
        (xr (bol) "@xref" spc)
@@ -165,7 +103,6 @@
        (i-isdefined idx (substring "isdefined" spc label) nl)
        (i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
 
-
        (i-identifiers idx "beginindex" nl
                       (list (+ i-entry))
                       idx "endindex" nl)
@@ -189,6 +126,51 @@
                                                   "\n"))))
 
        ;; Cross-reference
+       (x-label xr (substring "label" spc label) nl)
+       (x-ref xr (substring "ref" spc label) nl)
+
+       (x-prev-or-next-def
+        xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
+        `(chunk-defn label -- (append chunk-defn label)))
+
+       (x-continued-definitions-of-the-current-chunk
+        xr "begindefs" nl
+        (list (+ (and xr (substring "defitem") spc (substring label) nl)))
+        ;; NOTE: development statement only; remove this before release.
+        (action (message "peg--stack := \n%S" peg--stack))
+        xr "enddefs" nl)
+
+       (x-usages
+        xr "beginuses" nl
+        (or (list (+ (and xr "useitem" spc (substring label) nl)))
+            (and xr "notused" spc (substring label) nl))
+        xr "enduses" nl)
+
+       (x-chunks xr "beginchunks" nl
+                 (+ x-chunk)
+                 xr "endchunks" nl)
+       (x-chunk xr "chunkbegin" spc (substring label) (substring !eol) nl
+                (list (+ (list (and xr
+                                    (substring (or "chunkuse" "chunkdefn"))
+                                    spc
+                                    (substring label)
+                                    nl))))
+                xr "chunkend" nl)
+
+       ;; Associates label with tag (@xref tag $LABEL $TAG)
+       (x-tag xr "tag" spc label spc !eol nl)
+       (label (+ (or "-" [alnum]))) ;; A label never contains whitespace.
+
+
+       ;; Error
+       ;; User-errors (header and trailer) and tool-error (fatal)
+       ;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
+       (header (bol) "@header" ;; formatter options
+               (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+       (trailer (bol) "@trailer" ;; formatter
+                (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+       (fatal (bol) "@fatal"
+              (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
        ;; Helpers
        (nl (eol) "\n")
        (!eol (+ (not "\n") (any)))

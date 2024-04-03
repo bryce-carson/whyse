@@ -289,13 +289,6 @@ the IDE frame.
   (insert (shell-command-to-string (w-project-script project)))
   (goto-char (point-min))
   (w--parse-current-buffer-with-rules))
-;; (let ((buffer (generate-new-buffer "WHYSE tool syntax generation shell output")))
-;;   (with-current-buffer buffer
-;;     <<run the project shell script to obtain the tool syntax>>
-;;
-;;     ;; Go to the beginning of the buffer, then parse according to the PEG.
-;;     (goto-char 0)
-;;     @<<parse the buffer with PEG rules>>))
 @ 
 
 \subsection{Conversion to tool syntax}\label{toolconversion}
@@ -621,8 +614,9 @@ defined.
        (not header)
        (+ (and file (opt (or (and x-chunks i-identifiers)
                              (and i-identifiers x-chunks)))))
-       ;; Trailing documentation chunk
+       ;; Trailing documentation chunk and new-lines
        (opt chunk)
+       (opt (* nl))
        (not trailer)
        (eob))
 @
@@ -681,19 +675,17 @@ stack are balanced.
 
 <<chunks and their boundaries>>=
 (chunk begin (list (* chunk-contents)) end)
-(begin (bol) "@begin" spc kind spc ordinal (eol) "\n"
+(begin (bol) "@begin" spc kind spc ordinal (eol) nl
        (action (setq w--peg-parser-within-codep t)))
-(end (bol) "@end" spc kind spc ordinal (eol) "\n"
+(end (bol) "@end" spc kind spc ordinal (eol) nl
      (action (setq w--peg-parser-within-codep nil))
-     (opt (if begin)
-          (action (message "[DEBUG] A begin [unconsumed] follows this end.")))
      `(kind-one ordinal-one keywords kind-two ordinal-two --
                 (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
                              ;;; Push the contents of the chunk to the stack in a cons
                              ;;; cell with the car being a list of the kind and number.
                              ;;;; E.g.:
                     ;; (("code" 3) . (@text @nl @text @nl))
-                    (cons (list kind-one ordinal-one) keywords)
+                    (cons (cons kind-one ordinal-one) keywords)
                   (error "There was an issue with unbalanced or improperly nested chunks."))))
 (ordinal (substring [0-9] (* [0-9]))
          `(number -- (string-to-number number)))
@@ -723,7 +715,6 @@ invalid keyword is anything related to quotations!
  (or
   <<structural keywords (except quotations)>>
   <<tagging keywords>>
-  <<cross-referencing keywords>>
   <<tool errors>>))
 @ 
 
@@ -745,6 +736,7 @@ use ;; NOTE: related to the `identifier-used-in-module' table.
 
 \textit{All} structural keywords, then, are:
 
+%% NOTE: not meant to be referenced anywhere!
 <<structural keywords>>=
 <<structural keywords (except quotations)>>
 quotation
@@ -754,18 +746,12 @@ quotation
 ;; tagging
 line
 language
-@ 
-
-<<cross-referencing keywords>>=
+;; index
+i-define-or-use
+;; xref
 x-prev-or-next-def
 x-continued-definitions-of-the-current-chunk
 x-usages
-@ 
-
-<<usage errors>>=
-;; user error
-header
-trailer
 @ 
 
 <<tool errors>>=
@@ -819,27 +805,6 @@ to) a chunk are important keywords.
       `(o -- (cons "@line" o)))
 
 (language (bol) "@language" spc (substring words-eol))
-
-;; Index keywords
-i-usages
-i-identifiers
-i-localdefn ;; UNSUPPORTED
-i-nl ;; DEPRECATED in Noweb 2.10
-
-;; Cross-reference keywords
-x-label
-x-ref
-x-beginuses
-x-useitem
-x-enduses
-x-notused
-x-beginchunks
-x-chunkbegin
-x-chunkuse
-x-chunkdefn
-x-chunkend
-x-endchunks
-x-tag
 @
 
 The indexing and cross-referencing abilities of Noweb are excellent
@@ -878,9 +843,23 @@ grouping.
 <<unsupported indexing keywords>>
 
 ;; Cross-reference
+<<cross-referencing keywords>>
+
+;; Error
+<<error-causing keywords>>
 @
 
+Further keywords are categorized neatly as Indexing or
+Cross--referencing keywords, so they are contained in subsections.
+
 \subsection{indexing}
+Indexing keywords, both those used within chunks and those used outside
+of chunks, are defined in this section. The [[<<fundamental indexing
+keywords, which are restricted to within a code chunk>>]], index
+definitions or usages of identifiers and track the definitions of
+identifiers in a chunk and the usages of identifiers in a chunk. They
+may seem redundant, but are not; the Noweb Hacker's Guide offers a
+better explanation of the differences.
 
 <<indexing and cross-referencing set-off words>>=
 (idx (bol) "@index" spc)
@@ -915,6 +894,11 @@ grouping.
           `(usages -- (cons "usages" usages)))
 (i-isdefined idx (substring "isdefined" spc label) nl)
 (i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
+@
+
+The summary index of identifiers is a file--specific set of keywords.
+The index lists all identifiers defined in the file (at least all of
+those recognized by the autodefinitions filter).
 
 <<the index of identifiers>>=
 (i-identifiers idx "beginindex" nl
@@ -976,8 +960,9 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 
 ;; Associates label with tag (@xref tag $LABEL $TAG)
 (x-tag xr "tag" spc label spc !eol nl)
-(label (+ [A-Za-z0-9\-])) ;; A label never contains whitespace.
+(label (+ (or "-" [alnum]))) ;; A label never contains whitespace.
 
+<<error-causing keywords>>=
 ;; User-errors (header and trailer) and tool-error (fatal)
 ;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
 (header (bol) "@header" ;; formatter options
@@ -1150,10 +1135,10 @@ is followed for the [[<<file-local variables>>]].
 <<EOF>>=
 (provide 'whyse)
 
-<<file local variables>>
+<<file-local variables>>
 @
 
-<<file local variables>>=
+<<file-local variables>>=
 ;; Local Variables:
 ;; mode: emacs-lisp
 ;; no-byte-compile: t
