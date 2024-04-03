@@ -281,8 +281,9 @@ introduced, and only the ``meaty'' business end of its operation has
 been left undefined until now. Ergo, [[<<convert the Noweb to tool
 format and parse it with the PEG>>]] gathers together the functionality
 that converts a Noweb to its tool syntax with a project's specified
-shell script, sends the parsed text to the database, and finally creates
-the IDE frame.
+shell script, and parses the text before the next section of body forms
+is executed. Those send the parsed text to the database, and finally
+create the atomic window for the IDE in the active frame.
 
 <<convert the Noweb to tool format and parse it with the PEG>>=
 (with-temp-buffer
@@ -427,12 +428,15 @@ A frame like in Figure \ref{fig1} should be created.
 <<Get project frame>>=
 (progn
   (select-frame (w-project-frame project))
-  (switch-to-buffer (generate-new-buffer (w-project-name project)) nil 'force-same-window)
+  (switch-to-buffer (generate-new-buffer (w-project-name project))
+                    nil
+                    'force-same-window)
   (let* ((window-right (split-window-right))
          (parent-window (window-parent window-right)))
     (window-make-atom parent-window)
     (display-buffer-in-atom-window
-     (get-buffer-create (format "Module Index<%s>" (w-project-name project)))
+     (get-buffer-create (format "Module Index<%s>"
+                                (w-project-name project)))
      `((window . ,parent-window) (window-height . 8)))))
 
 @
@@ -586,7 +590,7 @@ produced by the project shell script.
       (peg-run
        (peg noweb)
        (lambda (lst)
-         (message "Parsing failed in buffer:=%S.\nPEXes which failed:=%S"
+         (message "Parsing failed in buffer %S.\nPEXes which failed:\n%S"
                   (current-buffer) lst))))))
 @ 
 
