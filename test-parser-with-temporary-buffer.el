@@ -6,26 +6,21 @@
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
   (with-peg-rules
       (;;; Overall Noweb structure
-       (noweb (bob)
-              (not header)
-              (+ (and file (* nwnl)
-                      (or (and x-chunks i-identifiers)
-                          (and i-identifiers x-chunks))))
-              ;; Trailing documentation chunk and new-lines
-              (opt chunk)
-              (opt (+ nl))
-              (not trailer)
-
-              ;;; DONE: whilst the "no merge error method for (guard t)" issue
-              ;;; persists, removing this check for the EOB resolves the issue
-              ;;; and lets my own calls to `error' surface. The issue seems to
-              ;;; arise from the fact that I did not handle detection of being
-              ;;; within a code chunk properly.
-              (eob))
+       ;; DONE: whilst the "no merge error method for (guard t)" issue
+       ;; persists, removing the check for the EOB resolves the issue
+       ;; and lets my own calls to `error' surface. The issue seems to
+       ;; arise from the fact that I did not handle detection of being
+       ;; within a code chunk properly.
+       (noweb (bob) (not header) (+ file) (not trailer) (eob))
        ;; Technically, file is a tagging keyword, but that classification only
        ;; makes sense in the Hacker's guide, not in the syntax.
        (file (bol) "@file" spc (substring path) nl
-             (list (+ chunk))
+             (list (and (+ chunk) (* nwnl)
+                        (or (and x-chunks i-identifiers)
+                            (and i-identifiers x-chunks)))
+                   ;; Trailing documentation chunk and new-lines
+                   (opt chunk)
+                   (opt (+ nl)))
              `(path chunk-list -- (list path chunk-list)))
        (path (opt (or ".." ".")) (* path-component) file-name)
        (path-component (and path-separator (+ [word])))
@@ -211,13 +206,12 @@
   (insert (shell-command-to-string
            "make --silent --file ~/src/whs/Makefile tool-syntax"))
   (goto-char (point-min))
-  (w--parse-current-buffer-with-rules)
-  ;; (pop-to-buffer
-  ;;  (clone-buffer
-  ;;   (generate-new-buffer-name
-  ;;    (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
-  ;;            (if w--parse-success "SUCCESS" "FAILURE")))))
-  )
+  (message "Noweb parse:\n%S"(w--parse-current-buffer-with-rules))
+  (pop-to-buffer
+   (clone-buffer
+    (generate-new-buffer-name
+     (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
+             (if w--parse-success "SUCCESS" "FAILURE"))))))
 
 ;; Local Variables:
 ;; mode: lisp-interaction

@@ -31,13 +31,18 @@
 \pagestyle{noweb}
 \begin{document}
 
+%% TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
+%% quotations should be guarded with at-signs, like [[@<<>>]]. Further,
+%% Emacs should be aware that this is a comment, so that the proper
+%% syntax highlighting is applied.
+%%%
 %% \section{Preface}
 %% A paper describing this implementation---written in Noweb and browsable,
 %% editable, and auditable with WHYSE, or readable in the printed form---is
 %% hoped to be submitted to The Journal of Open Source Software (JOSS)
 %% before the year 2024. N.B.: the paper will include historical
 %% information about literate programming, and citations (especially of
-%% those given credit in the [[<<Commentary>>]] for ideating WHYSE itself).
+%% those given credit in the [[@<<Commentary>>]] for ideating WHYSE itself).
 
 %% \subsection{On literate programming}
 %% Literate programs can be organized in multiple ways; particularly, I
@@ -291,7 +296,7 @@ create the atomic window for the IDE in the active frame.
 (with-temp-buffer
   (insert (shell-command-to-string (w-project-script project)))
   (goto-char (point-min))
-  (w--parse-current-buffer-with-rules))
+  (message "Noweb parse:\n%S" (w--parse-current-buffer-with-rules)))
 @ 
 
 \subsection{Conversion to tool syntax}\label{toolconversion}
@@ -630,22 +635,12 @@ defined.
 
 <<high-level Noweb tool syntax structure>>=
 ;;; Overall Noweb structure
-(noweb (bob)
-       (not header)
-       (+ (and file (* nwnl)
-               (or (and x-chunks i-identifiers)
-                   (and i-identifiers x-chunks))))
-       ;; Trailing documentation chunk and new-lines
-       (opt chunk)
-       (opt (+ nl))
-       (not trailer)
-
-       ;;; DONE: whilst the "no merge error method for (guard t)" issue
-       ;;; persists, removing this check for the EOB resolves the issue
-       ;;; and lets my own calls to `error' surface. The issue seems to
-       ;;; arise from the fact that I did not handle detection of being
-       ;;; within a code chunk properly.
-       (eob))
+;; DONE: whilst the "no merge error method for (guard t)" issue
+;; persists, removing the check for the EOB resolves the issue
+;; and lets my own calls to `error' surface. The issue seems to
+;; arise from the fact that I did not handle detection of being
+;; within a code chunk properly.
+(noweb (bob) (not header) (+ file) (not trailer) (eob))
 @
 
 It is a fatal error for WHYSE if the header or trailer wrapper keywords
@@ -671,11 +666,27 @@ file is anything that \textit{looks like a file} to Noweb, however, by
 default only the [[@<<*>>]] chunk is tangled when no specific root chunk
 is given on the command line.
 
+TODO: Write about the need for the overall document to be separate from
+the one-or-more files specified in the document. Exempli gratia: the
+current document, contained in \texttt{whyse.nw} contains two files,
+though they are separately tangled: \texttt{whyse.el} and
+\texttt{test-parser-with-temporary-buffer.el}. If these two files were
+tangled at the same time, such that the output file discovery ability of
+Noweb was used, then the there would be more than one file in the
+intermediate tool syntax, but still a single preceeding documentation
+chunk before the first file, and a single succeeding documentation chunk
+after the last file.
+
 <<files and their paths>>=
 ;; Technically, file is a tagging keyword, but that classification only
 ;; makes sense in the Hacker's guide, not in the syntax.
 (file (bol) "@file" spc (substring path) nl
-      (list (+ chunk))
+      (list (and (+ chunk) (* nwnl)
+                 (or (and x-chunks i-identifiers)
+                     (and i-identifiers x-chunks)))
+            ;; Trailing documentation chunk and new-lines
+            (opt chunk)
+            (opt (+ nl)))
       `(path chunk-list -- (list path chunk-list)))
 (path (opt (or ".." ".")) (* path-component) file-name)
 (path-component (and path-separator (+ [word])))
@@ -1221,13 +1232,12 @@ documentation so that regressions can be caught when changes are made.
   (insert (shell-command-to-string
            "make --silent --file ~/src/whs/Makefile tool-syntax"))
   (goto-char (point-min))
-  (w--parse-current-buffer-with-rules)
-  ;; (pop-to-buffer
-  ;;  (clone-buffer
-  ;;   (generate-new-buffer-name
-  ;;    (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
-  ;;            (if w--parse-success "SUCCESS" "FAILURE")))))
-  )
+  (message "Noweb parse:\n%S"(w--parse-current-buffer-with-rules))
+  (pop-to-buffer
+   (clone-buffer
+    (generate-new-buffer-name
+     (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
+             (if w--parse-success "SUCCESS" "FAILURE"))))))
 
 ;; Local Variables:
 ;; mode: lisp-interaction
