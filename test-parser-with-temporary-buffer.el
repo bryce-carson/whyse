@@ -16,8 +16,8 @@
        ;; makes sense in the Hacker's guide, not in the syntax.
        (file (bol) "@file" spc (substring path) nl
              (list (and (+ chunk) (* nwnl)
-                        (or (and x-chunks i-identifiers)
-                            (and i-identifiers x-chunks)))
+                        (list (or (and x-chunks i-identifiers)
+                                  (and i-identifiers x-chunks))))
                    ;; Trailing documentation chunk and new-lines
                    (opt chunk)
                    (opt (+ nl)))
@@ -71,7 +71,8 @@
          x-notused
          ;; error
          fatal))
-       (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl)
+       (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
+             `(txt -- (cons "text" txt)))
        (nwnl (bol) "@nl" nl)
        (defn "@defn" spc (substring !eol) nl
          `(name -- (cons "chunk" name)))
@@ -121,7 +122,8 @@
 
        (i-identifiers idx "beginindex" nl
                       (list (+ i-entry))
-                      idx "endindex" nl)
+                      idx "endindex" nl
+                      `(l -- "i-identifiers" l))
        (i-entry idx "entrybegin" spc (substring label spc !eol) nl
                 (list (+ (or i-entrydefn i-entryuse)))
                 idx "entryend" nl
@@ -165,8 +167,9 @@
                   `(chunk-name -- (cons "notused" chunk-name)))
 
        (x-chunks xr "beginchunks" nl
-                 (+ x-chunk)
-                 xr "endchunks" nl)
+                 (list (+ x-chunk))
+                 xr "endchunks" nl
+                 `(l -- "x-chunks" l))
        (x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
                 (list (+ (list (and xr
                                     (substring (or "chunkuse" "chunkdefn"))
@@ -198,15 +201,16 @@
        (peg noweb)
        (lambda (lst)
          (setq w--parse-success nil)
-         (pop-to-buffer (with-current-buffer (generate-new-buffer "<WHYSE Parse failure log>")
+         (pop-to-buffer (with-current-buffer
+                            (generate-new-buffer "<WHYSE Parse failure log>")
             (insert (format "PEXes which failed:\n%S" lst))
             (current-buffer))))))))
 
 (with-temp-buffer
   (insert (shell-command-to-string
-           "make --silent --file ~/src/whs/Makefile tool-syntax"))
+           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
   (goto-char (point-min))
-  (message "Noweb parse:\n%S"(w--parse-current-buffer-with-rules))
+  (cl-prettyprint (w--parse-current-buffer-with-rules))
   (pop-to-buffer
    (clone-buffer
     (generate-new-buffer-name
@@ -217,5 +221,6 @@
 ;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
+;; lexical-binding: t
 ;; eval: (read-only-mode)
 ;; End:

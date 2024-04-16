@@ -64,34 +64,41 @@
 %% The organization of this literate program is \textit{linear}, with
 %% aspects of the program explained as the user would encounter them, more
 %% or less.
+\section{Preface}\label{Preface}
+\textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
+development environment for Noweb and \LaTeX{} within Emacs, similar to
+EDE but not sharing development principles. It is based off of an
+academic paper written in 1991 by Brown and Czejdo.
 
 \section{Projects}\label{Projects}
-\textsc{(no)Web HYpertext System in Emacs} (WHYSE) is a project-based
+\textsc{(no)Web HYpertext System in Emacs (WHYSE)} is a project-based
 application. Projects are lists registered with WHYSE using the ``Easy
 Customization Interface'', which provides a simple way to make the
 necessary information known to WHYSE. Users register a literate
-programming project (only Noweb–-based programming is supported) as an
+programming project (only Noweb-based programming is supported) as an
 item in the customization variable [[w-registered-projects]]; further
 project data is contained in a Common Lisp struct during runtime.
 
-In short, a project is composed of several things:
+In short, the components of a project are:
 
 \begin{itemize}
 \item a name,
 \item a Noweb source file,
 \item a shell command to run a user-defined script
 \item an \textsc{SQLite3} database, and a connection thereto,
-\item a frame,
-\item and date-time information (creation, edition, and export).
+\item an atomic window,
+\item a struct, and
+\item date-time information (creation, edition, and export).
 \end{itemize}
 
-The struct keeps some information during runtime, like the connection,
-but other information is generated at runtime (such as the filename of
-the database). These items are each explained in this section. If some
-item is not well-enough explained in this section, please try editing
-the Noweb source and improving the explanation and creating a
-pull-request against the WHYSE Emacs Lisp repository on its Git forge; you
-may also submit your edition by email to the package maintainer.
+The struct keeps some information during runtime, like the database
+connection, but other information is generated at runtime (such as the
+filename of the database). These items are each explained in this
+section. If some item is not well-enough explained in this section,
+please try editing the Noweb source and improving the explanation and
+creating a pull-request against the WHYSE Emacs Lisp repository on its
+Git forge; you may also submit your edition by email to the package
+maintainer.
 
 Users of WHYSE in Emacs are expected to be familiar with Noweb; this does
 not include how Noweb is built from source (that is arcane, supposedly)
@@ -285,12 +292,13 @@ In more explicit words, this section describes the actions that occur
 when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
 preconditions have been met; the [[whyse]] function has already been
 introduced, and only the ``meaty'' business end of its operation has
-been left undefined until now. Ergo, [[<<convert the Noweb to tool
-format and parse it with the PEG>>]] gathers together the functionality
-that converts a Noweb to its tool syntax with a project's specified
-shell script, and parses the text before the next section of body forms
-is executed. Those send the parsed text to the database, and finally
-create the atomic window for the IDE in the active frame.
+been left undefined until now. Ergo,
+[[<<convert the Noweb to tool format and parse it with the PEG>>]]
+gathers together the functionality that converts a Noweb to its tool
+syntax with a project's specified shell script, and parses the text
+before the next section of body forms is executed. Those send the parsed
+text to the database, and finally create the atomic window for the IDE
+in the active frame.
 
 <<convert the Noweb to tool format and parse it with the PEG>>=
 (with-temp-buffer
@@ -328,14 +336,14 @@ script, and this value consumed by the parent of this chunk.
 
 %% NOTE: what the chunk calls, in effect.
 %% tool-syntax:
-%% 	/usr/lib/noweb/markup ~/src/whs/whyse.nw | \
+%% 	/usr/lib/noweb/markup ~/src/whyse/whyse.nw | \
 %% 	/usr/lib/noweb/autodefs.elisp | \
 %% 	/usr/lib/noweb/finduses | \
 %% 	/usr/lib/noweb/noidx -delay
 
 %% NOTE: Improved, assuming the Noweb libray tools are on the PATH.
 %% tool-syntax:
-%%   markup ~/src/whs/whyse.nw | autodefs.elisp | finduses | noidx - delay
+%%   markup ~/src/whyse/whyse.nw | autodefs.elisp | finduses | noidx - delay
 
 \subsection{Database initialization}
 Every project should have a database file located somewhere within the
@@ -509,9 +517,9 @@ early development versions
 (prior to version \texttt{0.n-devel})
 completely ignore Noweb keywords out of that scope.
 
-An example of a \textsc{Noweb} command-line a user may call is given next.
+An example of a command-line a user may execute is given next.
 
-\begin{quote}
+\begin{quotation}
 \begin{verbatim}
 [bryce@fedora whyse]$ noweave -v -autodefs elisp -index whyse.nw 1>/dev/null
 RCS version name $Name:  $
@@ -525,7 +533,7 @@ echo @trailer latex
 /usr/local/lib/noidx |
 /usr/local/lib/totex
 \end{verbatim}
-\end{quote}
+\end{quotation}
 
 Ergo, the simplified pipeline---using Emacs Lisp autodefinitions provided in
 \textsc{Knoweb} (written by \textsc{Joseph S. Riel})---is as follows:
@@ -599,22 +607,6 @@ rule in the grammar for Noweb tool syntax is the appropriately named
 root rule [[noweb]] is ran on the buffer containing the tool syntax
 produced by the project shell script.
 
-<<buffer parsing function>>=
-;;;; Parsing expression grammar (PEG) rules
-(defun w--parse-current-buffer-with-rules ()
-  "Parse the current buffer with the PEG defined for Noweb tool syntax."
-  (with-peg-rules
-      (<<PEG rules>>)
-    (let (w--peg-parser-within-codep)
-      (peg-run
-       (peg noweb)
-       (lambda (lst)
-         (setq w--parse-success nil)
-         (pop-to-buffer (with-current-buffer (generate-new-buffer "<WHYSE Parse failure log>")
-            (insert (format "PEXes which failed:\n%S" lst))
-            (current-buffer))))))))
-@ 
-
 The grammar can be broken into five sections, each covering some part of
 parsing.
 
@@ -627,8 +619,25 @@ parsing.
 <<meta rules>>
 @ 
 
-As stated, the [[noweb]] rule defines the root expression, or starting
-expression, for the grammar. The tool syntax of Noweb is simply a list
+<<buffer parsing function>>=
+;;;; Parsing expression grammar (PEG) rules
+(defun w--parse-current-buffer-with-rules ()
+  "Parse the current buffer with the PEG defined for Noweb tool syntax."
+  (with-peg-rules
+      (<<PEG rules>>)
+    (let (w--peg-parser-within-codep)
+      (peg-run
+       (peg noweb)
+       (lambda (lst)
+         (setq w--parse-success nil)
+         (pop-to-buffer (with-current-buffer
+                            (generate-new-buffer "<WHYSE Parse failure log>")
+            (insert (format "PEXes which failed:\n%S" lst))
+            (current-buffer))))))))
+@ 
+
+As stated, the [[noweb]] rule defines the root expression---or starting
+expression---for the grammar. The tool syntax of Noweb is simply a list
 of one or more files, which are each composed of at least one chunk.
 Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
 defined.
@@ -645,13 +654,14 @@ defined.
 
 It is a fatal error for WHYSE if the header or trailer wrapper keywords
 appear in the text it is to parse. They are totally irrelevant, and only
-matter for the final back-ends (\TeX, \LaTeX, or HTML).
+matter for the final back-ends (\TeX, \LaTeX, or HTML) that produce
+human-readable documenation.
 
 The grammar needs to address the fact that the syntax of the Noweb tool
 format is highly line-oriented, given the influence of AWK on the design
-(and usage) of Noweb. The following [[<<meta rules>>]] define rules
-which organize the constructs of a line-oriented, or data-oriented,
-syntax.
+and usage of Noweb (a historical version was entirely implemented in
+AWK). The following [[<<meta rules>>]] define rules which organize the
+constructs of a line-oriented, or data-oriented, syntax.
 
 <<meta rules>>=
 ;; Helpers
@@ -660,11 +670,13 @@ syntax.
 (spc " ")
 @
 
+TODO: Review the following paragraph and rephrase it.
+
 With the [[<<meta rules>>]] enabling easier definitions of what a given
 ``keyword'' looks like, the concept of a file needs to be defined. A
-file is anything that \textit{looks like a file} to Noweb, however, by
-default only the [[@<<*>>]] chunk is tangled when no specific root chunk
-is given on the command line.
+file is ``anything that looks like a file to Noweb''. However, by
+default, only the chunk named ``*'' (it's chunk header is [[@<<*>>]]) is
+tangled when no specific root chunk is given on the command line.
 
 TODO: Write about the need for the overall document to be separate from
 the one-or-more files specified in the document. Exempli gratia: the
@@ -682,8 +694,8 @@ after the last file.
 ;; makes sense in the Hacker's guide, not in the syntax.
 (file (bol) "@file" spc (substring path) nl
       (list (and (+ chunk) (* nwnl)
-                 (or (and x-chunks i-identifiers)
-                     (and i-identifiers x-chunks)))
+                 (list (or (and x-chunks i-identifiers)
+                           (and i-identifiers x-chunks))))
             ;; Trailing documentation chunk and new-lines
             (opt chunk)
             (opt (+ nl)))
@@ -694,15 +706,11 @@ after the last file.
 (file-name (+ (or [word] ".")))
 @
 
-\marginpar[Writing PEXes for matching file names was the most difficult
-  part I have encountered so far, as it has forced me to understand that
-  a first reading of documentation is usually not sufficient to
-  understand a complex library in an area of programming I have not
-  practiced in before (language parsing).]{Writing PEXes for matching
-  file names was the most difficult part I have encountered so far, as
-  it has forced me to understand that a first reading of documentation
-  is usually not sufficient to understand a complex library in an area
-  of programming I have not practiced in before (language parsing).}
+NOTE: Writing PEXes for matching file names was the most difficult part
+I have encountered so far, as it has forced me to understand that a
+first reading of documentation is usually not sufficient to understand a
+complex library in an area of programming I have not practiced in before
+(language parsing).
 
 Because chunks must not overlap, but can nest, the beginnings of chunks
 need to be pushed to the parsing stack and the end of a chunk needs to
@@ -755,6 +763,12 @@ invalid keyword is anything related to quotations! \textit{This
 restriction only applies to code blocks, however, and documentation
 chunks may contain quotations, of course.}
 
+TODO: rephrase this and ensure it is accurate. The rules for parsing
+were modified quite significantly from the initial definition so that it
+would ``work'', and so that \textit{whyse.nw} would be successfully
+parsed. ``Further, the implementation was modified to accommodate the
+parsing of the Noweb \texttt{whyse.nw} firstly.''
+
 <<chunks and their boundaries>>=
 (chunk-contents
  (or
@@ -780,7 +794,7 @@ defn
 use ;; NOTE: related to the `identifier-used-in-module' table.
 @ 
 
-\textit{All} structural keywords, then, are:
+All structural keywords, then, are:
 
 <<structural keywords>>=
 <<structural keywords (except quotations)>>
@@ -814,12 +828,13 @@ source text are replaced with the appropriate number of nwnl keywords
 (per convention).
 
 <<chunks and their boundaries>>=
-(text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl)
+(text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
+      `(txt -- (cons "text" txt)))
 (nwnl (bol) "@nl" nl)
 @
 
-Nowebs are built from chunks, so the definition and usage of (references
-to) a chunk are important keywords.
+Nowebs are built from chunks, so the definition and usage of (i.e.
+references to) a chunk are important keywords.
 
 <<chunks and their boundaries>>=
 (defn "@defn" spc (substring !eol) nl
@@ -952,7 +967,8 @@ those recognized by the autodefinitions filter).
 <<the index of identifiers>>=
 (i-identifiers idx "beginindex" nl
                (list (+ i-entry))
-               idx "endindex" nl)
+               idx "endindex" nl
+               `(l -- "i-identifiers" l))
 (i-entry idx "entrybegin" spc (substring label spc !eol) nl
          (list (+ (or i-entrydefn i-entryuse)))
          idx "entryend" nl
@@ -999,8 +1015,9 @@ WHYSE. See the Noweb Hacker's Guide for more information.
            `(chunk-name -- (cons "notused" chunk-name)))
 
 (x-chunks xr "beginchunks" nl
-          (+ x-chunk)
-          xr "endchunks" nl)
+          (list (+ x-chunk))
+          xr "endchunks" nl
+          `(l -- "x-chunks" l))
 (x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
          (list (+ (list (and xr
                              (substring (or "chunkuse" "chunkdefn"))
@@ -1111,7 +1128,7 @@ Thus, to prevent spill--over in the printed document, the
 document. When the file is tangled, however, a Noweb filter will be used
 to ensure that all required packages are on a single line by simply
 removing the new lines from the following code chunk. The same principle
-is followed for the [[<<file-local variables>>]].
+is followed for the [[<<file-local variables>>]] chunk.
 
 <<required packages>>=
 (emacs "25.1")
@@ -1189,6 +1206,16 @@ is followed for the [[<<file-local variables>>]].
 <<file-local variables>>
 @
 
+%% TODO: it was said earlier that a filter of some kind is used to
+%% ensure that file-local variables are on a single line. I believe I
+%% previously had file-local variables written on separate lines which
+%% were then joined together onto a single long line to be inserted at
+%% the top of a file. I probably then learned how to write a file-local
+%% variable block for insertion at the end of the file, as I have below.
+%% The earlier statement about this chunk will need to be edited so that
+%% it isn't incorrect (no filter is used on this chunk's contents,
+%% apparently).
+
 <<file-local variables>>=
 ;; Local Variables:
 ;; mode: emacs-lisp
@@ -1215,10 +1242,11 @@ early version of such functionality is provided in [[w-with-project]].
 @ 
 
 \section{Tests}
-\em{TODO:} adopt the ERT (Emacs Regression Tests) package to test WHYSE
-features as they are developed and become featureful. When a feature is
-implemented a test should be written which conforms to the current
-documentation so that regressions can be caught when changes are made.
+\textit{TODO:} adopt the ERT (Emacs Regression Tests) package to test
+WHYSE features as they are developed and become featureful. When a
+feature is implemented a test should be written which conforms to the
+current documentation so that regressions can be caught when changes are
+made.
 
 \subsection{Parsing Tests}
 \subsubsection{Parsing tool syntax within a temporary buffer}
@@ -1230,9 +1258,9 @@ documentation so that regressions can be caught when changes are made.
 
 (with-temp-buffer
   (insert (shell-command-to-string
-           "make --silent --file ~/src/whs/Makefile tool-syntax"))
+           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
   (goto-char (point-min))
-  (message "Noweb parse:\n%S"(w--parse-current-buffer-with-rules))
+  (cl-prettyprint (w--parse-current-buffer-with-rules))
   (pop-to-buffer
    (clone-buffer
     (generate-new-buffer-name
@@ -1243,6 +1271,7 @@ documentation so that regressions can be caught when changes are made.
 ;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
+;; lexical-binding: t
 ;; eval: (read-only-mode)
 ;; End:
 @ 

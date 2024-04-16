@@ -11,7 +11,7 @@ overview is provided to help with navigation.
 ```
 autodefs.elisp  offsets.awk  test.el    whyse-0.1.tar      whyse.log  whyse.tex
 knoweb.sty      pextest.el   test.nw    whyse.aux          whyse.nw
-LICENSE         pextest.nw   whs.bib    whyse.fdb_latexmk  whyse.out
+LICENSE         pextest.nw   whyse.bib  whyse.fdb_latexmk  whyse.out
 Makefile        README.md    whyse-0.1  whyse.fls          whyse.pdf
 ```
 
@@ -34,8 +34,8 @@ wrapping the entire grammar into a single PEX and executing the form in a buffer
 with Emacs Lisp Interaction Mode enabled, resulting in a very fast-paced testing
 method for tricky parts of the grammar.
 
-whs.bib contains a BibTeX reference for academic works. It contains a reference
-to Brown & Czejdo's work, notably.
+whyse.bib contains a BibTeX reference for academic works. It contains a
+reference to Brown & Czejdo's work, notably.
 
 The only other source file is `whyse.nw`, the Noweb source for WHYSE itself.
 
