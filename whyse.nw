@@ -27,23 +27,46 @@
 %% NOTE: used in the figure of the WHYSE frame layout.
 \usepackage{fancyvrb}
 
+\usepackage{fixmetodonotes}
+
 %% BEGIN
 \pagestyle{noweb}
 \begin{document}
 
-%% TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
-%% quotations should be guarded with at-signs, like [[@<<>>]]. Further,
-%% Emacs should be aware that this is a comment, so that the proper
-%% syntax highlighting is applied.
-%%%
-%% \section{Preface}
-%% A paper describing this implementation---written in Noweb and browsable,
-%% editable, and auditable with WHYSE, or readable in the printed form---is
-%% hoped to be submitted to The Journal of Open Source Software (JOSS)
-%% before the year 2024. N.B.: the paper will include historical
-%% information about literate programming, and citations (especially of
-%% those given credit in the [[@<<Commentary>>]] for ideating WHYSE itself).
+%% NOTE: when commenting a region of LaTeX in Poly-Noweb-mode the
+%% quotations should be guarded with at-signs, like @[@[@<<>>]]. TODO:
+%% Further, Emacs should be aware that this is a comment, so that the
+%% proper syntax highlighting is applied (that ie, none is applied to
+%% the quotation).
 
+\begin{abstract}
+  \textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
+  development environment for Noweb and \LaTeX{} within Emacs, similar
+  to EDE but not sharing development principles. It is based off of an
+  academic paper written in 1991 by Brown and Czejdo. A paper describing
+  this implementation---written in Noweb and browsable, editable, and
+  auditable with WHYSE, or readable in the printed form---is hoped to be
+  submitted to The Journal of Open Source Software (JOSS) before the
+  year 2024. N.B.: the paper will include historical information about
+  literate programming, and citations (especially of those given credit
+  in the [[@<<Commentary>>]] for ideating WHYSE itself).
+
+  Users of WHYSE in Emacs are expected to be familiar with Noweb; this
+  does not include how Noweb is built from source (that is arcane,
+  supposedly). It may, however, include the writing of filters
+  implemented with Sed, AWK, or other languages. Users must know how to
+  write a custom command-line for noweave (read the manual section
+  regarding the \texttt{-v} option). If you only know how to call the
+  noweave command you're reading the wrong document. Read the Noweb
+  manual first, please. Developers of WHYSE extensions should read the
+  Noweb Hacker's Guide until they understand it, afterwards reading this
+  documentation several times until the full implementation is
+  understood. I recommend modifying the system using itself to keep
+  organized, and writing literately; you'll thank yourself later for
+  doing so.
+\end{abstract}
+
+%% \section{Preface}
 %% \subsection{On literate programming}
 %% Literate programs can be organized in multiple ways; particularly, I
 %% note these forms of organization here. How WHYSE implementations may
@@ -61,57 +84,16 @@
 %% \item Sweave--like (R Noweb ::= R Markdown)
 %% \end{enumerate}
 
-%% The organization of this literate program is \textit{linear}, with
-%% aspects of the program explained as the user would encounter them, more
-%% or less.
-\section{Preface}\label{Preface}
-\textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
-development environment for Noweb and \LaTeX{} within Emacs, similar to
-EDE but not sharing development principles. It is based off of an
-academic paper written in 1991 by Brown and Czejdo.
-
 \section{Projects}\label{Projects}
-\textsc{(no)Web HYpertext System in Emacs (WHYSE)} is a project-based
-application. Projects are lists registered with WHYSE using the ``Easy
-Customization Interface'', which provides a simple way to make the
-necessary information known to WHYSE. Users register a literate
-programming project (only Noweb-based programming is supported) as an
-item in the customization variable [[w-registered-projects]]; further
-project data is contained in a Common Lisp struct during runtime.
-
-In short, the components of a project are:
-
-\begin{itemize}
-\item a name,
-\item a Noweb source file,
-\item a shell command to run a user-defined script
-\item an \textsc{SQLite3} database, and a connection thereto,
-\item an atomic window,
-\item a struct, and
-\item date-time information (creation, edition, and export).
-\end{itemize}
-
-The struct keeps some information during runtime, like the database
-connection, but other information is generated at runtime (such as the
-filename of the database). These items are each explained in this
-section. If some item is not well-enough explained in this section,
-please try editing the Noweb source and improving the explanation and
-creating a pull-request against the WHYSE Emacs Lisp repository on its
-Git forge; you may also submit your edition by email to the package
-maintainer.
-
-Users of WHYSE in Emacs are expected to be familiar with Noweb; this does
-not include how Noweb is built from source (that is arcane, supposedly)
-or how filters are implemented with Sed, AWK, or other languages. Users
-must know, however, how to write a custom command-line for noweave (read
-the manual section regarding the \texttt{-v} option).
-
-Developers of WHYSE extensions (in either SQL or Emacs Lisp) should read
-the Noweb Hacker's Guide until they understand it, afterwards reading
-this documentation several times until the full implementation is
-understood. I recommend modifying the system using itself to keep
-organized, and writing literately; you'll thank yourself later for doing
-so.
+The organization of this literate program is \textit{linear}, with
+aspects of the program explained as the user would encounter them, more
+or less. A user will read from the package description that they should
+call an interactive command to create a project. The \textsc{WHYSE}
+application has a single interactive command: [[whyse]]. The command
+loads the first element of the customization variable
+[[w-registered-projects]], considering that the default project, or it
+opens the ``Easy Customization Interface'' ([[M-x customize]]): an
+effective prompt to enter the necessary information.
 
 A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
@@ -134,18 +116,19 @@ struct used during runtime.
   "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
 @
 
-The Widget feature is required by the registered projects variable, but
-may be redundant because the Easy Customization Interface is itself
-implemented with The Emacs Widget Library. Requiring the library may be
-undesirable, as [[(require 'widget)]] will be eagerly evaluated upon
-Emacs' initialization when [[w-registered-projects]] is set to its
-saved custom value. However, there may be a good reason to eagerly
-evaluate that form: the Widget feature will be available immediately,
-and widgets will be used in buffers to provide TUI buttons for
-navigation between modules of a literate program (at least, that is the
-design of the program at this point in development), so having this
-feature available sooner than later is okay. The feature is required by
-the package regardless.
+%% The Widget feature is required by the registered projects variable,
+%% but may be redundant because the Easy Customization Interface is
+%% itself implemented with The Emacs Widget Library. Requiring the
+%% library may be undesirable, as @[@[(require 'widget)]] will be
+%% eagerly evaluated upon Emacs' initialization when
+%% @[@[w-registered-projects]] is set to its saved custom value.
+%% However, there may be a good reason to eagerly evaluate that form:
+%% the Widget feature will be available immediately, and widgets will be
+%% used in buffers to provide TUI buttons for navigation between modules
+%% of a literate program (at least, that is the design of the program at
+%% this point in development), so having this feature available sooner
+%% than later is okay. The feature is required by the package
+%% regardless.
 
 The [[w--project-widget]] type used for the registered projects
 variable is a simple list widget containing the name of the project and
@@ -192,28 +175,34 @@ PEG parser.
 
 @
 
-NB: Comments may be superfluous in a literate document like this, but
-some effort was made to produce a readable source file regardless of the
-general principles of literate programming; other authors write warnings
-into their tangled source files: ``Don't read this file! Read the Noweb
-source only!''. I don't say that, especially for an Emacs application.
+%% NB: Comments may be superfluous in a literate document like this, but
+%% some effort was made to produce a readable source file regardless of
+%% the general principles of literate programming; other authors write
+%% warnings into their tangled source files: ``Don't read this file!
+%% Read the Noweb source only!''. I don't say that, especially for an
+%% Emacs application.
 
-The sole interactive command---[[whyse]]---loads the first element of
-[[w-registered-projects]], considering it the default project.
+%% TODO: include a customization variable that allows users to trigger
+%% an error or a warning rather than opening Customize when no default
+%% project is available.
 
-<<Quotation custom-set-variables>>=
-'(w-registered-projects
-  '(("Noweb Hypertext System"
-     "~/Desktop/whyse.nw"
-     "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
-  nil
-  (widget))
-@ 
+An example of what the list generated from the information entered into
+Customize would look like is given here for elucidation (as it would exist in a
+[[custom-set-variables]] form).
 
-The [[whyse]] command is very simple, it checks if projects have been
-defined in the Customize interface, and if so uses the first one to
-\textit{initialize a new project}. If no projects are defined or there
-are any nil values in the procedure, the Customize interface is opened.
+\begin{verbatim}
+ '(w-registered-projects
+ '(("noWeb HYpertext System in Emacs"
+ "~/Desktop/whyse.nw"
+ "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
+ nil
+ (widget))
+\end{verbatim}
+
+%% The @[@[whyse]] command is very simple, it checks if projects have been
+%% defined in the Customize interface, and if so uses the first one to
+%% \textit{initialize a new project}. If no projects are defined or there
+%% are any nil values in the procedure, the Customize interface is opened.
 
 <<WHYSE>>=
 (defun whyse ()
@@ -223,7 +212,11 @@ are any nil values in the procedure, the Customize interface is opened.
            (project (make-w-project :name (cl-first default-project)
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project))))
-      <<convert the Noweb to tool format and parse it with the PEG>>
+      (progn <<convert the Noweb to tool format and parse it with the PEG>>
+             ;; TODO: define the following chunks.
+             ;; @<@<compile the parse tree into DDL and send it to the database>>
+             ;; @<@<create the atomic window layout and insert the navigation widgets>>
+             )
       <<open Customize to register projects>>))
 
 @
@@ -285,8 +278,9 @@ to summarize: [[w-project-load-hook]] is run.
 
 \section{System initialization from new projects}\label{Initialization}
 To summarize this section, since it is longer than the previous section,
-the object is the definition of [[<<convert the Noweb to tool format and
-parse it with the PEG>>]], which is a chunk used in [[whyse]].
+the object to
+[[<<convert the Noweb to tool format and parse it with the PEG>>]],
+which is thus the name of a code chunk used in [[whyse]].
 
 In more explicit words, this section describes the actions that occur
 when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
@@ -345,6 +339,7 @@ script, and this value consumed by the parent of this chunk.
 %% tool-syntax:
 %%   markup ~/src/whyse/whyse.nw | autodefs.elisp | finduses | noidx - delay
 
+%% TODO: finish the creation of a database. Use what I learned in the fall!
 \subsection{Database initialization}
 Every project should have a database file located somewhere within the
 user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
@@ -580,10 +575,11 @@ The following features need to be implemented:
 
 \section{Parsing}
 This section covers the parsing of the Noweb tool syntax produced by a
-project shell script (described in §\ref{Projects}). The following
-blocks of LISP code use the \textsc{peg} Emacs Lisp package to provide
-for automatic parser generation from a formal PEG grammar based off of
-the exhaustive description given in the Noweb Hacker's Guide.
+project shell script (described in SECTION SIGN HERE \ref{Projects}).
+The following blocks of LISP code use the \textsc{peg} Emacs Lisp
+package to provide for automatic parser generation from a formal PEG
+grammar based off of the exhaustive description given in the Noweb
+Hacker's Guide.
 
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
@@ -642,13 +638,14 @@ of one or more files, which are each composed of at least one chunk.
 Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
 defined.
 
+%% DONE: whilst the "no merge error method for (guard t)" issue
+%% persists, removing the check for the EOB resolves the issue
+%% and lets my own calls to `error' surface. The issue seems to
+%% arise from the fact that I did not handle detection of being
+%% within a code chunk properly.
+
 <<high-level Noweb tool syntax structure>>=
 ;;; Overall Noweb structure
-;; DONE: whilst the "no merge error method for (guard t)" issue
-;; persists, removing the check for the EOB resolves the issue
-;; and lets my own calls to `error' surface. The issue seems to
-;; arise from the fact that I did not handle detection of being
-;; within a code chunk properly.
 (noweb (bob) (not header) (+ file) (not trailer) (eob))
 @
 
@@ -760,14 +757,18 @@ lines. The definition of what is valid follows.
 
 Any other keywords are invalid inside a code block. An example of an
 invalid keyword is anything related to quotations! \textit{This
-restriction only applies to code blocks, however, and documentation
-chunks may contain quotations, of course.}
+  restriction only applies to code blocks, however, and documentation
+  chunks may contain quotations, of course.} As an exception, the
+keywords were originally banned inside code chunks, but to parse the
+noweb document in which WHYSE itself was written it needed to be
+adjusted. The grammar should be studied again to ensure that textual
+description and reality are in step.
 
-TODO: rephrase this and ensure it is accurate. The rules for parsing
-were modified quite significantly from the initial definition so that it
-would ``work'', and so that \textit{whyse.nw} would be successfully
-parsed. ``Further, the implementation was modified to accommodate the
-parsing of the Noweb \texttt{whyse.nw} firstly.''
+%% TODO: rephrase this and ensure it is accurate. The rules for parsing
+%% were modified quite significantly from the initial definition so that it
+%% would ``work'', and so that \textit{whyse.nw} would be successfully
+%% parsed. ``Further, the implementation was modified to accommodate the
+%% parsing of the Noweb \texttt{whyse.nw} firstly.''
 
 <<chunks and their boundaries>>=
 (chunk-contents
@@ -829,8 +830,8 @@ source text are replaced with the appropriate number of nwnl keywords
 
 <<chunks and their boundaries>>=
 (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-      `(txt -- (cons "text" txt)))
-(nwnl (bol) "@nl" nl)
+      `(txt -- (list 'text txt)))
+(nwnl (bol) (substring "@nl") nl)
 @
 
 Nowebs are built from chunks, so the definition and usage of (i.e.
@@ -968,7 +969,7 @@ those recognized by the autodefinitions filter).
 (i-identifiers idx "beginindex" nl
                (list (+ i-entry))
                idx "endindex" nl
-               `(l -- "i-identifiers" l))
+               `(l -- (cons 'i-identifiers l)))
 (i-entry idx "entrybegin" spc (substring label spc !eol) nl
          (list (+ (or i-entrydefn i-entryuse)))
          idx "entryend" nl
@@ -993,7 +994,8 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 \subsection{cross referencing}
 <<cross-referencing keywords>>=
 (x-label xr (substring "label" spc label) nl)
-(x-ref xr (substring "ref" spc label) nl)
+(x-ref xr (substring "ref" spc label) nl
+       `(substr --  (cons "ref" (cadr (split-string substr)))))
 
 (x-prev-or-next-def
  xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
@@ -1017,7 +1019,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 (x-chunks xr "beginchunks" nl
           (list (+ x-chunk))
           xr "endchunks" nl
-          `(l -- "x-chunks" l))
+          `(l -- (cons 'x-chunks l)))
 (x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
          (list (+ (list (and xr
                              (substring (or "chunkuse" "chunkdefn"))
@@ -1068,6 +1070,79 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 %% The definition of a Noweb file, given by Ramsey, is simply a file
 %% containing one or more chunks; minimally, a Noweb file will contain the
 %% default documentation chunk.
+
+\section{Processing lists into SQL}\label{processing lists}
+This section covers how the parsed text generated in the last section is
+processed, creating a series of SQL statements that will be executed by
+SQLite using the interface provided by the EmacSQL package.
+
+First, the overall structure of the parsed text should be diagrammed.
+The parse tree is a list of noweb documents, each being a list
+themselves. The first atom of an inner list, corresonding to a document,
+is the filename of that document (hopefully the same filename as passed
+on the commmand-line elsewhere when the document is used).
+
+Deeper, each document-list contains as the second atom a list of all of
+its contents, which is an association list thereof. Each association in
+the alist should be self-explanatory.
+
+\begin{verbatim}
+  ((noweb-document-one ((0 . ())
+                        (1 . ())))
+   (noweb-document-two ((0 . ())
+                        (1 . ()))))
+\end{verbatim}
+
+There are many steps to compiling the parse tree into SQL that can be
+directly executed by the backend database engine, so to
+[[<<compile the parse tree into DDL and send it to the database>>]]
+is a multi-step process.
+
+<<compile the parse tree into DDL and send it to the database>>=
+<<collapse text and newline tokens into their largest possible form>>
+<<push the compiled SQL to the database and to the history stack>>
+
+@
+
+The output tool syntax of notangle, and the parse tree resulting from
+the PEG, contain individual text tokens for fragments of whole text
+lines and form feed characters. These tokens exist because the
+cross-referencing tokens fragment the text lines, and new lines in the
+noweb document are treated specially to facilitate this fragmentation.
+The parsed from of the tool syntax is shown in this example from a
+development version of \textsc{WHYSE}.
+
+\begin{verbatim}
+(text "  and \\textsc{Noweb}'s \\textt{finduses.nw}!")
+"@nl"
+(text "\\end{enumerate}")
+"@nl"
+(text "")
+"@nl"
+\end{verbatim}
+
+In this development version it was not fully decided how tokens and the
+data they correspond to should be arranged, so the newlines are not part
+of a list, while the text characters are part of an outer plist of which
+the parentheses are not visible in this example.
+
+To collapse these tokens into a single text token the
+\texttt{peg--stack} must be manipulated carefully. It isn't advisable to
+manipulate this variable in the course of a PEG grammar's actions,
+however, there is a use case for it when the previous rules and actions
+won't accomodate the necessary action without refactoring a larger part
+of the grammar. In this development version that is not a goal; basic
+functionality is sought after, not robustness or beautiy.
+
+<<collapse text and newline tokens into their largest possible form>>=
+<<push the compiled SQL to the database and to the history stack>>=
+;; NOTE: the result of evaluating the SQL is pushed to the history stack
+;; alongside the SQL that was executed.
+(cl-pushnew (cons (emacsql (w-project-database-connection default-project)
+                           compiled-parse-tree)
+                  . compiled-parse-tree)
+            (w-project-history-sql-commands default-project))
+@ 
 
 \section{Packaging}
 Installing an Emacs Lisp package is quite easy if the system is
@@ -1155,17 +1230,15 @@ is followed for the [[<<file-local variables>>]] chunk.
 ;; <https://www.gnu.org/licenses/>.
 
 ;; If you cannot contact the author by electronic mail at the address
-;; provided in the author field above, you may address mail to be
-;; delivered to
+;; provided in the author field above, you may address physical mail as
+;; below.
 
-;; Bryce Carson
-;; Research Assistant
-;; Dept. of Biology
-
+;; Bryce Carson, BSc Biology alumnus
+;; ATTN: Dept. of Mathematics and Computing
 ;; Mount Royal University
 ;; 4825 Mount Royal Gate SW
-;; Calgary, Alberta, Canada
-;; T3E 6K6
+;; Calgary, Alberta T3E 6K6
+;; Canada
 
 <<Commentary>>=
 ;;; Commentary:
@@ -1206,15 +1279,15 @@ is followed for the [[<<file-local variables>>]] chunk.
 <<file-local variables>>
 @
 
-%% TODO: it was said earlier that a filter of some kind is used to
-%% ensure that file-local variables are on a single line. I believe I
-%% previously had file-local variables written on separate lines which
-%% were then joined together onto a single long line to be inserted at
-%% the top of a file. I probably then learned how to write a file-local
-%% variable block for insertion at the end of the file, as I have below.
-%% The earlier statement about this chunk will need to be edited so that
-%% it isn't incorrect (no filter is used on this chunk's contents,
-%% apparently).
+\TODO{It was said earlier that a filter of some kind is used to
+ensure that file-local variables are on a single line. I believe I
+previously had file-local variables written on separate lines which
+were then joined together onto a single long line to be inserted at
+the top of a file. I probably then learned how to write a file-local
+variable block for insertion at the end of the file, as I have below.
+The earlier statement about this chunk will need to be edited so that
+it isn't incorrect (no filter is used on this chunk's contents,
+apparently).}
 
 <<file-local variables>>=
 ;; Local Variables:
@@ -1241,18 +1314,22 @@ early version of such functionality is provided in [[w-with-project]].
 ;; This chunk intentionally left blank at this time.
 @ 
 
-\section{Tests}
-\textit{TODO:} adopt the ERT (Emacs Regression Tests) package to test
+\TODO{Implement \texttt{w-with-project}}
+
+\section{TESTING}
+\TODO{Adopt the ERT (Emacs Regression Tests) package to test
 WHYSE features as they are developed and become featureful. When a
 feature is implemented a test should be written which conforms to the
 current documentation so that regressions can be caught when changes are
-made.
+made.}
 
 \subsection{Parsing Tests}
 \subsubsection{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=
+;; -*- lexical-binding: nil; -*-
 (defvar w--parse-success t
-  "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
+  "A simple boolean regarding the success or fialure of the last
+  attempt to parse a buffer of Noweb tool syntax.")
 
 <<buffer parsing function>>
 
@@ -1271,9 +1348,29 @@ made.
 ;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
-;; lexical-binding: t
 ;; eval: (read-only-mode)
 ;; End:
 @ 
+
+%% This is done on purpose so I know not to remove the font setting here.
+\section{EDITORIAL REMARKS}
+\begin{enumerate}
+\item \TODO{Interactively develop a function to pop all of the elements off a
+  stack on top of and including the first element in that stack for
+  which a PREDICATE function returns non-nil.}
+\item \TODO{Modify knoweb to use the typographic conventions of
+  \href{http://clqr.boundp.org/clqr-letter-consec.pdf}{Bert Burgemeister
+    in his Common Lisp Quick Reference}.}
+\item \TODO{Motivating the previous item, modify \texttt{autodefs.elisp} and
+  \texttt{finduses.nw} to work better for LISPs with multiple slots
+  (like Maclisp / Emacs Lisp). There should be no problem
+  differentiating between \texttt{whyse} the customization group, and
+  \texttt{whyse} the function, and \texttt{whyse} the variable. This is
+  a difficult one and probably requires manual annotation, something
+  filters should be used for after hacking on \textsc{Joseph S. Riel}'s \texttt{autodefs.elisp}
+  and \textsc{Noweb}'s \textt{finduses.nw}!}
+\end{enumerate}
+
+\listofnotes
 
 \end{document}

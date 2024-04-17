@@ -1,16 +1,13 @@
+;; -*- lexical-binding: nil; -*-
 (defvar w--parse-success t
-  "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
+  "A simple boolean regarding the success or fialure of the last
+  attempt to parse a buffer of Noweb tool syntax.")
 
 ;;;; Parsing expression grammar (PEG) rules
 (defun w--parse-current-buffer-with-rules ()
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
   (with-peg-rules
       (;;; Overall Noweb structure
-       ;; DONE: whilst the "no merge error method for (guard t)" issue
-       ;; persists, removing the check for the EOB resolves the issue
-       ;; and lets my own calls to `error' surface. The issue seems to
-       ;; arise from the fact that I did not handle detection of being
-       ;; within a code chunk properly.
        (noweb (bob) (not header) (+ file) (not trailer) (eob))
        ;; Technically, file is a tagging keyword, but that classification only
        ;; makes sense in the Hacker's guide, not in the syntax.
@@ -72,8 +69,8 @@
          ;; error
          fatal))
        (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-             `(txt -- (cons "text" txt)))
-       (nwnl (bol) "@nl" nl)
+             `(txt -- (list 'text txt)))
+       (nwnl (bol) (substring "@nl") nl)
        (defn "@defn" spc (substring !eol) nl
          `(name -- (cons "chunk" name)))
 
@@ -123,7 +120,7 @@
        (i-identifiers idx "beginindex" nl
                       (list (+ i-entry))
                       idx "endindex" nl
-                      `(l -- "i-identifiers" l))
+                      `(l -- (cons 'i-identifiers l)))
        (i-entry idx "entrybegin" spc (substring label spc !eol) nl
                 (list (+ (or i-entrydefn i-entryuse)))
                 idx "entryend" nl
@@ -145,7 +142,8 @@
 
        ;; Cross-reference
        (x-label xr (substring "label" spc label) nl)
-       (x-ref xr (substring "ref" spc label) nl)
+       (x-ref xr (substring "ref" spc label) nl
+              `(substr --  (cons "ref" (cadr (split-string substr)))))
 
        (x-prev-or-next-def
         xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
@@ -169,7 +167,7 @@
        (x-chunks xr "beginchunks" nl
                  (list (+ x-chunk))
                  xr "endchunks" nl
-                 `(l -- "x-chunks" l))
+                 `(l -- (cons 'x-chunks l)))
        (x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
                 (list (+ (list (and xr
                                     (substring (or "chunkuse" "chunkdefn"))
@@ -221,6 +219,5 @@
 ;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
-;; lexical-binding: t
 ;; eval: (read-only-mode)
 ;; End:
