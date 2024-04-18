@@ -258,7 +258,7 @@ its group of variables."
   frame
 
   ;; Metadata
-  (date-created (ts-now))
+  (date-created (current-time-string))
   date-last-edited
   date-last-exported
 
@@ -388,7 +388,9 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 %% TODO: ensure that this database is in 3NF and make a nice database
 %% planning documents for it.
 <<map over SQL s-expressions, creating the tables>>=
-(--map (emacsql (w-project-database-connection project) it)
+(mapcar (lambda (expression)
+          (emacsql (w-project-database-connection project)
+                   expression))
 
       ;; A list of SQL s-expressions to create the tables.
       '([:create-table module
@@ -1237,10 +1239,8 @@ is followed for the [[<<file-local variables>>]] chunk.
 <<required packages>>=
 (emacs "25.1")
 (emacsql "20230220")
-(dash "20230617")
 (peg "1.0.1")
 (cl-lib "1.0")
-(ts "20220822")
 @
 
 <<Licensing and copyright>>=
