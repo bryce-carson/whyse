@@ -465,39 +465,6 @@ A frame like in Figure \ref{fig1} should be created.
 
 @
 
-\section{System initialization from existing projects}
-WHYSE loads a project by running the shell script stored in the third
-element of the project list (which is pointed to by the script slot in
-the struct).
-
-\subsection{Initializing from an existing project}
-With a default project available, WHYSE runs [[w-project-load-hook]]
-with the struct of the default project let-bound as [[project]]. Much of
-the functionality of WHYSE is implemented with the default hook, and
-extensions to WHYSE should be implemented by editing the WHYSE Noweb source
-and recompiling it, or extending the existing system with more hook
-functions added to the aforementioned hook list variable.
-
-If the project's database file is empty (zero-bytes) or does not exist
-then the database is created from scratch. If the database already
-exists, the first module is loaded and the database is not changed.
-
-<<delete the database if it already exists, but only if it's an empty file>>=
-;; Unless the SQLite database's size is zero or it doesn't exist, move it to the user's trash directory.
-(let ((w--dbfile (w-project-database-file project)))
-  (unless (or (not (file-exists-p w--dbfile))
-              (= 0 (file-attribute-size (file-attributes w--dbfile))))
-
-    ;; TODO: Is there a better way to do this? `backup-buffer'?
-    (copy-file w--dbfile (concat w--dbfile "~") t)
-
-    ;; TODO: ensure that this AREA of code is reasonable before release.
-    ;; It may have been written to ease development only.
-    (let ((delete-by-moving-to-trash t))
-      (delete-file w--dbfile t)))
-
-@ 
-
 \section{Loading Noweb source files}\label{Loading}
 To parse a noweb source file, the file needs to be loaded into a temporary
 buffer, then it can be parsed.
