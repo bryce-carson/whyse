@@ -214,8 +214,8 @@ Customize would look like is given here for elucidation (as it would exist in a
                                     :script (cl-third default-project))))
       (progn <<convert the Noweb to tool format and parse it with the PEG>>
              ;; TODO: define the following chunks.
-             ;; @<@<compile the parse tree into DDL and send it to the database>>
-             ;; @<@<create the atomic window layout and insert the navigation widgets>>
+             ;; @<<compile the parse tree into DDL and send it to the database>>
+             ;; @<<create the atomic window layout and insert the navigation widgets>>
              )
       <<open Customize to register projects>>))
 
@@ -1113,7 +1113,7 @@ The parsed from of the tool syntax is shown in this example from a
 development version of \textsc{WHYSE}.
 
 \begin{verbatim}
-(text "  and \\textsc{Noweb}'s \\textt{finduses.nw}!")
+(text "  and \\textsc{Noweb}'s \\texttt{finduses.nw}!")
 "@nl"
 (text "\\end{enumerate}")
 "@nl"
@@ -1134,7 +1134,36 @@ won't accomodate the necessary action without refactoring a larger part
 of the grammar. In this development version that is not a goal; basic
 functionality is sought after, not robustness or beautiy.
 
+[[w--nth-chunk-of-nth-noweb-document]] retrieves the parse tree for the nth
+noweb document, which in the case of [[whyse.nw]] is the parse tree of
+the zeroth-indexed document. It's quite a simple function. To obtain a
+given chunk of this document from the parse tree the result of the
+function is called with [[nth]] and the index of the chunk.
+
+<<functions for navigating WHYSE parse trees>>=
+(defun w--nth-document-file-name (nth-document parse-tree)
+  "Return the file name of the nth-indexed document in the parse tree.
+
+For the first document in the parse tree, that is the
+zeroth-indexed document."
+  (cl-first (nth nth-document parse-tree)))
+
+(defun w--nth-document (nth-document parse-tree)
+  "Return the subtree of the nth-indexed document in the parse tree."
+  (cl-second (nth nth-document parse-tree)))
+
+(defun w--nth-chunk-of-nth-document (nth-chunk nth-document parse-tree)
+  "Return the subtree for the nth chunk of the nth-indexed document in the parse tree.
+
+For the fifth chunk in the ninth document, that is the
+4th-indexed chunk in the 8th-indexed document in the parse tree."
+  (nth nth-chunk (cl-second (nth nth-document parse-tree))))
+
+@ 
+
 <<collapse text and newline tokens into their largest possible form>>=
+@
+
 <<push the compiled SQL to the database and to the history stack>>=
 ;; NOTE: the result of evaluating the SQL is pushed to the history stack
 ;; alongside the SQL that was executed.
@@ -1228,17 +1257,6 @@ is followed for the [[<<file-local variables>>]] chunk.
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program. If not, see
 ;; <https://www.gnu.org/licenses/>.
-
-;; If you cannot contact the author by electronic mail at the address
-;; provided in the author field above, you may address physical mail as
-;; below.
-
-;; Bryce Carson, BSc Biology alumnus
-;; ATTN: Dept. of Mathematics and Computing
-;; Mount Royal University
-;; 4825 Mount Royal Gate SW
-;; Calgary, Alberta T3E 6K6
-;; Canada
 
 <<Commentary>>=
 ;;; Commentary:
@@ -1368,7 +1386,7 @@ made.}
   \texttt{whyse} the function, and \texttt{whyse} the variable. This is
   a difficult one and probably requires manual annotation, something
   filters should be used for after hacking on \textsc{Joseph S. Riel}'s \texttt{autodefs.elisp}
-  and \textsc{Noweb}'s \textt{finduses.nw}!}
+  and \textsc{Noweb}'s \texttt{finduses.nw}!}
 \end{enumerate}
 
 \listofnotes
