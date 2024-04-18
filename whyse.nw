@@ -113,7 +113,7 @@ struct used during runtime.
   :tag "WHYSE Registered Projects")
 
 (defvar w--parse-success t
-  "A simple boolean regarding the success or fialure of the last attempt to parse a buffer of Noweb tool syntax.")
+  "The success or failure of the last parsing of noweb tool syntax.")
 @
 
 %% The Widget feature is required by the registered projects variable,
@@ -191,12 +191,12 @@ Customize would look like is given here for elucidation (as it would exist in a
 [[custom-set-variables]] form).
 
 \begin{verbatim}
- '(w-registered-projects
- '(("noWeb HYpertext System in Emacs"
- "~/Desktop/whyse.nw"
- "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
- nil
- (widget))
+'(w-registered-projects
+  '(("noWeb HYpertext System in Emacs"
+     "~/Desktop/whyse.nw"
+     "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
+  nil
+  (widget))
 \end{verbatim}
 
 %% The @[@[whyse]] command is very simple, it checks if projects have been
@@ -212,7 +212,7 @@ Customize would look like is given here for elucidation (as it would exist in a
            (project (make-w-project :name (cl-first default-project)
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project))))
-      (progn <<convert the Noweb to tool format and parse it with the PEG>>
+      (progn <<convert the noweb document to tool syntax and parse it with the peg>>
              ;; TODO: define the following chunks.
              ;; @<<compile the parse tree into DDL and send it to the database>>
              ;; @<<create the atomic window layout and insert the navigation widgets>>
@@ -278,8 +278,8 @@ to summarize: [[w-project-load-hook]] is run.
 
 \section{System initialization from new projects}\label{Initialization}
 To summarize this section, since it is longer than the previous section,
-the object to
-[[<<convert the Noweb to tool format and parse it with the PEG>>]],
+the object is to
+[[<<convert the noweb document to tool syntax and parse it with the peg>>]],
 which is thus the name of a code chunk used in [[whyse]].
 
 In more explicit words, this section describes the actions that occur
@@ -287,60 +287,23 @@ when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
 preconditions have been met; the [[whyse]] function has already been
 introduced, and only the ``meaty'' business end of its operation has
 been left undefined until now. Ergo,
-[[<<convert the Noweb to tool format and parse it with the PEG>>]]
+[[<<convert the noweb document to tool syntax and parse it with the peg>>]]
 gathers together the functionality that converts a Noweb to its tool
 syntax with a project's specified shell script, and parses the text
 before the next section of body forms is executed. Those send the parsed
 text to the database, and finally create the atomic window for the IDE
 in the active frame.
 
-<<convert the Noweb to tool format and parse it with the PEG>>=
+<<convert the noweb document to tool syntax and parse it with the peg>>=
 (with-temp-buffer
   (insert (shell-command-to-string (w-project-script project)))
   (goto-char (point-min))
   (message "Noweb parse:\n%S" (w--parse-current-buffer-with-rules)))
 @ 
 
-\subsection{Conversion to tool syntax}\label{toolconversion}
-WHYSE could have been written to call the \texttt{noweave} programs
-itself, but that is less configurable than providing the opportunity to
-let the user configure this on their own. It respects Noweb's pipelined
-architecture, and keeps things as transparent as possible. What should
-be written in Emacs Lisp is written therein, and what shouldn't be
-implemented in Elisp is not. The tool syntax is thus obtained by running
-the shell script configured for the project by calling it with the
-command-line provided in the third element of an entry in
-[[w-registered-projects]].
-
-<<run the project shell script to obtain the tool syntax>>=
-(make-process
- :name "w-tool-generation"
- :buffer (get-buffer buffer)
- :command `("bash" ;; likely BASH on a GNU system, hoping for the `command-string' option.
-           "-c"
-           (,@(w-project-script project)))
-
- :stderr (generate-new-buffer "WHYSE tool generation standard error stream")
- :sentinel (lambda (process event-string)
-             (message "%S: %s" process event-string)))
-@ 
-
-The PEG for Noweb's tool syntax is run on the result of the shell
-script, and this value consumed by the parent of this chunk.
-
-%% NOTE: what the chunk calls, in effect.
-%% tool-syntax:
-%% 	/usr/lib/noweb/markup ~/src/whyse/whyse.nw | \
-%% 	/usr/lib/noweb/autodefs.elisp | \
-%% 	/usr/lib/noweb/finduses | \
-%% 	/usr/lib/noweb/noidx -delay
-
-%% NOTE: Improved, assuming the Noweb libray tools are on the PATH.
-%% tool-syntax:
-%%   markup ~/src/whyse/whyse.nw | autodefs.elisp | finduses | noidx - delay
-
-%% TODO: finish the creation of a database. Use what I learned in the fall!
 \subsection{Database initialization}
+\TODO{finish the creation of a database. Use what I learned in the fall!}
+
 Every project should have a database file located somewhere within the
 user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
 cache directory is used, otherwise the database is made in the user's
@@ -426,26 +389,26 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 @
 
 \subsection{Frame creation and atomic window specification}
-A frame like in Figure \ref{fig1} should be created.
+A frame like in Figure \ref{frame layout drawing} should be created.
 
 \begin{figure}
 \begin{center}
-\label{fig1}
 \begin{BVerbatim}
-+--------------+-----------------+-------+
-| Module       | Module         ↑| Index |
-| Code         |  documentation  |       |
-|              |                 |       |
-|              |  (prior or      |       |
-|              |    posterior)   |       |
-????????????????                 |       |
-? AWK  Scripts ?                ↓|       |
-????????????????-----------------+       |
-| Console                        |       |
-+--------------------------------+-------+
++--------------+----------------+-------+
+| Module       | Module         | Index |
+| Code         |  documentation |       |
+|              |                |       |
+|              |  (prior or     |       |
+|              |    posterior)  |       |
+????????????????                |       |
+? AWK  Scripts ?                |       |
+????????????????----------------+       |
+| Console                       |       |
++-------------------------------+-------+
 \end{BVerbatim}
 \end{center}
 \caption{Simple drawing of WHYSE frame layout}
+\label{frame layout drawing}
 \end{figure}
 
 
@@ -464,83 +427,6 @@ A frame like in Figure \ref{fig1} should be created.
      `((window . ,parent-window) (window-height . 8)))))
 
 @
-
-\section{Loading Noweb source files}\label{Loading}
-To parse a noweb source file, the file needs to be loaded into a temporary
-buffer, then it can be parsed.
-
-A simple usage of \textsc{Noweb} is given next, which shows that
-\texttt{noweave} does not include the header keyword, nor
-autodefinitions, usages, or indexing by default. Those are further
-stages in the UNIX pipeline defined by the user with \texttt{noweave}
-command-line program options and flags.
-
-The WHYSE system parses the tool syntax emitted by \texttt{markup}, and
-early development versions
-%% TODO: set a version.
-(prior to version \texttt{0.n-devel})
-completely ignore Noweb keywords out of that scope.
-
-An example of a command-line a user may execute is given next.
-
-\begin{quotation}
-\begin{verbatim}
-[bryce@fedora whyse]$ noweave -v -autodefs elisp -index whyse.nw 1>/dev/null
-RCS version name $Name:  $
-RCS id $Id: noweave.nw,v 1.7 2008/10/06 01:03:24 nr Exp $
-(echo @header latex
-/usr/local/lib/markup whyse.nw
-echo @trailer latex
-) |
-/usr/local/lib/autodefs.elisp |
-/usr/local/lib/finduses |
-/usr/local/lib/noidx |
-/usr/local/lib/totex
-\end{verbatim}
-\end{quotation}
-
-Ergo, the simplified pipeline---using Emacs Lisp autodefinitions provided in
-\textsc{Knoweb} (written by \textsc{Joseph S. Riel})---is as follows:
-
-\begin{verbatim}
-  markup whyse.nw | autodefs.elisp | finduses | noidx
-\end{verbatim}
-
-%% TODO: rename and revise this section.
-\subsubsection{In-development}
-For an existing project (during development, that is WHYSE) to be loaded, it must
-minimally be:
-\begin{enumerate}
-  \item Parsed, then stored in a database
-  \item Navigable with WHYSE
-    \begin{enumerate}
-    \item Frame and Windows
-    \item Navigation buttons... at least for modules
-    \end{enumerate}
-\end{enumerate}
-
-This means diagramming the database schema, creating it in EmacSQL,
-creating validating functions for existing databases, exceptions for
-malformed databases, and documenting that in \LaTeX.
-
-Navigation with WHYSE is multi-part:
-\begin{enumerate}
-\item Query the database for a list of modules, and
-\item Create a buffer for the text content retrieved
-\end{enumerate}
-
-Exporting a project from the database and editing the project in an in-memory
-state are further objectives, but they will be archived after the above two have
-been implemented in a basic form.
-
-\subsubsection{TODO}
-The following features need to be implemented:
-\begin{enumerate}
-  \item Project export from database to Noweb format
-  \item Editing of modules, documentation, and Awk code
-  \item Navigation with indices
-  \item Implement indices widgets
-\end{enumerate}
 
 \section{Parsing}
 This section covers the parsing of the Noweb tool syntax produced by a
