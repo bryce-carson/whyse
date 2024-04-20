@@ -509,7 +509,7 @@ after the last file.
             ;; Trailing documentation chunk and new-lines
             (opt chunk)
             (opt (+ nl)))
-      `(path chunk-list -- (list path chunk-list)))
+      `(path chunk-list -- (cons path chunk-list)))
 (path (opt (or ".." ".")) (* path-component) file-name)
 (path-component (and path-separator (+ [word])))
 (path-separator ["\\/"])
@@ -532,22 +532,27 @@ stack are balanced.
 <<chunks and their boundaries>>=
 (chunk begin (list (* chunk-contents)) end)
 (begin (bol) "@begin" spc kind
-       ;; (action (message "A chunk was entered; kind: %s" (cl-first peg--stack)))
        spc ordinal (eol) nl
        (action (if (string= (cl-second peg--stack) "code")
                    (setq w--peg-parser-within-codep t))))
 (end (bol) "@end" spc kind
-     ;; (action (message "A chunk was exited; kind: %s" (cl-first peg--stack)))
      spc ordinal (eol) nl
      (action (setq w--peg-parser-within-codep nil))
-     `(kind-one ordinal-one keywords kind-two ordinal-two --
-                (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
-                             ;;; Push the contents of the chunk to the stack in a cons
-                             ;;; cell with the car being a list of the kind and number.
-                             ;;;; E.g.:
-                    ;; (("code" 3) . (@text @nl @text @nl))
-                    (cons (cons kind-one ordinal-one) keywords)
-                  (error "There was an issue with unbalanced or improperly nested chunks."))))
+     ;; The stack grows down and the heap grows up,
+     ;; that's the yin and yang of the computer thang
+     `(kind-one
+       ordinal-one
+       keywords
+       kind-two
+       ordinal-two
+       --
+       (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
+           (cons (cons (if (string= kind-one "code")
+                           'code
+                         'docs)
+                       ordinal-one)
+                 keywords)
+         (error "Chunk nesting error encountered."))))
 (ordinal (substring [0-9] (* [0-9]))
          `(number -- (string-to-number number)))
 (kind (substring (or "code" "docs")))
@@ -634,17 +639,24 @@ x-ref
 <<tool errors>>=
 ;; error
 fatal
+x-undefined
 @ 
 
 The fundamental keywords are text and nwnl (new line, per Noweb
-convention). Text keywords contain source text, and any new lines in the
-source text are replaced with the appropriate number of nwnl keywords
-(per convention).
+convention). Text keywords contain source text, and any new line tokens
+in the source text are replaced with the appropriate number of @nl
+keywords (per convention); these are reduced to a single text token when
+they are adjacent on the [[peg--stack]].
 
 <<chunks and their boundaries>>=
 (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-      `(txt -- (list 'text txt)))
-(nwnl (bol) (substring "@nl") nl)
+      `(txt -- (prog1 (cons 'text txt)
+                 (w--concatenate-text-tokens))))
+(nwnl (bol) (substring "@nl") nl
+      ;; Be sure that when thinking about the symbol `nl' here that
+      ;; you're not confusing it with the peg rule nl.
+      `(nl -- (prog1 (cons 'nl "\n")
+                (w--concatenate-text-tokens))))
 @
 
 Nowebs are built from chunks, so the definition and usage of (i.e.
@@ -652,11 +664,11 @@ references to) a chunk are important keywords.
 
 <<chunks and their boundaries>>=
 (defn "@defn" spc (substring !eol) nl
-  `(name -- (cons "chunk" name)))
+  `(name -- (cons 'chunk name)))
 
 (use (bol) "@use" spc (substring !eol) nl
      `(chunk-name -- (if chunk-name
-                         (cons "Chunk usage (child)" chunk-name)
+                         (cons 'chunk-child-usage chunk-name)
                        (error "UH-OH! There's a syntax error in the tool output!"))))
 @
 
@@ -673,18 +685,13 @@ references to) a chunk are important keywords.
            (action (when w--peg-parser-within-codep
                      (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
            (substring (+ (and (not "@endquote") (any))))
-           ;; (list (* (or text nwnl defn use i-define-or-use x-ref)))
            (bol) "@endquote" nl
-           `(lst -- (cons "Quotation" lst)))
+           `(lst -- (cons 'quotation lst)))
 @
-
-\TODO{Interactively develop a function to pop all of the elements off a
-  stack on top of and including the first element in that stack for
-  which a PREDICATE function returns non-nil.}
 
 <<keyword definitions>>=
 (line (bol) "@line" spc (substring ordinal) nl
-      `(o -- (cons "@line" o)))
+      `(o -- (cons 'line o)))
 
 (language (bol) "@language" spc (substring words-eol))
 @
@@ -754,7 +761,7 @@ better explanation of the differences.
  (action
   (unless w--peg-parser-within-codep
       (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
- `(s1 s2 -- (cons s1 s2)))
+ `(s1 s2 -- (cons (make-symbol s1) s2)))
 
 <<identifiers defined in a chunk>>
 <<identifiers used in a chunk>>
@@ -763,17 +770,17 @@ better explanation of the differences.
 (i-definitions idx "begindefs" nl
                (list (+ (and (+ i-isused) i-defitem)))
                idx "enddefs" nl
-               `(definitions -- (cons "definitions" definitions)))
+               `(definitions -- (cons 'definitions definitions)))
 (i-isused idx (substring "isused") spc (substring label) nl
-          `(u l -- (cons u l)))
+          `(u l -- (cons 'used! l)))
 (i-defitem idx (substring "defitem") spc (substring !eol) nl
-           `(d i -- (cons d i)))
+           `(d i -- (cons 'def-item i)))
 
 <<identifiers used in a chunk>>=
 (i-usages idx "beginuses" nl
           (list (+ (and (+ i-isdefined) i-useitem)))
           idx "enduses" nl
-          `(usages -- (cons "usages" usages)))
+          `(usages -- (cons 'usages usages)))
 (i-isdefined idx (substring "isdefined" spc label) nl)
 (i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
 @
@@ -790,39 +797,58 @@ those recognized by the autodefinitions filter).
 (i-entry idx "entrybegin" spc (substring label spc !eol) nl
          (list (+ (or i-entrydefn i-entryuse)))
          idx "entryend" nl
-         `(e l -- (cons e l)))
+         `(entry-label lst -- (cons 'entry-label lst)))
 (i-entrydefn idx (substring "entrydefn") spc (substring label) nl
-             `(d l -- (cons d l)))
+             `(defn label -- (cons 'defn label)))
 (i-entryuse idx (substring "entryuse") spc (substring label) nl
-            `(u l -- (cons u l)))
+            `(use lst -- (cons 'use lst)))
 @
 
 The following chunk's name is documentation enough for the purposes of
 WHYSE. See the Noweb Hacker's Guide for more information.
+
+[[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
+not widely used (assumedly) nor well-documented, so it is unsupported by
+WHYSE (contributions for improved support are welcomed).
 
 <<unsupported indexing keywords>>=
 ;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
 ;; widely used (assumedly) nor well-documented, so it is unsupported by
 ;; WHYSE (contributions for improved support are welcomed).
 (i-localdefn idx "localdefn" spc !eol nl)
-(i-nl idx "nl" spc !eol nl (action (error <<index nl error message>>)))
+(i-nl idx "nl" spc !eol nl
+      (action (error <<index nl error message>>)))
 @
 
 \subsubsection{cross referencing}
 <<cross-referencing keywords>>=
 (x-label xr (substring "label" spc label) nl)
 (x-ref xr (substring "ref" spc label) nl
-       `(substr --  (cons "ref" (cadr (split-string substr)))))
+       `(substr --  (cons 'ref (cadr (split-string substr)))))
+
+;; FIXME: improve the error handling at this point. It is not fragile
+;; any longer, becasue most things are ignored and this is hackish;
+;; however, the message reporting is not too helpful. It would be nice
+;; to have _only_ the chunk name reported, and formatted with @<< and >>.
+(x-undefined
+ xr (or "ref" "chunkbegin") spc
+ (guard
+  (if (string= "nw@notdef"
+               (buffer-substring-no-properties (point) (+ 9 (point))))
+      (error (format "%s: %s: %s:\n@<@<%s>>"
+                     "WHYSE"
+                     "nw@notdef detected"
+                     "an undefined chunk was referenced"
+                     (buffer-substring-no-properties (progn (forward-line) (point))
+                                                     (end-of-line)))))))
 
 (x-prev-or-next-def
  xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
- `(chunk-defn label -- (append chunk-defn label)))
+ `(previous-or-next-chunk-defn label -- (cons (make-symbol previous-or-next-chunk-defn) label)))
 
 (x-continued-definitions-of-the-current-chunk
  xr "begindefs" nl
  (list (+ (and xr (substring "defitem") spc (substring label) nl)))
- ;; NOTE: development statement only; remove this before release.
- ;; (action (message "peg--stack := \n%S" peg--stack))
  xr "enddefs" nl)
 
 (x-usages
@@ -831,7 +857,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
  xr "enduses" nl)
 
 (x-notused xr "notused" spc (substring !eol) nl
-           `(chunk-name -- (cons "notused" chunk-name)))
+           `(chunk-name -- (cons 'unused! chunk-name)))
 
 (x-chunks xr "beginchunks" nl
           (list (+ x-chunk))
@@ -840,6 +866,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 (x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
          (list (+ (list (and xr
                              (substring (or "chunkuse" "chunkdefn"))
+                             `(chunk-usage-or-definition -- (make-symbol chunk-usage-or-definition))
                              spc
                              (substring label)
                              nl))))
@@ -893,23 +920,23 @@ To summarize this section, since it is longer than the previous section,
 the object is to convert the noweb document to tool syntax and parse it
 with the peg parser.
 
-In more explicit words, this section describes the actions that occur
-when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
-preconditions have been met; the [[whyse]] function has already been
-introduced, and only the ``meaty'' business end of its operation has
-been left undefined until now. Ergo, [[w-with-project]] gathers together
-the functionality that converts a Noweb to its tool syntax with a
-project's specified shell script, and parses the text before the next
-section of body forms is executed. Those send the parsed text to the
-database, and finally create the atomic window for the IDE in the active
-frame.
+%% In more explicit words, this section describes the actions that occur
+%% when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
+%% preconditions have been met; the [[whyse]] function has already been
+%% introduced, and only the ``meaty'' business end of its operation has
+%% been left undefined until now. Ergo, [[w-with-project]] gathers together
+%% the functionality that converts a Noweb to its tool syntax with a
+%% project's specified shell script, and parses the text before the next
+%% section of body forms is executed. Those send the parsed text to the
+%% database, and finally create the atomic window for the IDE in the active
+%% frame.
 
-In earlier development versions the following function body was
-referenced with noweb chunks rather than being defined as a function,
-however it was decided that implementing this as a function allowed a
-user-suggestion for an API-like function that was planned for
-implementation anyways. Now it is a function, satisfying internal and
-API needs.
+%% In earlier development versions the following function body was
+%% referenced with noweb chunks rather than being defined as a function,
+%% however it was decided that implementing this as a function allowed a
+%% user-suggestion for an API-like function that was planned for
+%% implementation anyways. Now it is a function, satisfying internal and
+%% API needs.
 
 <<with-project>>=
 (defun w-parse-with-project-and-temp-buffer (project)
@@ -934,10 +961,16 @@ member of that list."
        (peg noweb)
        (lambda (lst)
          (setq w--parse-success nil)
-         (pop-to-buffer (with-current-buffer
-                            (generate-new-buffer "<WHYSE Parse failure log>")
-            (insert (format "PEXes which failed:\n%S" lst))
-            (current-buffer))))))))
+         (pop-to-buffer (clone-buffer))
+         (save-excursion
+           (put-text-property (point) (point-min)
+                              'face 'success)
+
+           (put-text-property (point) (point-max)
+                              'face 'error)
+
+           (goto-char (point-max))
+           (message "PEXes which failed:\n%S" lst)))))))
 @ 
 
 <<Customization and global variables>>=
@@ -969,14 +1002,8 @@ the alist should be self-explanatory.
 
 There are many steps to compiling the parse tree into SQL that can be
 directly executed by the backend database engine, so to
-[[<<compile the parse tree into DDL and send it to the database>>]]
+FIXME
 is a multi-step process.
-
-<<compile the parse tree into DDL and send it to the database>>=
-<<collapse text and newline tokens into their largest possible form>>
-<<push the compiled SQL to the database and to the history stack>>
-
-@
 
 The output tool syntax of notangle, and the parse tree resulting from
 the PEG, contain individual text tokens for fragments of whole text
@@ -1032,7 +1059,43 @@ zeroth-indexed document."
 
 @ 
 
-<<collapse text and newline tokens into their largest possible form>>=
+TODO: place this inclusion better
+
+<<Code>>= 
+<<functions to collapse text and newline tokens into their largest possible form>>
+@
+
+%% TODO: Fri Apr 19 2024 23:05:56
+\TODO{Fix the function below: it doesn't pop the top two associations
+  off of the `peg--stack' properly.}
+
+<<functions to collapse text and newline tokens into their largest possible form>>=
+(defun w--concatenate-text-tokens ()
+  "Join the values of two text token associations in a two-element token alist.
+
+If the two associations shouldn't be joined, return them to the stack."
+  (message "%S%S"
+           (cl-first peg--stack)
+           (cl-second peg--stack))
+  (if-let ((association-one (car peg--stack))
+           (association-one (cadr peg--stack))
+           (adjacent-stringy-tokens?
+            (and (or (equal 'text (car association-one))
+                     (equal 'nl (car association-one)))
+                 (or (equal 'text (car association-two))
+                     (equal 'nl (car association-two))))))
+      ;; Join the association's values and push a single association
+      ;; back to the `peg--stack'.
+      (push (cons 'text (format "%s%s"
+                                (cl-second association-one)
+                                (cl-second association-two)))
+            peg--stack)
+
+      ;; Push both associations back to the `peg--stack'.
+      (seq-do (lambda (token-association)
+                (push token-association peg--stack))
+              token-alist)))
+
 @
 
 <<push the compiled SQL to the database and to the history stack>>=
@@ -1042,6 +1105,23 @@ zeroth-indexed document."
                            compiled-parse-tree)
                   . compiled-parse-tree)
             (w-project-history-sql-commands default-project))
+@
+
+\section{Preparing a buffer for editing}
+The following function will insert all the text tokens in a chunk's
+token alist into the buffer.
+
+<<Code>>=
+(defun w--insert-text-tokens (alist)
+  "Insert text tokens from a parse tree.
+
+Tokens are associations in an alist, so if the car matches the
+symbol `text', it will be inserted."
+  (seq-do (lambda (elt)
+            (when (equal 'text (car elt))
+              (insert (cdr elt))))
+          alist))
+
 @ 
 
 \section{Packaging whyse}
@@ -1075,7 +1155,8 @@ command-line used to tangle and weave WHYSE.
 @
 
 <<Emacs Lisp package headers>>=
-;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: t -*-
+;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: nil -*-
+;; Yes, you read that right: no lexical binding in this file.
 
 ;; Copyright © 2023 Bryce Carson
 
@@ -1171,10 +1252,10 @@ The following chunk lists the [[<<required packages>>]]; as of
 \newpage
 \subsection{TESTING}
 \TODO{Adopt the ERT (Emacs Regression Tests) package to test
-WHYSE features as they are developed and become featureful. When a
-feature is implemented a test should be written which conforms to the
-current documentation so that regressions can be caught when changes are
-made.}
+  WHYSE features as they are developed and become featureful. When a
+  feature is implemented a test should be written which conforms to the
+  current documentation so that regressions can be caught when changes are
+  made.}
 
 \subsubsection{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=
@@ -1189,12 +1270,7 @@ made.}
   (insert (shell-command-to-string
            "make --silent --file ~/src/whyse/Makefile tool-syntax"))
   (goto-char (point-min))
-  (cl-prettyprint (w--parse-current-buffer-with-rules))
-  (pop-to-buffer
-   (clone-buffer
-    (generate-new-buffer-name
-     (format "<WHYSE %s> Parsing tool syntax with a temporary buffer"
-             (if w--parse-success "SUCCESS" "FAILURE"))))))
+  (w--parse-current-buffer-with-rules))
 
 ;; Local Variables:
 ;; mode: lisp-interaction

@@ -56,6 +56,7 @@ definition, hence all code chunks have a first definition chunk.
 This retrieves the number of that chunk."
   nil)
 
+;; TODO
 (defun w--get-chunk-continuation-number ()
   "non-nil if chunk NUMBER has a continued chunk defintion.
 
@@ -73,6 +74,7 @@ significantly."
         w--buffer-chunk-name (w--get-chunk-name number))
   (w--reinitialize-whsye-buffer))
 
+;; TODO
 (defun w--get-chunk-name (number)
   "Get the name of the chunk with number NUMBER, or return the default name."
   "UNKNOWN")
