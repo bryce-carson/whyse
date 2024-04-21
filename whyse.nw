@@ -1075,10 +1075,6 @@ TODO: place this inclusion better
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
 
-%% TODO: Fri Apr 19 2024 23:05:56
-\TODO{Fix the function below: it doesn't pop the top two associations
-  off of the `peg--stack' properly.}
-
 <<functions to collapse text and newline tokens into their largest possible form>>=
 (defun w--concatenate-text-tokens (new-token)
   "Join the values of two text token associations in a two-element token alist.
