@@ -3,6 +3,12 @@
   "A simple boolean regarding the success or fialure of the last
   attempt to parse a buffer of Noweb tool syntax.")
 
+;; FIXME: the current parse tree contains a `nil' after the chunk type
+;; and number assoc, and that needs to be analyzed. Why is this `nil' in
+;; the stack? I assume and believe it is because of the collapsing of
+;; stringy tokens; when a token should be put back onto the stack it may
+;; also be putting a `nil' onto the stack in the first call to the
+;; function.
 ;;;; Parsing expression grammar (PEG) rules
 (defun w--parse-current-buffer-with-rules ()
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
@@ -150,7 +156,8 @@
                              "\n"))))
 
        ;; Cross-reference
-       (x-label xr (substring "label" spc label) nl)
+       (x-label xr (substring "label" spc label) nl
+                `(substr -- (cons 'x-label (cadr (split-string substr)))))
        (x-ref xr (substring "ref" spc label) nl
               `(substr --  (cons 'ref (cadr (split-string substr)))))
 

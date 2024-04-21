@@ -248,12 +248,9 @@ whyse group."
            (default-project (cl-first w-registered-projects))
            (project (make-w-project :name (cl-first default-project)
                                     :noweb (cl-second default-project)
-                                    :script (cl-third default-project))))
-      ;; TODO: define the following chunks and add it to the success path.
-      ;; @<<compile the parse tree into DDL and send it to the database>>
-      ;; @<<create the atomic window layout and insert the navigation widgets>>
-      (progn (w-parse-with-project-and-temp-buffer project)
-             (run-hooks w-open-project-hook))
+                                    :script (cl-third default-project)))
+           (parse-tree (w-parse-with-project-and-temp-buffer project)))
+      (run-hooks 'w-open-project-hook)
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
 
@@ -407,16 +404,38 @@ implement a development environment for Noweb as described by Brown and
 Czejdo (\TODO{cite these again}).
 
 <<open-project-hook>>=
-(defvar w-open-project-hook nil
+(defvar w-open-project-hook '()
   "Hooks to run when `whyse' has opened a project.")
 
 <<default hook functions>>=
-(defun w--compile-parse-tree-to-ddl ()
-  "The PARSE-TREE is compiled to ddl for insertion into the project database.
+(defun w--compile-parse-tree-to-dml ()
+  "The PARSE-TREE is compiled to ddl for insertion into the project database."
+  ;; TODO: log the compilation during development ONLY.
+  (princ (mapcar #'w--compile-file-token-to-dml parse-tree)
+         (generate-new-buffer "WHYSE sexp to DML compilation devlog")))
 
-FIXME: this is going to be fragile and it will be very crude.")
+(defun w--compile-file-token-to-dml (file-token)
+  "Compiles the parse subtree for a file token to DML.
 
-(add-hook w-open-project-hook #'w--compile-parse-tree-to-ddl)
+FILE-TOKEN is a list, an element of the list `parse-tree' in the
+  lexical scope."
+  (let ((file-name (cl-first file-token))
+        (chunks (cl-rest file-token)))
+    ;; NOTE: `chuks' is a list of alists; each alist is a single chunk.
+    (princ chunks
+           (generate-new-buffer "DEBUG CHUNKS DEVLOG"))
+    (mapcar (lambda (chunk)
+              "Convert an individual chunk to DML."
+              (progn (switch-to-buffer-other-window (generate-new-buffer "DEBUG SINGLE CHUNK DEVLOG"))
+                     (insert (format "%s" chunk)))
+              (if (and (equal 'list (type-of chunk))
+                       (assq 'code chunk))
+                  (format "@<<%s>>=\n%S"
+                          (cdr (assq 'chunk chunk))
+                          (w--return-text-tokens-joined chunk))))
+            chunks)))
+
+(add-hook 'w-open-project-hook 'w--compile-parse-tree-to-dml)
 
 @ 
 
@@ -424,8 +443,6 @@ FIXME: this is going to be fragile and it will be very crude.")
 This section covers the parsing of the noweb tool syntax produced when
 [[whyse]] executes the project's defined shell script to generate the
 tool syntax.
-
-
 
 The \textsc{peg} package provides automatic parser generation from a
 formal PEG grammar. The grammar is based off of the description of the
@@ -845,7 +862,8 @@ WHYSE (contributions for improved support are welcomed).
 
 \subsubsection{cross referencing}
 <<cross-referencing keywords>>=
-(x-label xr (substring "label" spc label) nl)
+(x-label xr (substring "label" spc label) nl
+         `(substr -- (cons 'x-label (cadr (split-string substr)))))
 (x-ref xr (substring "ref" spc label) nl
        `(substr --  (cons 'ref (cadr (split-string substr)))))
 
@@ -977,6 +995,12 @@ member of that list."
     (w--parse-current-buffer-with-rules)))
 
 <<buffer parsing function>>=
+;; FIXME: the current parse tree contains a `nil' after the chunk type
+;; and number assoc, and that needs to be analyzed. Why is this `nil' in
+;; the stack? I assume and believe it is because of the collapsing of
+;; stringy tokens; when a token should be put back onto the stack it may
+;; also be putting a `nil' onto the stack in the first call to the
+;; function.
 ;;;; Parsing expression grammar (PEG) rules
 (defun w--parse-current-buffer-with-rules ()
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
@@ -1148,15 +1172,16 @@ The following function will insert all the text tokens in a chunk's
 token alist into the buffer.
 
 <<Code>>=
-(defun w--insert-text-tokens (alist)
+(defun w--return-text-tokens-joined (alist)
   "Insert text tokens from a parse tree.
 
 Tokens are associations in an alist, so if the car matches the
 symbol `text', it will be inserted."
-  (seq-do (lambda (elt)
-            (when (equal 'text (car elt))
-              (insert (cdr elt))))
-          alist))
+  (string-join (mapcar (lambda (elt)
+                         (when (equal 'text (car elt))
+                           (cdr elt)))
+                       alist)
+               ""))
 
 @ 
 
