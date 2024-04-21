@@ -158,6 +158,9 @@
        ;; any longer, becasue most things are ignored and this is hackish;
        ;; however, the message reporting is not too helpful. It would be nice
        ;; to have _only_ the chunk name reported, and formatted with << and >>.
+       ;;; Reproduction steps: make a reference to an undefined code chunk
+       ;;; within another code chunk. For fixing this issue, undefined code
+       ;;; chunks should also be referenced within quotations in documentation.
        (x-undefined
         xr (or "ref" "chunkbegin") spc
         (guard

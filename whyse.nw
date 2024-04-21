@@ -1,14 +1,20 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
-%% FIXME: finduses.nw and the recognizer.nw need some tweaking to better support LISP identifiers. It may be as simple as moving `-' from SYMBOLS to ALPHANUMERIC.
 % Copyright © 2023 Bryce Carson
 \documentclass{article}
+
+%%% FIXME: finduses.nw and the recognizer.nw need some tweaking to
+%%% better support LISP identifiers. It may be as simple as moving `-'
+%%% from SYMBOLS to ALPHANUMERIC.
+
+%%% TODO: converting the document class to "kaobook" would be nice, but
+%%% it might be improperly sized.
+%% \documentclass{kaobook}
 
 %% FONT
 \usepackage[rm]{roboto}
 \usepackage[T1]{fontenc}
 \usepackage{fontspec}
 \setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]
-
 
 %% MARGIN
 \usepackage[margin=1.5in]{geometry}
@@ -233,7 +239,8 @@ When both customization variables are non-nil, or if only
 `w-load-default-project?' is nil, then Customize is opened to the
 whyse group."
   (interactive)
-  ;; Warn the user that their customization options have made `whyse' a no-op function.
+  ;; Warn the user that their customization options have made `whyse' a
+  ;; no-op function.
   (when (and (not w-load-default-project?)
              (not w-open-customize-when-no-projects-defined?))
     (warn "The customization options for `whyse' have effectively disabled the `whyse' command."))
@@ -402,6 +409,14 @@ Czejdo (\TODO{cite these again}).
 <<open-project-hook>>=
 (defvar w-open-project-hook nil
   "Hooks to run when `whyse' has opened a project.")
+
+<<default hook functions>>=
+(defun w--compile-parse-tree-to-ddl ()
+  "The PARSE-TREE is compiled to ddl for insertion into the project database.
+
+FIXME: this is going to be fragile and it will be very crude.")
+
+(add-hook w-open-project-hook #'w--compile-parse-tree-to-ddl)
 
 @ 
 
@@ -838,6 +853,9 @@ WHYSE (contributions for improved support are welcomed).
 ;; any longer, becasue most things are ignored and this is hackish;
 ;; however, the message reporting is not too helpful. It would be nice
 ;; to have _only_ the chunk name reported, and formatted with @<< and >>.
+;;; Reproduction steps: make a reference to an undefined code chunk
+;;; within another code chunk. For fixing this issue, undefined code
+;;; chunks should also be referenced within quotations in documentation.
 (x-undefined
  xr (or "ref" "chunkbegin") spc
  (guard
@@ -956,7 +974,7 @@ member of that list."
   (with-temp-buffer
     (insert (shell-command-to-string (w-project-script project)))
     (goto-char (point-min))
-    (message "Noweb parse:\n%S" (w--parse-current-buffer-with-rules))))
+    (w--parse-current-buffer-with-rules)))
 
 <<buffer parsing function>>=
 ;;;; Parsing expression grammar (PEG) rules
@@ -1076,7 +1094,6 @@ TODO: place this inclusion better
 @
 
 <<functions to collapse text and newline tokens into their largest possible form>>=
-;; FIXME: the function doesn't seem to be having any effect.
 (defun w--concatenate-text-tokens (new-token)
   "Join the values of two text token associations in a two-element token alist.
 
@@ -1090,7 +1107,7 @@ If the two associations shouldn't be joined, return them to the stack."
       ;; stringy token by chaning the value of `w--first-stringy-token?'
       ;; accordingly. Subsequent runs will then operate on potential
       ;; pairs of stringy tokens.
-      (if-let ((not-first-stringy-token? (message "Value of `w--first-stringy-token': %S" (not w--first-stringy-token?)))
+      (if-let ((not-first-stringy-token? (not w--first-stringy-token?))
                (previous-token  (pop peg--stack))
                ;; The previous token cannot be a text or nwnl token if
                ;; it is not a list, and checking prevents causing an
@@ -1102,11 +1119,7 @@ If the two associations shouldn't be joined, return them to the stack."
                             (or (assoc 'text `(,new-token))
                                 (assoc 'nl `(,new-token)))
                             (or (assoc 'text `(,previous-token))
-                                (assoc 'nl `(,previous-token))))
-                  ;; FIXME: this caused way too much debugging output, but was helpful!
-                  ;; (message "Value of `new-token' within the `and' predicate: %s" new-token)
-                  ;; (message "Value of `previous-token' within the `and' predicate: %s" previous-token)
-                  )))
+                                (assoc 'nl `(,previous-token)))))))
           ;; Join the association's values and let the caller push a single
           ;; token back onto the `peg--stack'.
           (cons 'text (format "%s%s" (cdr previous-token)
@@ -1251,6 +1264,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 <<with-project>>
 <<buffer parsing function>>
 <<open-project-hook>>
+<<default hook functions>>
 
 ;;;; Commands
 ;;;###autoload
