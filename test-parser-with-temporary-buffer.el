@@ -219,7 +219,7 @@
        (!eol (+ (not "\n") (any)))
        (spc " "))
     (let (w--peg-parser-within-codep
-          w--not-first-stringy-token?)
+          (w--first-stringy-token? t))
       (peg-run (peg noweb) #'w--parse-failure-function))))
 
 (defun w--parse-failure-function (lst)

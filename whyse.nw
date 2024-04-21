@@ -268,6 +268,11 @@ defined."
   :type 'boolean
   :group 'whyse
   :tag "Open Customize to the whyse group when `whyse' is invoked and no projects are defined?")
+@
+
+The structure accessed in the namesake command of the package is rather
+simple. \TODO{Ensure that the previous statement in-prose [not in the
+    TODO summary] is still correct.} It is defined quickly, then explained briefly.
 
 <<WHYSE project structure>>=
 (cl-defstruct w-project
@@ -299,7 +304,8 @@ given values when appropriate later in operation (such as
 [[date-last-exported]]) or upon initialization ([[frame]]).
 
 Initialization when the interactive command is called is covered next;
-to summarize: [[w-project-load-hook]] is run.
+to summarize: [[w-open-project-hook]] is run. \TODO{Describe
+  initialization of the system after parsing.}
 
 \subsection{Database initialization}
 \TODO{finish the creation of a database. Use what I learned in the fall!}
@@ -450,12 +456,6 @@ expression---for the grammar. The tool syntax of Noweb is simply a list
 of one or more files, which are each composed of at least one chunk.
 Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
 defined.
-
-%% DONE: whilst the "no merge error method for (guard t)" issue
-%% persists, removing the check for the EOB resolves the issue
-%% and lets my own calls to `error' surface. The issue seems to
-%% arise from the fact that I did not handle detection of being
-%% within a code chunk properly.
 
 <<high-level Noweb tool syntax structure>>=
 ;;; Overall Noweb structure
@@ -965,7 +965,7 @@ member of that list."
   (with-peg-rules
       (<<PEG rules>>)
     (let (w--peg-parser-within-codep
-          w--not-first-stringy-token?)
+          (w--first-stringy-token? t))
       (peg-run (peg noweb) #'w--parse-failure-function))))
 
 (defun w--parse-failure-function (lst)
@@ -1076,25 +1076,37 @@ TODO: place this inclusion better
 @
 
 <<functions to collapse text and newline tokens into their largest possible form>>=
+;; FIXME: the function doesn't seem to be having any effect.
 (defun w--concatenate-text-tokens (new-token)
   "Join the values of two text token associations in a two-element token alist.
 
 If the two associations shouldn't be joined, return them to the stack."
   (prog1
-      (if-let (w--not-first-stringy-token?
+      ;; Concatenation only occurs when the previous token examined was
+      ;; a text or nwnl token, ergo there must have been a text or nwnl
+      ;; token previously examined for any concatenation to occur. When
+      ;; no such token has been examined immediately return the
+      ;; (stringy) token recieved and indicate it must have been a
+      ;; stringy token by chaning the value of `w--first-stringy-token?'
+      ;; accordingly. Subsequent runs will then operate on potential
+      ;; pairs of stringy tokens.
+      (if-let ((not-first-stringy-token? (message "Value of `w--first-stringy-token': %S" (not w--first-stringy-token?)))
                (previous-token  (pop peg--stack))
                ;; The previous token cannot be a text or nwnl token if
                ;; it is not a list, and checking prevents causing an
                ;; error by taking the `car' of a non-list token, e.g. the
                ;; filename token.
                (previous-token-is-alist?
-                (and (listp previous-token)
-                     (or (assoc 'text `(previous-token))
-                         (assoc 'nl `(previous-token)))))
-               (new-token-type (car new-token))
-               (adjacent-stringy-tokens?
-                (or (equal 'text new-token-type)
-                    (equal 'nl new-token-type))))
+                (prog1 (and (listp previous-token)
+                            (listp new-token)
+                            (or (assoc 'text `(,new-token))
+                                (assoc 'nl `(,new-token)))
+                            (or (assoc 'text `(,previous-token))
+                                (assoc 'nl `(,previous-token))))
+                  ;; FIXME: this caused way too much debugging output, but was helpful!
+                  ;; (message "Value of `new-token' within the `and' predicate: %s" new-token)
+                  ;; (message "Value of `previous-token' within the `and' predicate: %s" previous-token)
+                  )))
           ;; Join the association's values and let the caller push a single
           ;; token back onto the `peg--stack'.
           (cons 'text (format "%s%s" (cdr previous-token)
@@ -1104,8 +1116,8 @@ If the two associations shouldn't be joined, return them to the stack."
         ;; caller push the new token to that stack.
         (push previous-token peg--stack)
         new-token)
-    (unless w--not-first-stringy-token?
-      (setq w--not-first-stringy-token? t))))
+    (when w--first-stringy-token?
+      (setq w--first-stringy-token? nil))))
 
 @
 
