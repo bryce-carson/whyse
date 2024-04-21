@@ -75,13 +75,11 @@
          fatal
          x-undefined))
        (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-             `(txt -- (prog1 (cons 'text txt)
-                        (w--concatenate-text-tokens))))
+             `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
        (nwnl (bol) (substring "@nl") nl
              ;; Be sure that when thinking about the symbol `nl' here that
              ;; you're not confusing it with the peg rule nl.
-             `(nl -- (prog1 (cons 'nl "\n")
-                       (w--concatenate-text-tokens))))
+             `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
        (defn "@defn" spc (substring !eol) nl
          `(name -- (cons 'chunk name)))
 
@@ -220,21 +218,22 @@
        (nl (eol) "\n")
        (!eol (+ (not "\n") (any)))
        (spc " "))
-    (let (w--peg-parser-within-codep)
-      (peg-run
-       (peg noweb)
-       (lambda (lst)
-         (setq w--parse-success nil)
-         (pop-to-buffer (clone-buffer))
-         (save-excursion
-           (put-text-property (point) (point-min)
-                              'face 'success)
+    (let (w--peg-parser-within-codep
+          w--not-first-stringy-token?)
+      (peg-run (peg noweb) #'w--parse-failure-function))))
 
-           (put-text-property (point) (point-max)
-                              'face 'error)
+(defun w--parse-failure-function (lst)
+  (setq w--parse-success nil)
+  (pop-to-buffer (clone-buffer))
+  (save-excursion
+    (put-text-property (point) (point-min)
+                       'face 'success)
 
-           (goto-char (point-max))
-           (message "PEXes which failed:\n%S" lst)))))))
+    (put-text-property (point) (point-max)
+                       'face 'error)
+
+    (goto-char (point-max))
+    (message "PEXes which failed:\n%S" lst)))
 
 (with-temp-buffer
   (insert (shell-command-to-string

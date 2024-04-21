@@ -636,6 +636,16 @@ x-label
 x-ref
 @ 
 
+\TODO{Verify that this statement is true: ``Usually Noweb will warn a
+  user that a chunk was referenced but undefined, or that there was some
+  other issue with chunks.''} Sometimes, however, the system will permit
+a chunk to be undefined and this leads to the only cases in the tool
+syntax where it is not line-oriented. [[noidx]] will read the cross
+references to other chunks and will be unable to generate the label, so
+it will insert [[@notdef]] where it would otherwise upcase ``nw'' and
+then insert the label. This is why [[x-undefined]] is placed among the
+other [[<<tool errors>>]] keywords.
+
 <<tool errors>>=
 ;; error
 fatal
@@ -650,13 +660,11 @@ they are adjacent on the [[peg--stack]].
 
 <<chunks and their boundaries>>=
 (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-      `(txt -- (prog1 (cons 'text txt)
-                 (w--concatenate-text-tokens))))
+      `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
 (nwnl (bol) (substring "@nl") nl
       ;; Be sure that when thinking about the symbol `nl' here that
       ;; you're not confusing it with the peg rule nl.
-      `(nl -- (prog1 (cons 'nl "\n")
-                (w--concatenate-text-tokens))))
+      `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
 @
 
 Nowebs are built from chunks, so the definition and usage of (i.e.
@@ -956,21 +964,22 @@ member of that list."
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
   (with-peg-rules
       (<<PEG rules>>)
-    (let (w--peg-parser-within-codep)
-      (peg-run
-       (peg noweb)
-       (lambda (lst)
-         (setq w--parse-success nil)
-         (pop-to-buffer (clone-buffer))
-         (save-excursion
-           (put-text-property (point) (point-min)
-                              'face 'success)
+    (let (w--peg-parser-within-codep
+          w--not-first-stringy-token?)
+      (peg-run (peg noweb) #'w--parse-failure-function))))
 
-           (put-text-property (point) (point-max)
-                              'face 'error)
+(defun w--parse-failure-function (lst)
+  (setq w--parse-success nil)
+  (pop-to-buffer (clone-buffer))
+  (save-excursion
+    (put-text-property (point) (point-min)
+                       'face 'success)
 
-           (goto-char (point-max))
-           (message "PEXes which failed:\n%S" lst)))))))
+    (put-text-property (point) (point-max)
+                       'face 'error)
+
+    (goto-char (point-max))
+    (message "PEXes which failed:\n%S" lst)))
 @ 
 
 <<Customization and global variables>>=
@@ -1033,7 +1042,8 @@ manipulate this variable in the course of a PEG grammar's actions,
 however, there is a use case for it when the previous rules and actions
 won't accomodate the necessary action without refactoring a larger part
 of the grammar. In this development version that is not a goal; basic
-functionality is sought after, not robustness or beautiy.
+functionality is sought after, not robustness or beauty, so hacking the
+desired behaviour together quickly is better.
 
 [[w--nth-chunk-of-nth-noweb-document]] retrieves the parse tree for the nth
 noweb document, which in the case of [[whyse.nw]] is the parse tree of
@@ -1070,31 +1080,36 @@ TODO: place this inclusion better
   off of the `peg--stack' properly.}
 
 <<functions to collapse text and newline tokens into their largest possible form>>=
-(defun w--concatenate-text-tokens ()
+(defun w--concatenate-text-tokens (new-token)
   "Join the values of two text token associations in a two-element token alist.
 
 If the two associations shouldn't be joined, return them to the stack."
-  (message "%S%S"
-           (cl-first peg--stack)
-           (cl-second peg--stack))
-  (if-let ((association-one (car peg--stack))
-           (association-one (cadr peg--stack))
-           (adjacent-stringy-tokens?
-            (and (or (equal 'text (car association-one))
-                     (equal 'nl (car association-one)))
-                 (or (equal 'text (car association-two))
-                     (equal 'nl (car association-two))))))
-      ;; Join the association's values and push a single association
-      ;; back to the `peg--stack'.
-      (push (cons 'text (format "%s%s"
-                                (cl-second association-one)
-                                (cl-second association-two)))
-            peg--stack)
+  (prog1
+      (if-let (w--not-first-stringy-token?
+               (previous-token  (pop peg--stack))
+               ;; The previous token cannot be a text or nwnl token if
+               ;; it is not a list, and checking prevents causing an
+               ;; error by taking the `car' of a non-list token, e.g. the
+               ;; filename token.
+               (previous-token-is-alist?
+                (and (listp previous-token)
+                     (or (assoc 'text `(previous-token))
+                         (assoc 'nl `(previous-token)))))
+               (new-token-type (car new-token))
+               (adjacent-stringy-tokens?
+                (or (equal 'text new-token-type)
+                    (equal 'nl new-token-type))))
+          ;; Join the association's values and let the caller push a single
+          ;; token back onto the `peg--stack'.
+          (cons 'text (format "%s%s" (cdr previous-token)
+                              (cdr new-token)))
 
-      ;; Push both associations back to the `peg--stack'.
-      (seq-do (lambda (token-association)
-                (push token-association peg--stack))
-              token-alist)))
+        ;; Push the previous token back to the `peg--stack', and let the
+        ;; caller push the new token to that stack.
+        (push previous-token peg--stack)
+        new-token)
+    (unless w--not-first-stringy-token?
+      (setq w--not-first-stringy-token? t))))
 
 @
 
