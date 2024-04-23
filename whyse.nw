@@ -408,32 +408,42 @@ Czejdo (\TODO{cite these again}).
   "Hooks to run when `whyse' has opened a project.")
 
 <<default hook functions>>=
+(defun w--log-in-buffer (buffer-name &rest body)
+  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
+  (save-mark-and-excursion
+    (with-current-buffer
+        (generate-new-buffer buffer-name)
+      (insert (format-message "%s" body)))))
+
 (defun w--compile-parse-tree-to-dml ()
   "The PARSE-TREE is compiled to ddl for insertion into the project database."
-  ;; TODO: log the compilation during development ONLY.
-  (princ (mapcar #'w--compile-file-token-to-dml parse-tree)
-         (generate-new-buffer "WHYSE sexp to DML compilation devlog")))
+  ;; `parse-tree' is in the scope of the hook variable calling this
+  ;; hook.
+  (cl-loop for file in parse-tree
+           do (w--compile-file-token-to-dml (list file))))
 
 (defun w--compile-file-token-to-dml (file-token)
   "Compiles the parse subtree for a file token to DML.
 
 FILE-TOKEN is a list, an element of the list `parse-tree' in the
   lexical scope."
-  (let ((file-name (cl-first file-token))
-        (chunks (cl-rest file-token)))
-    ;; NOTE: `chuks' is a list of alists; each alist is a single chunk.
-    (princ chunks
-           (generate-new-buffer "DEBUG CHUNKS DEVLOG"))
-    (mapcar (lambda (chunk)
-              "Convert an individual chunk to DML."
-              (progn (switch-to-buffer-other-window (generate-new-buffer "DEBUG SINGLE CHUNK DEVLOG"))
-                     (insert (format "%s" chunk)))
-              (if (and (equal 'list (type-of chunk))
-                       (assq 'code chunk))
-                  (format "@<<%s>>=\n%S"
-                          (cdr (assq 'chunk chunk))
-                          (w--return-text-tokens-joined chunk))))
-            chunks)))
+  (let ((file-name (car file-token))
+        (chunks (cdr file-token)))
+    (cons file-name
+          (mapcar (lambda (chunk)
+                    "Convert an individual chunk to DML."
+                    (message "%s\n" chunk)
+                    (apply #'format-message
+                             ;; If the chunk has a name, it is a code chunk;
+                             ;; otherwise it's documentation.
+                             (if-let ((code-chunk-name (w--chunk-name chunk)))
+                                 (list "@<<%s>>=\n%s" code-chunk-name (w--return-text-tokens-joined chunk))
+                               (list "%s" (w--return-text-tokens-joined chunk)))))
+                  ;; An illustration of the structure of `chunks':
+                  ;; e.g.
+                  ;;; (list (list '((a . 1) (b . 2) (c . 3))
+                  ;;;;            '((a . 1) (b . 2) (c . 3))))
+                  chunks))))
 
 (add-hook 'w-open-project-hook 'w--compile-parse-tree-to-dml)
 
@@ -1109,11 +1119,19 @@ zeroth-indexed document."
   "Return the subtree for the Nth chunk of a noweb document parse subtree."
   (nth n document))
 
+(defun w--chunk-name (chunk)
+  "Return non-nil if CHUNK is a code chunk, and thereby has a name.
+
+The return value, if non-nil, is actually the name of the chunk."
+  (if-let ((chunk-name (assq 'chunk chunk)))
+      (cdr chunk-name)))
+
 @ 
 
 TODO: place this inclusion better
 
 <<Code>>= 
+<<functions for navigating WHYSE parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
 
