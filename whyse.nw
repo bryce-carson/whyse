@@ -415,12 +415,14 @@ Czejdo (\TODO{cite these again}).
         (generate-new-buffer buffer-name)
       (insert (format-message "%s" body)))))
 
-(defun w--compile-parse-tree-to-dml ()
-  "The PARSE-TREE is compiled to ddl for insertion into the project database."
-  ;; `parse-tree' is in the scope of the hook variable calling this
-  ;; hook.
-  (cl-loop for file in parse-tree
-           do (w--compile-file-token-to-dml (list file))))
+(add-hook
+ 'w-open-project-hook
+ (defun w--compile-parse-tree-to-dml ()
+   "The PARSE-TREE is compiled to ddl for insertion into the project database."
+   ;; `parse-tree' is in the scope of the hook variable calling this
+   ;; hook.
+   (cl-loop for file in parse-tree
+            collect (w--compile-file-token-to-dml (list file)))))
 
 (defun w--compile-file-token-to-dml (file-token)
   "Compiles the parse subtree for a file token to DML.
@@ -432,7 +434,6 @@ FILE-TOKEN is a list, an element of the list `parse-tree' in the
     (cons file-name
           (mapcar (lambda (chunk)
                     "Convert an individual chunk to DML."
-                    (message "%s\n" chunk)
                     (apply #'format-message
                              ;; If the chunk has a name, it is a code chunk;
                              ;; otherwise it's documentation.
@@ -444,8 +445,6 @@ FILE-TOKEN is a list, an element of the list `parse-tree' in the
                   ;;; (list (list '((a . 1) (b . 2) (c . 3))
                   ;;;;            '((a . 1) (b . 2) (c . 3))))
                   chunks))))
-
-(add-hook 'w-open-project-hook 'w--compile-parse-tree-to-dml)
 
 @ 
 
@@ -969,7 +968,6 @@ WHYSE (contributions for improved support are welcomed).
 %% containing one or more chunks; minimally, a Noweb file will contain the
 %% default documentation chunk.
 
-\subsection{Parse a buffer of tool syntax}\label{buffer parsing}
 To summarize this section, since it is longer than the previous section,
 the object is to convert the noweb document to tool syntax and parse it
 with the peg parser.
@@ -1055,32 +1053,47 @@ its contents, which is an association list thereof. Each association in
 the alist should be self-explanatory.
 
 \begin{verbatim}
-  ((noweb-document-one ((0 . ())
-                        (1 . ())))
-   (noweb-document-two ((0 . ())
-                        (1 . ()))))
+'((noweb-document-one
+   ((docs . 0)
+    (text . "\tex{} is cool!"))
+   ((code . 1)
+    (text . "(message \"LISP is awesome!\")")))
+  (noweb-document-two
+   ((code . 0)
+    (text . "asdf is a system definition format in Common LISP,"))
+    (nwnl . "\n")
+    (text . "and I like to use it.")
+   ((code . 1)
+    (text . "jkl; is the right-handed corollary of asdf."))
+   ((docs . 2)
+    (text . "\latex{} is great!"))
+   ((docs . 3)
+    (text . "Noweb, written by Norman Ramsey is sweet!"))))
 \end{verbatim}
 
 There are many steps to compiling the parse tree into SQL that can be
-directly executed by the backend database engine, so to
-FIXME
-is a multi-step process.
+directly executed by the backend database engine. The first step is to
+ensure the parse tree is in a format that is acceptable to other LISP
+functions; this will make it easier to navigate the tree and transform
+it. Other texts call this (list or expression) destructuring.
 
-The output tool syntax of notangle, and the parse tree resulting from
-the PEG, contain individual text tokens for fragments of whole text
-lines and form feed characters. These tokens exist because the
+The first step in making the parse tree navigable for other programs is
+collapsing adjacent ``stringy'' tokens into single [[text]] tokens. The
+output tool syntax of notangle, and the parse tree resulting from the
+PEG, contain individual text tokens for fragments of whole text lines
+and form feed characters. These tokens exist because the
 cross-referencing tokens fragment the text lines, and new lines in the
 noweb document are treated specially to facilitate this fragmentation.
 The parsed from of the tool syntax is shown in this example from a
 development version of \textsc{WHYSE}.
 
 \begin{verbatim}
-(text "  and \\textsc{Noweb}'s \\texttt{finduses.nw}!")
-"@nl"
-(text "\\end{enumerate}")
-"@nl"
-(text "")
-"@nl"
+(text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
+(nwnl . "@nl")
+(text . "\end{enumerate}")
+(nwnl . "@nl")
+(text . "")
+(nwnl . "@nl")
 \end{verbatim}
 
 In this development version it was not fully decided how tokens and the
