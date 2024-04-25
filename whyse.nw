@@ -406,6 +406,12 @@ Czejdo (\TODO{cite these again}).
 <<open-project-hook>>=
 (defvar w-open-project-hook '()
   "Hooks to run when `whyse' has opened a project.")
+@
+
+The default behaviour of WHYSE is to insert all the chunks of the parsed
+document into a database. Before it does that it works upon the parse
+tree, preparing it into a suitable format usable with EmacSQL (which the
+author is aware he's stated elsewhere).
 
 <<default hook functions>>=
 (defun w--log-in-buffer (buffer-name &rest body)
@@ -415,14 +421,21 @@ Czejdo (\TODO{cite these again}).
         (generate-new-buffer buffer-name)
       (insert (format-message "%s" body)))))
 
-(add-hook
- 'w-open-project-hook
- (defun w--compile-parse-tree-to-dml ()
-   "The PARSE-TREE is compiled to ddl for insertion into the project database."
-   ;; `parse-tree' is in the scope of the hook variable calling this
-   ;; hook.
-   (cl-loop for file in parse-tree
-            collect (w--compile-file-token-to-dml (list file)))))
+(defun w--compile-parse-tree-to-dml ()
+  "The PARSE-TREE is compiled to ddl for insertion into the project database."
+  ;; `parse-tree' is in the scope of the hook variable calling this
+  ;; hook.
+  (cl-loop for file in parse-tree
+           do
+           (let ((parse-tree (w--compile-file-token-to-dml file)))
+             (debug)
+             (set
+              ;; FIXME: this is doing nothing; use `debug' more to
+              ;; figure out why.
+              (make-symbol (concat (file-name-base (car parse-tree)) "-parse-tree"))
+              (cdr parse-tree)))))
+
+(add-hook 'w-open-project-hook 'w--compile-parse-tree-to-dml)
 
 (defun w--compile-file-token-to-dml (file-token)
   "Compiles the parse subtree for a file token to DML.
@@ -435,19 +448,17 @@ FILE-TOKEN is a list, an element of the list `parse-tree' in the
           (mapcar (lambda (chunk)
                     "Convert an individual chunk to DML."
                     (apply #'format-message
-                             ;; If the chunk has a name, it is a code chunk;
-                             ;; otherwise it's documentation.
-                             (if-let ((code-chunk-name (w--chunk-name chunk)))
-                                 (list "@<<%s>>=\n%s" code-chunk-name (w--return-text-tokens-joined chunk))
-                               (list "%s" (w--return-text-tokens-joined chunk)))))
+                           ;; If the chunk has a name, it is a code chunk;
+                           ;; otherwise it's documentation.
+                           (if-let ((code-chunk-name (w--chunk-name chunk)))
+                               (list "@<<%s>>=\n%s" code-chunk-name (w--chunk-text chunk))
+                             (list "%s" (w--chunk-text chunk)))))
                   ;; An illustration of the structure of `chunks':
-                  ;; e.g.
-                  ;;; (list (list '((a . 1) (b . 2) (c . 3))
-                  ;;;;            '((a . 1) (b . 2) (c . 3))))
+                  ;; (list '((a . 1) (b . 2) (c . 3))
+                  ;;       '((a . 1) (b . 2) (c . 3)))
                   chunks))))
 
 @ 
-
 \section{Parsing project nowebs}
 This section covers the parsing of the noweb tool syntax produced when
 [[whyse]] executes the project's defined shell script to generate the
@@ -544,10 +555,11 @@ after the last file.
 ;; Technically, file is a tagging keyword, but that classification only
 ;; makes sense in the Hacker's guide, not in the syntax.
 (file (bol) "@file" spc (substring path) nl
-      (list (and (+ chunk) (* nwnl)
+      (list (and (+ chunk)
                  (list (or (and x-chunks i-identifiers)
                            (and i-identifiers x-chunks))))
-            ;; Trailing documentation chunk and new-lines
+            ;; Trailing documentation chunk and new-lines after the xref
+            ;; and index.
             (opt chunk)
             (opt (+ nl)))
       `(path chunk-list -- (cons path chunk-list)))
@@ -572,13 +584,12 @@ stack are balanced.
 
 <<chunks and their boundaries>>=
 (chunk begin (list (* chunk-contents)) end)
-(begin (bol) "@begin" spc kind
-       spc ordinal (eol) nl
+(begin (bol) "@begin" spc kind spc ordinal (eol) nl
        (action (if (string= (cl-second peg--stack) "code")
                    (setq w--peg-parser-within-codep t))))
-(end (bol) "@end" spc kind
-     spc ordinal (eol) nl
-     (action (setq w--peg-parser-within-codep nil))
+(end (bol) "@end" spc kind spc ordinal (eol) nl
+     (action
+      (setq w--peg-parser-within-codep nil))
      ;; The stack grows down and the heap grows up,
      ;; that's the yin and yang of the computer thang
      `(kind-one
@@ -911,8 +922,9 @@ WHYSE (contributions for improved support are welcomed).
 
 (x-notused xr "notused" spc (substring !eol) nl
            `(chunk-name -- (cons 'unused! chunk-name)))
-
-(x-chunks xr "beginchunks" nl
+(x-chunks nwnl
+          nwnl
+          xr "beginchunks" nl
           (list (+ x-chunk))
           xr "endchunks" nl
           `(l -- (cons 'x-chunks l)))
@@ -1132,6 +1144,12 @@ zeroth-indexed document."
   "Return the subtree for the Nth chunk of a noweb document parse subtree."
   (nth n document))
 
+(defun w--chunk-text (chunk)
+  (cl-loop for elt in chunk
+           collect (if (and (listp elt)
+                            (equal 'text (car elt)))
+                       (cdr elt))))
+
 (defun w--chunk-name (chunk)
   "Return non-nil if CHUNK is a code chunk, and thereby has a name.
 
@@ -1197,24 +1215,6 @@ If the two associations shouldn't be joined, return them to the stack."
                   . compiled-parse-tree)
             (w-project-history-sql-commands default-project))
 @
-
-\section{Preparing a buffer for editing}
-The following function will insert all the text tokens in a chunk's
-token alist into the buffer.
-
-<<Code>>=
-(defun w--return-text-tokens-joined (alist)
-  "Insert text tokens from a parse tree.
-
-Tokens are associations in an alist, so if the car matches the
-symbol `text', it will be inserted."
-  (string-join (mapcar (lambda (elt)
-                         (when (equal 'text (car elt))
-                           (cdr elt)))
-                       alist)
-               ""))
-
-@ 
 
 \section{Packaging whyse}
 Installing an Emacs Lisp package is quite easy if the system is

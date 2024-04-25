@@ -18,10 +18,11 @@
        ;; Technically, file is a tagging keyword, but that classification only
        ;; makes sense in the Hacker's guide, not in the syntax.
        (file (bol) "@file" spc (substring path) nl
-             (list (and (+ chunk) (* nwnl)
+             (list (and (+ chunk)
                         (list (or (and x-chunks i-identifiers)
                                   (and i-identifiers x-chunks))))
-                   ;; Trailing documentation chunk and new-lines
+                   ;; Trailing documentation chunk and new-lines after the xref
+                   ;; and index.
                    (opt chunk)
                    (opt (+ nl)))
              `(path chunk-list -- (cons path chunk-list)))
@@ -30,13 +31,12 @@
        (path-separator ["\\/"])
        (file-name (+ (or [word] ".")))
        (chunk begin (list (* chunk-contents)) end)
-       (begin (bol) "@begin" spc kind
-              spc ordinal (eol) nl
+       (begin (bol) "@begin" spc kind spc ordinal (eol) nl
               (action (if (string= (cl-second peg--stack) "code")
                           (setq w--peg-parser-within-codep t))))
-       (end (bol) "@end" spc kind
-            spc ordinal (eol) nl
-            (action (setq w--peg-parser-within-codep nil))
+       (end (bol) "@end" spc kind spc ordinal (eol) nl
+            (action
+             (setq w--peg-parser-within-codep nil))
             ;; The stack grows down and the heap grows up,
             ;; that's the yin and yang of the computer thang
             `(kind-one
@@ -196,8 +196,9 @@
 
        (x-notused xr "notused" spc (substring !eol) nl
                   `(chunk-name -- (cons 'unused! chunk-name)))
-
-       (x-chunks xr "beginchunks" nl
+       (x-chunks nwnl
+                 nwnl
+                 xr "beginchunks" nl
                  (list (+ x-chunk))
                  xr "endchunks" nl
                  `(l -- (cons 'x-chunks l)))
