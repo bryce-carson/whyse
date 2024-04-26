@@ -246,11 +246,12 @@ whyse group."
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project)))
            (parse-tree (w-parse-with-project-and-temp-buffer project)))
+
+      ;; FIXME: peculiar error: "UNIQUE constraint failed:
+      ;; module.module_number", 19, nil, "constraint failed"
       (progn
-          <<setup project database>>
-          (message "The `project' databse connection is: %S"
-                   (w-project-database-connection project))
-          (run-hooks 'w-open-project-hook))
+        <<setup project database>>
+        (run-hooks 'w-open-project-hook))
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
 
@@ -330,7 +331,7 @@ as returning the string unchanged.
  ;; Usually ~/.emacs.d/
  user-emacs-directory
  ;; `nil' or the Spacemacs cache directory.
- (when (f-directory? (expand-file-name ".cache" user-emacs-directory))
+ (when (file-directory-p (expand-file-name ".cache" user-emacs-directory))
    ".cache")
  ;; PROJECT-NAME.db
  (concat (w-project-name project)
@@ -366,11 +367,10 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 %% planning documents for it.
 <<map over SQL s-expressions, creating the tables>>=
 (mapcar (lambda (expression)
-          (emacsql (w-project-database-connection project)
-                   expression))
+          (emacsql (w-project-database-connection project) expression))
 
       ;; A list of SQL s-expressions to create the tables.
-        '([:create-table module
+        '([:create-table-if-not-exists module
          ([module-name
            content
            file-name
@@ -378,14 +378,11 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
            (displacement integer)
            (module-number integer :primary-key)])]
 
-        [:create-table parent-child
-         ([(parent integer)
-           (child  integer)
-           (line-number integer)]
-          (:primary-key [parent
-                         child]))]
+        [:create-table-if-not-exists parent-child
+         ([(parent integer) (child  integer) (line-number integer)]
+          (:primary-key [parent child]))]
 
-        [:create-table identifier-used-in-module
+        [:create-table-if-not-exists identifier-used-in-module
          ([identifier-name
            (module-number integer)
            (line-number integer)
@@ -395,11 +392,10 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
                          line-number
                          type-of-usage]))]
 
-        [:create-table topic-referenced-in-module
+        [:create-table-if-not-exists topic-referenced-in-module
          ([(topic-name nil)
            (module-number integer)]
-          (:primary-key [topic-name
-                         module-number]))]))
+          (:primary-key [topic-name module-number]))]))
 @
 
 \section{Customizing the behaviour of [[whyse]] with hooks}
@@ -437,7 +433,6 @@ operate with any guarantees)."
    (lambda (file-token)
      (let ((file-name (car file-token))
            (chunks (cdr file-token)))
-       ;; FIXME: no applicable method.
        (emacsql (w-project-database-connection project)
                 (vector :insert :into 'module
                         :values (mapcar (lambda (chunk)
