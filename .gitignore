@@ -1,8 +1,11 @@
 # Compiled
 *.elc
+*.eln
+
+# Interpreted
+*.el
 
 # Packaging
-.cask
 
 # Backup files
 *~
