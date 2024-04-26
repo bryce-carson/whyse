@@ -1,11 +1,10 @@
-VERSION = 0.1
+VERSION = 0.2
 
 weave: clean
-	noweave -delay -autodefs elisp -index whyse.nw > whyse.tex
+	noweave -troff -autodefs elisp -index whyse.nw > whyse.troff
 
 compile-pdf: tangle weave
-	latexmk --lualatex --interaction=nonstopmode -f whyse.tex
-	lualatex whyse.tex
+	noroff -mms -Tpdf whyse.troff > whyse.pdf
 
 tangle: clean
 	notangle -Rwhyse.el whyse.nw > whyse.el
@@ -19,7 +18,7 @@ tangle: clean
 
 # Remove backup files and LaTeX garbage and cache files.
 clean:
-	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml *.tex *.toc *.xdy
+	$(RM) *~ *.troff *.pdf
 	rm -rf whyse-*/
 
 tool-syntax:
