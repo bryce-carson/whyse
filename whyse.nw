@@ -6,10 +6,6 @@
 %%% better support LISP identifiers. It may be as simple as moving `-'
 %%% from SYMBOLS to ALPHANUMERIC.
 
-%%% TODO: converting the document class to "kaobook" would be nice, but
-%%% it might be improperly sized.
-%% \documentclass{kaobook}
-
 %% FONT
 \usepackage[rm]{roboto}
 \usepackage[T1]{fontenc}
@@ -250,7 +246,11 @@ whyse group."
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project)))
            (parse-tree (w-parse-with-project-and-temp-buffer project)))
-      (run-hooks 'w-open-project-hook)
+      (progn
+          <<setup project database>>
+          (message "The `project' databse connection is: %S"
+                   (w-project-database-connection project))
+          (run-hooks 'w-open-project-hook))
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
 
@@ -342,10 +342,14 @@ create is sufficient to establish a connection, so the next step is to
 connect to the database and store the connection object in the
 appropriate slot of the project struct.
 
-<<create the database>>=
+<<setup project database>>=
+<<create a database connection>>
+<<map over SQL s-expressions, creating the tables>>
+@ 
+
+<<create a database connection>>=
 (setf (w-project-database-connection project)
-      (emacsql-sqlite
-       (w-project-database-file <<return a filename for the project database>>)))
+      (emacsql-sqlite <<return a filename for the project database>>))
 @ 
 
 The only thing left to do is establish the schema of the tables, which
@@ -366,7 +370,7 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
                    expression))
 
       ;; A list of SQL s-expressions to create the tables.
-      '([:create-table module
+        '([:create-table module
          ([module-name
            content
            file-name
@@ -419,44 +423,40 @@ author is aware he's stated elsewhere).
   (save-mark-and-excursion
     (with-current-buffer
         (generate-new-buffer buffer-name)
-      (insert (format-message "%s" body)))))
+      (insert (format-message "%S" body)))))
 
-(defun w--compile-parse-tree-to-dml ()
-  "The PARSE-TREE is compiled to ddl for insertion into the project database."
-  ;; `parse-tree' is in the scope of the hook variable calling this
-  ;; hook.
-  (cl-loop for file in parse-tree
-           do
-           (let ((parse-tree (w--compile-file-token-to-dml file)))
-             (debug)
-             (set
-              ;; FIXME: this is doing nothing; use `debug' more to
-              ;; figure out why.
-              (make-symbol (concat (file-name-base (car parse-tree)) "-parse-tree"))
-              (cdr parse-tree)))))
+(defun w--prepare-sexp-sql-from-file-tokens ()
+  "Prepare an s-expression of SQL statements for `emacsql'.
 
-(add-hook 'w-open-project-hook 'w--compile-parse-tree-to-dml)
+This hook depends on this object being in scope: `parse-tree'.
+That object is in scope when this hook runs with the default
+implementation of `whyse' (this is not meant to imply there are
+non-default implementations, only that hacked up installs won't
+operate with any guarantees)."
+  (mapcar
+   (lambda (file-token)
+     (let ((file-name (car file-token))
+           (chunks (cdr file-token)))
+       ;; FIXME: no applicable method.
+       (emacsql (w-project-database-connection project)
+                (vector :insert :into 'module
+                        :values (mapcar (lambda (chunk)
+                                          "Convert an individual chunk to a vector of objects."
+                                          ;; If the chunk has a name, it is a code chunk;
+                                          ;; otherwise it's documentation.
+                                          (vector (w--chunk-name chunk)
+                                                  (w--chunk-text chunk)
+                                                  file-name
+                                                  nil
+                                                  nil
+                                                  (w--chunk-number chunk)))
+                                        ;; An illustration of the structure of `chunks':
+                                        ;; (list '((a . 1) (b . 2) (c . 3))
+                                        ;;       '((a . 1) (b . 2) (c . 3)))
+                                        chunks)))))
+   parse-tree))
 
-(defun w--compile-file-token-to-dml (file-token)
-  "Compiles the parse subtree for a file token to DML.
-
-FILE-TOKEN is a list, an element of the list `parse-tree' in the
-  lexical scope."
-  (let ((file-name (car file-token))
-        (chunks (cdr file-token)))
-    (cons file-name
-          (mapcar (lambda (chunk)
-                    "Convert an individual chunk to DML."
-                    (apply #'format-message
-                           ;; If the chunk has a name, it is a code chunk;
-                           ;; otherwise it's documentation.
-                           (if-let ((code-chunk-name (w--chunk-name chunk)))
-                               (list "@<<%s>>=\n%s" code-chunk-name (w--chunk-text chunk))
-                             (list "%s" (w--chunk-text chunk)))))
-                  ;; An illustration of the structure of `chunks':
-                  ;; (list '((a . 1) (b . 2) (c . 3))
-                  ;;       '((a . 1) (b . 2) (c . 3)))
-                  chunks))))
+(add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
 
 @ 
 \section{Parsing project nowebs}
@@ -727,8 +727,8 @@ references to) a chunk are important keywords.
   `(name -- (cons 'chunk name)))
 
 (use (bol) "@use" spc (substring !eol) nl
-     `(chunk-name -- (if chunk-name
-                         (cons 'chunk-child-usage chunk-name)
+     `(name -- (if name
+                         (cons 'chunk-child-usage name)
                        (error "UH-OH! There's a syntax error in the tool output!"))))
 @
 
@@ -921,7 +921,7 @@ WHYSE (contributions for improved support are welcomed).
  xr "enduses" nl)
 
 (x-notused xr "notused" spc (substring !eol) nl
-           `(chunk-name -- (cons 'unused! chunk-name)))
+           `(name -- (cons 'unused! name)))
 (x-chunks nwnl
           nwnl
           xr "beginchunks" nl
@@ -1144,18 +1144,26 @@ zeroth-indexed document."
   "Return the subtree for the Nth chunk of a noweb document parse subtree."
   (nth n document))
 
+(defun w--chunk-number (chunk)
+  "Return the chunk number of CHUNK."
+  (or (cdr (assq 'code chunk))
+      (cdr (assq 'docs chunk))))
+
 (defun w--chunk-text (chunk)
-  (cl-loop for elt in chunk
-           collect (if (and (listp elt)
-                            (equal 'text (car elt)))
-                       (cdr elt))))
+  "Join all the strings returned from the collection in the loop,
+and return the single string."
+  (string-join
+   (cl-loop for elt in chunk collect
+            (when (and (listp elt) (equal 'text (car elt)))
+              (cdr elt)))
+   ""))
 
 (defun w--chunk-name (chunk)
   "Return non-nil if CHUNK is a code chunk, and thereby has a name.
 
 The return value, if non-nil, is actually the name of the chunk."
-  (if-let ((chunk-name (assq 'chunk chunk)))
-      (cdr chunk-name)))
+  (if-let ((name (assq 'chunk chunk)))
+      (cdr name)))
 
 @ 
 
@@ -1349,6 +1357,8 @@ The following chunk lists the [[<<required packages>>]]; as of
   feature is implemented a test should be written which conforms to the
   current documentation so that regressions can be caught when changes are
   made.}
+
+\TODO{Adopt/use [[makem.sh]], by ``alphapapa''.}
 
 \subsubsection{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=

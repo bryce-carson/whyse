@@ -90,8 +90,8 @@
          `(name -- (cons 'chunk name)))
 
        (use (bol) "@use" spc (substring !eol) nl
-            `(chunk-name -- (if chunk-name
-                                (cons 'chunk-child-usage chunk-name)
+            `(name -- (if name
+                                (cons 'chunk-child-usage name)
                               (error "UH-OH! There's a syntax error in the tool output!"))))
        (quotation (bol) "@quote" nl
                   (action (when w--peg-parser-within-codep
@@ -195,7 +195,7 @@
         xr "enduses" nl)
 
        (x-notused xr "notused" spc (substring !eol) nl
-                  `(chunk-name -- (cons 'unused! chunk-name)))
+                  `(name -- (cons 'unused! name)))
        (x-chunks nwnl
                  nwnl
                  xr "beginchunks" nl
