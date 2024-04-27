@@ -1,15 +1,15 @@
 VERSION = 0.2
 
 weave: clean
-	noweave -troff -autodefs elisp -index whyse.nw > whyse.troff
+	noweave -troff -autodefs elisp -index whyse.nr > whyse.troff
 
 compile-pdf: tangle weave
 	noroff -mms -Tpdf whyse.troff > whyse.pdf
 
 tangle: clean
-	notangle -Rwhyse.el whyse.nw > whyse.el
-	notangle -Rwhyse-pkg.el whyse.nw > whyse-pkg.el
-	notangle -Rtest-parser-with-temporary-buffer.el whyse.nw > test-parser-with-temporary-buffer.el
+	notangle -Rwhyse.el whyse.nr > whyse.el
+	notangle -Rwhyse-pkg.el whyse.nr > whyse-pkg.el
+	notangle -Rtest-parser-with-temporary-buffer.el whyse.nr > test-parser-with-temporary-buffer.el
 	mkdir whyse-${VERSION}
 	mv -t whyse-${VERSION} whyse.el whyse-pkg.el
 	cp -t whyse-${VERSION} LICENSE
@@ -22,8 +22,8 @@ clean:
 	rm -rf whyse-*/
 
 tool-syntax:
-	/usr/lib/noweb/markup ~/src/whyse/whyse.nw | \
-  /usr/lib/noweb/autodefs.elisp | \
-  /usr/lib/noweb/finduses | \
+	/usr/local/lib/markup ~/src/whyse/whyse.nr | \
+  /usr/local/lib/autodefs.elisp | \
+  /usr/local/lib/finduses | \
   ~/src/whyse/clean-docs.awk | \
-  /usr/lib/noweb/noidx -delay
+  /usr/local/lib/noidx -delay

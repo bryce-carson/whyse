@@ -49,7 +49,7 @@ A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
 struct used during runtime.
 
-<<Customization and global variables>>=
+<<Customization and global variables>>= (emacs-lisp) (emacs-lisp)
 (defgroup whyse nil
   "noWeb HYpertext System in Emacs"
   :tag "WHYSE"
@@ -73,7 +73,7 @@ example of that level of complexity.  The shell script is later executed by
 WHYSE upon loading the project, and the standard output captured for parsing by
 a PEG parser.
 .
-<<Widgets>>=
+<<Widgets>>= (emacs-lisp)
 (define-widget 'w--project-widget 'list
   "The WHYSE project widget type."
   :format "\n%v\n"
@@ -124,7 +124,7 @@ Customize would look like is given here for elucidation (as it would exist in a
 The function documentation string should be expalnatory enough for the behaviour
 of the [[whyse]] command.
 .
-<<WHYSE>>=
+<<WHYSE>>= (emacs-lisp)
 (defun whyse ()
   "Opens the default whyse project, conditionally running hooks.
 
@@ -157,7 +157,7 @@ whyse group."
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
 
-<<Customization and global variables>>=
+<<Customization and global variables>>= (emacs-lisp)
 (defcustom w-load-default-project? t
   "Non-nil values mean the system will load the default project.
 
@@ -181,7 +181,7 @@ The structure accessed in the namesake command of the package is rather simple.
 .\" TODO: Ensure that the previous statement in-prose is still correct.
 It is defined quickly, then explained briefly.
 .
-<<WHYSE project structure>>=
+<<WHYSE project structure>>= (emacs-lisp)
 (cl-defstruct w-project
   "A WHYSE project"
   ;; Fundamental
@@ -228,7 +228,7 @@ Spacemacs' cache directory, and the name of the project with [[.db]]
 appended.  Note that concatenating [[nil]] with a string is the same
 as returning the string unchanged.
 .
-<<return a filename for the project database>>=
+<<return a filename for the project database>>= (emacs-lisp)
 (file-name-concat
  ;; Usually ~/.emacs.d/
  user-emacs-directory
@@ -246,10 +246,10 @@ the path name of the database to connect to or create is sufficient to establish
 a connection, so the next step is to connect to the database and store the
 connection object in the appropriate slot of the project struct.
 .
-<<setup project database>>=
+<<setup project database>>= (emacs-lisp)
 <<create a database connection>>
 <<map over SQL s-expressions, creating the tables>>
-<<create a database connection>>=
+<<create a database connection>>= (emacs-lisp)
 (setf (w-project-database-connection project)
       (emacsql-sqlite <<return a filename for the project database>>))
 @
@@ -268,7 +268,7 @@ s-expressions.
 .
 .\" TODO: ensure that this database is in 3NF and make a nice database planning
 .\" documents for it.
-<<map over SQL s-expressions, creating the tables>>=
+<<map over SQL s-expressions, creating the tables>>= (emacs-lisp)
 (mapcar (lambda (expression)
           (emacsql (w-project-database-connection project) expression))
 
@@ -308,7 +308,7 @@ WHYSE is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by Brown and
 Czejdo (\TODO{cite these again}).
 .
-<<open-project-hook>>=
+<<open-project-hook>>= (emacs-lisp)
 (defvar w-open-project-hook '()
   "Hooks to run when `whyse' has opened a project.")
 @
@@ -318,7 +318,7 @@ document into a database.  Before it does that it works upon the parse
 tree, preparing it into a suitable format usable with EmacSQL (which the
 author is aware he's stated elsewhere).
 .
-<<default hook functions>>=
+<<default hook functions>>= (emacs-lisp)
 (defun w--log-in-buffer (buffer-name &rest body)
   "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
   (save-mark-and-excursion
@@ -392,7 +392,7 @@ produced by the project shell script.
 The grammar can be broken into five sections, each covering some part of
 parsing.
 .
-<<PEG rules>>=
+<<PEG rules>>= (emacs-lisp)
 <<high-level Noweb tool syntax structure>>
 <<files and their paths>>
 <<chunks and their boundaries>>
@@ -407,7 +407,7 @@ of one or more files, which are each composed of at least one chunk.
 Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
 defined.
 .
-<<high-level Noweb tool syntax structure>>=
+<<high-level Noweb tool syntax structure>>= (emacs-lisp)
 ;;; Overall Noweb structure
 (noweb (bob) (not header) (+ file) (not trailer) (eob))
 @
@@ -423,7 +423,7 @@ and usage of Noweb (a historical version was entirely implemented in
 AWK).  The following [[<<meta rules>>]] define rules which organize the
 constructs of a line-oriented, or data-oriented, syntax.
 .
-<<meta rules>>=
+<<meta rules>>= (emacs-lisp)
 ;; Helpers
 (nl (eol) "\n")
 (!eol (+ (not "\n") (any)))
@@ -448,7 +448,7 @@ tangled when no specific root chunk is given on the command line.
 .\" before the first file, and a single succeeding documentation chunk after the
 .\" last file.
 .
-<<files and their paths>>=
+<<files and their paths>>= (emacs-lisp)
 ;; Technically, file is a tagging keyword, but that classification only
 ;; makes sense in the Hacker's guide, not in the syntax.
 (file (bol) "@file" spc (substring path) nl
@@ -478,7 +478,7 @@ it.  The stack pushing operations in [[kind]] and [[ordinal]] delimit chunks by
 their kinds and number, and the stack actions in the [[end]] rule check that the
 chunk-related tokens on the stack are balanced.
 .
-<<chunks and their boundaries>>=
+<<chunks and their boundaries>>= (emacs-lisp)
 (chunk begin (list (* chunk-contents)) end)
 (begin (bol) "@begin" spc kind spc ordinal (eol) nl
        (action (if (string= (cl-second peg--stack) "code")
@@ -553,7 +553,7 @@ textual description and reality are in step.
 .\" .I whyse.nw
 .\" firstly."
 .
-<<chunks and their boundaries>>=
+<<chunks and their boundaries>>= (emacs-lisp)
 (chunk-contents
  (or
   <<structural keywords>>
@@ -569,7 +569,7 @@ chunk with a fatal keyword inside it does not invalidate a Noweb, it still does:
 the fatal keyword causes a fatal crash in parsing regardless.  Those structural
 keywords which may be used inside the contents of a chunk are given next.
 .
-<<structural keywords (except quotations)>>=
+<<structural keywords (except quotations)>>= (emacs-lisp)
 ;; structural
 text
 nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
@@ -579,7 +579,7 @@ use ;; NOTE: related to the `identifier-used-in-module' table.
 .PP
 All structural keywords, then, are:
 .
-<<structural keywords>>=
+<<structural keywords>>= (emacs-lisp)
 <<structural keywords (except quotations)>>
 quotation
 @ and no more.
@@ -588,7 +588,7 @@ quotation
 There are tagging keywords also, which are used to associate metadata with
 certain texts.
 .
-<<tagging keywords>>=
+<<tagging keywords>>= (emacs-lisp)
 ;; tagging
 line
 language
@@ -613,7 +613,7 @@ generate the label, so it will insert [[@notdef]] where it would otherwise
 upcase ``nw'' and then insert the label.  This is why [[x-undefined]] is placed
 among the other [[<<tool errors>>]] keywords.
 .
-<<tool errors>>=
+<<tool errors>>= (emacs-lisp)
 ;; error
 fatal
 x-undefined
@@ -625,7 +625,7 @@ in the source text are replaced with the appropriate number of @nl
 keywords (per convention); these are reduced to a single text token when
 they are adjacent on the [[peg--stack]].
 .
-<<chunks and their boundaries>>=
+<<chunks and their boundaries>>= (emacs-lisp)
 (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
       `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
 (nwnl (bol) (substring "@nl") nl
@@ -637,7 +637,7 @@ they are adjacent on the [[peg--stack]].
 Nowebs are built from chunks, so the definition and usage of (i.e.
 references to) a chunk are important keywords.
 .
-<<chunks and their boundaries>>=
+<<chunks and their boundaries>>= (emacs-lisp)
 (defn "@defn" spc (substring !eol) nl
   `(name -- (cons 'chunk name)))
 
@@ -653,7 +653,7 @@ It may also contain quoted code bracketed by [[@quote]] and [[@endquote]]. Every
 [[@quote]] must be terminated by an [[@endquote]] within the same chunk. Quoted
 code corresponds to the [[...]] construct in the noweb source.
 .RE
-<<quotations>>=
+<<quotations>>= (emacs-lisp)
 (quotation (bol) "@quote" nl
            (action (when w--peg-parser-within-codep
                      (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
@@ -662,7 +662,7 @@ code corresponds to the [[...]] construct in the noweb source.
            `(lst -- (cons 'quotation lst)))
 @
 .
-<<keyword definitions>>=
+<<keyword definitions>>= (emacs-lisp)
 (line (bol) "@line" spc (substring ordinal) nl
       `(o -- (cons 'line o)))
 
@@ -696,7 +696,7 @@ not given full "keyword" status (defined as a PEX rule) but
 exist as constants in the definition of a rule that defines the
 grouping.
 .
-<<keyword definitions>>=
+<<keyword definitions>>= (emacs-lisp)
 ;; Index
 <<indexing and cross-referencing set-off words>>
 <<fundamental indexing keywords, which are restricted to within a code chunk>>
@@ -724,11 +724,11 @@ identifiers in a chunk and the usages of identifiers in a chunk.  They
 may seem redundant, but are not; the Noweb Hacker's Guide offers a
 better explanation of the differences.
 .
-<<indexing and cross-referencing set-off words>>=
+<<indexing and cross-referencing set-off words>>= (emacs-lisp)
 (idx (bol) "@index" spc)
 (xr (bol) "@xref" spc)
 
-<<fundamental indexing keywords, which are restricted to within a code chunk>>=
+<<fundamental indexing keywords, which are restricted to within a code chunk>>= (emacs-lisp)
 (i-define-or-use
  idx
  (substring (or "defn" "use")) spc (substring !eol) nl
@@ -740,7 +740,7 @@ better explanation of the differences.
 <<identifiers defined in a chunk>>
 <<identifiers used in a chunk>>
 
-<<identifiers defined in a chunk>>=
+<<identifiers defined in a chunk>>= (emacs-lisp)
 (i-definitions idx "begindefs" nl
                (list (+ (and (+ i-isused) i-defitem)))
                idx "enddefs" nl
@@ -750,7 +750,7 @@ better explanation of the differences.
 (i-defitem idx (substring "defitem") spc (substring !eol) nl
            `(d i -- (cons 'def-item i)))
 
-<<identifiers used in a chunk>>=
+<<identifiers used in a chunk>>= (emacs-lisp)
 (i-usages idx "beginuses" nl
           (list (+ (and (+ i-isdefined) i-useitem)))
           idx "enduses" nl
@@ -763,7 +763,7 @@ The summary index of identifiers is a file--specific set of keywords.
 The index lists all identifiers defined in the file (at least all of
 those recognized by the autodefinitions filter).
 .
-<<the index of identifiers>>=
+<<the index of identifiers>>= (emacs-lisp)
 (i-identifiers idx "beginindex" nl
                (list (+ i-entry))
                idx "endindex" nl
@@ -785,7 +785,7 @@ WHYSE. See the Noweb Hacker's Guide for more information.
 not widely used (assumedly) nor well-documented, so it is unsupported by
 WHYSE (contributions for improved support are welcomed).
 .PP
-<<unsupported indexing keywords>>=
+<<unsupported indexing keywords>>= (emacs-lisp)
 ;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
 ;; widely used (assumedly) nor well-documented, so it is unsupported by
 ;; WHYSE (contributions for improved support are welcomed).
@@ -796,7 +796,7 @@ WHYSE (contributions for improved support are welcomed).
 .NH 3
 cross referencing
 .
-<<cross-referencing keywords>>=
+<<cross-referencing keywords>>= (emacs-lisp)
 (x-label xr (substring "label" spc label) nl
          `(substr -- (cons 'x-label (cadr (split-string substr)))))
 (x-ref xr (substring "ref" spc label) nl
@@ -856,7 +856,7 @@ cross referencing
 (x-tag xr "tag" spc label spc !eol nl)
 (label (+ (or "-" [alnum]))) ;; A label never contains whitespace.
 
-<<error-causing keywords>>=
+<<error-causing keywords>>= (emacs-lisp)
 ;; User-errors (header and trailer) and tool-error (fatal)
 ;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
 (header (bol) "@header" ;; formatter options
@@ -867,7 +867,7 @@ cross referencing
        (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
 @
 .
-<<index nl error message>>=
+<<index nl error message>>= (emacs-lisp)
 (string-join
  '("\"@index nl\" detected."
   "This indicates hand-written @ %def syntax in the Noweb source."
@@ -880,7 +880,7 @@ To summarize this section, since it is longer than the previous section,
 the object is to convert the noweb document to tool syntax and parse it
 with the peg parser.
 .
-<<with-project>>=
+<<with-project>>= (emacs-lisp)
 (defun w-parse-with-project-and-temp-buffer (project)
   "Parses a project PROJECT in a temporary buffer.
 
@@ -892,7 +892,7 @@ member of that list."
     (goto-char (point-min))
     (w--parse-current-buffer-with-rules)))
 
-<<buffer parsing function>>=
+<<buffer parsing function>>= (emacs-lisp)
 ;; FIXME: the current parse tree contains a `nil' after the chunk type
 ;; and number assoc, and that needs to be analyzed. Why is this `nil' in
 ;; the stack? I assume and believe it is because of the collapsing of
@@ -922,7 +922,7 @@ member of that list."
     (message "PEXes which failed:\n%S" lst)))
 @
 .
-<<Customization and global variables>>=
+<<Customization and global variables>>= (emacs-lisp)
 (defvar w--parse-success t
   "The success or failure of the last parsing of noweb tool syntax.")
 @
@@ -1006,7 +1006,7 @@ the zeroth-indexed document.  It's quite a simple function. To obtain a
 given chunk of this document from the parse tree the result of the
 function is called with [[nth]] and the index of the chunk.
 .
-<<functions for navigating WHYSE parse trees>>=
+<<functions for navigating WHYSE parse trees>>= (emacs-lisp)
 (defun w--nth-document-file-name (nth-document parse-tree)
   "Return the file name of the nth-indexed document in the parse tree.
 
@@ -1045,12 +1045,12 @@ The return value, if non-nil, is actually the name of the chunk."
 
 @
 .
-<<Code>>= 
+<<Code>>= (emacs-lisp) 
 <<functions for navigating WHYSE parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
 .
-<<functions to collapse text and newline tokens into their largest possible form>>=
+<<functions to collapse text and newline tokens into their largest possible form>>= (emacs-lisp)
 (defun w--concatenate-text-tokens (new-token)
   "Join the values of two text token associations in a two-element token alist.
 
@@ -1091,7 +1091,7 @@ If the two associations shouldn't be joined, return them to the stack."
 
 @
 .
-<<push the compiled SQL to the database and to the history stack>>=
+<<push the compiled SQL to the database and to the history stack>>= (emacs-lisp)
 ;; NOTE: the result of evaluating the SQL is pushed to the history stack
 ;; alongside the SQL that was executed.
 (cl-pushnew (cons (emacsql (w-project-database-connection default-project)
@@ -1128,7 +1128,7 @@ using
 The makefile distributed alongside [[whyse.nw]] in the tarball contains the
 command-line used to tangle and weave WHYSE..
 .
-<<whyse.el>>=
+<<whyse.el>>= (emacs-lisp)
 <<Emacs Lisp package headers>>
 <<Licensing and copyright>>
 <<Commentary>>
@@ -1136,7 +1136,7 @@ command-line used to tangle and weave WHYSE..
 <<provide the whyse feature and list the file local variables>>
 @
 .
-<<Emacs Lisp package headers>>=
+<<Emacs Lisp package headers>>= (emacs-lisp)
 ;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: nil -*-
 ;; Yes, you read that right: no lexical binding in this file.
 
@@ -1149,7 +1149,7 @@ command-line used to tangle and weave WHYSE..
 
 ;; This file is not part of GNU Emacs.
 
-<<whyse-pkg.el>>=
+<<whyse-pkg.el>>= (emacs-lisp)
 (define-package "whyse" "0.1" "noWeb HYpertext System in Emacs"
   '(<<required packages>>))
 @
@@ -1158,14 +1158,14 @@ The following chunk lists the [[<<required packages>>]]; as of
 [[whyse-0.1-devel]] the only required packages are [[peg]] and
 [[cl-lib]].
 .
-<<required packages>>=
+<<required packages>>= (emacs-lisp)
 (emacs "25.1")
 (emacsql "20230220")
 (peg "1.0.1")
 (cl-lib "1.0")
 @
 .
-<<Licensing and copyright>>=
+<<Licensing and copyright>>= (emacs-lisp)
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation, either version 3 of the
@@ -1180,7 +1180,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 ;; along with this program. If not, see
 ;; <https://www.gnu.org/licenses/>.
 
-<<Commentary>>=
+<<Commentary>>= (emacs-lisp)
 ;;; Commentary:
 ;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
 ;; Programming_ (1991).
@@ -1198,7 +1198,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 ;; information about literate programming, and citations (especially
 ;; of those given credit here for ideating WHYSE itself).
 
-<<Code>>=
+<<Code>>= (emacs-lisp)
 ;;; Code:
 ;;;; Compiler directives
 (eval-when-compile (require 'wid-edit))
@@ -1216,7 +1216,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 ;;;###autoload
 <<WHYSE>>
 
-<<provide the whyse feature and list the file local variables>>=
+<<provide the whyse feature and list the file local variables>>= (emacs-lisp)
 (provide 'whyse)
 
 ;; Local Variables:
@@ -1241,7 +1241,7 @@ TESTING
 .NH 2
 Parsing tool syntax within a temporary buffer
 .
-<<test-parser-with-temporary-buffer.el>>=
+<<test-parser-with-temporary-buffer.el>>= (emacs-lisp)
 ;; -*- lexical-binding: nil; -*-
 (defvar w--parse-success t
   "A simple boolean regarding the success or fialure of the last
@@ -1264,7 +1264,7 @@ Parsing tool syntax within a temporary buffer
 @
 .EL
 .\" Local Variables:
-.\" mode: nroff
+.\" mode: poly-noroff-mode
 .\" noweb-code-mode: emacs-lisp-mode
 .\" fill-column: 80
 .\" End:
