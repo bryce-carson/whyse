@@ -148,12 +148,12 @@
        ;; WHYSE (contributions for improved support are welcomed).
        (i-localdefn idx "localdefn" spc !eol nl)
        (i-nl idx "nl" spc !eol nl
-             (action (error (string-join
-                             '("\"@index nl\" detected."
-                              "This indicates hand-written @ %def syntax in the Noweb source."
-                              "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
-                              "Write an autodefs AWK script for the language you are using.")
-                             "\n"))))
+             (action (error (concat
+                             "\"@index nl\" detected. "
+                             "This indicates hand-written @ %def syntax in the Noweb source. "
+                             "This syntax was deprecated in Noweb 2.10, and is entirely unsupported. "
+                             "Write an autodefs AWK script for the language you are using.")
+)))
 
        ;; Cross-reference
        (x-label xr (substring "label" spc label) nl
@@ -220,11 +220,18 @@
        ;; User-errors (header and trailer) and tool-error (fatal)
        ;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
        (header (bol) "@header" ;; formatter options
-               (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+               (action
+                (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
        (trailer (bol) "@trailer" ;; formatter
-                (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+                (action
+                 (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
        (fatal (bol) "@fatal"
-              (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
+              (action (error
+                       (concat
+                        "[FATAL] There was a fatal error in the pipeline. "
+                        "Stash the work area and submit a bug report against Noweb,"
+                        " WHYSE, "
+                        "and other relevant tools."))))
        ;; Helpers
        (nl (eol) "\n")
        (!eol (+ (not "\n") (any)))
@@ -256,5 +263,4 @@
 ;; mode: lisp-interaction
 ;; no-byte-compile: t
 ;; no-native-compile: t
-;; eval: (read-only-mode)
 ;; End:
