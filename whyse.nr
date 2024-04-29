@@ -1,35 +1,30 @@
 \" -*- mode: poly-noroff; noweb-code-mode: emacs-lisp; fill-column: 80; -*-
 \" Copyright © 2023 Bryce Carson
-\"
+
 \" The file local variable line above the copyright notice is removed with AWK
 \" for compatibility purposes. The file-end local variable block comment was not
 \" functioning with the in-development version of `poly-noroff-mode'.
-\"
+
+.P \" Initialize the memorandum (mm) package before using troff instructions.
+
 \" Document formatting decisions:
 \" • W×H 6"×9";
-\" • Copy the page dimensions and document layout of Narain Gehani's book: "An Advanced Introduction to C, ANSI C Edition";
+\" • Copy the page dimensions and document layout of Narain Gehani's book: "An
+\"       Advanced Introduction to C, ANSI C Edition";
 \" • Use, at first, the macros for Noweb chunks provided by Norman Ramsey;
-\"
+
 \" BEGIN DOCUMENT FORMATTING
 .pl 9i
 .po 0.625i
 .ll 4.75i
+.li 0i
 \" END DOCUMENT FORMATTING
-\"
-.TL "WHYSE: The noWeb HYpertext System in Emacs"
+
+.TL
+WHYSE:
+The noWeb HYpertext System in Emacs
 .AU "Bryce Carson"
-.DA "Copyright 2024 Bryce Carson"
-\"
-\" FIXME: finduses.nw and the recognizer.nw need some tweaking to better
-\" support LISP identifiers. It may be as simple as moving `-' from SYMBOLS to
-\" ALPHANUMERIC.
-\"
-\" TODO: The Emacs poly-noweb mode should have syntax highlighting that does
-\" not hightlight quotations of chunk names within \LaTeX{} comments. should be
-\" aware that this is a comment, so that the proper syntax highlighting is
-\" applied (i.e. none is applied to the quotation).
-\"
-.AS
+.AS 0 0
 The (no)Web HYpertext System in Emacs, or WHYSE is an integrated development
 environment for Noweb within Emacs.  It is based off of an academic paper written
 in 1991 by Brown and Czejdo.  A paper describing this implementation---written in
@@ -51,8 +46,8 @@ times until the full implementation is understood.  I recommend modifying the
 system using itself to keep organized, and writing literately; you'll thank
 yourself later for doing so.
 .AE
-.H 1 "WHYSE PROJECTS"
-.P
+.MT 4
+.H 1 "WHYSE PROJECTS" \"Text after an H call is formatted as a paragraph. No P!
 The organization of this literate program is linear, with aspects of
 the program explained as the user would encounter them, more or less.  A user
 will read from the package description that they should call an interactive
@@ -67,7 +62,7 @@ disable it.
 A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
 struct used during runtime.
-
+.
 <<Customization and global variables>>= (emacs-lisp)
 (defgroup whyse nil
   "noWeb HYpertext System in Emacs"
@@ -132,14 +127,18 @@ WHYSE upon loading the project, and the standard output captured for parsing by 
 An example of what the list generated from the information entered into
 Customize would look like is given here for elucidation (as it would exist in a
 [[custom-set-variables]] form).
-\" A potentially delicate quotation follows here.
-[['(w-registered-projects
-    '(("noWeb HYpertext System in Emacs"
-       "~/Desktop/whyse.nw"
-       "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
-    nil
-    (widget))]]
-.
+
+.DS
+.VERBON 0 8
+'(w-registered-projects
+  '(("noWeb HYpertext System in Emacs"
+     "~/Desktop/whyse.nw"
+     "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
+  nil
+  (widget))
+.VERBOFF
+.DE
+
 .P
 The function documentation string should be expalnatory enough for the behaviour
 of the [[whyse]] command.
@@ -233,9 +232,8 @@ Initialization when the interactive command is called is covered next;
 to summarize: [[w-open-project-hook]] is run.
 \"TODO: Describe initialization of the system after parsing.
 
-.H 1 "Database Initialization"
 \"TODO: Finish the creation of a database. Use what I learned in the fall!
-.P
+.H 1 "Database Initialization"
 Every project should have a database file located somewhere within the
 user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
 cache directory is used, otherwise the database is made in the user's
@@ -319,8 +317,7 @@ s-expressions.
            (module-number integer)]
           (:primary-key [topic-name module-number]))]))
 @
-
-.H 1 "Customizing the behaviour of [[whyse]] with hooks"
+.H 1 "Customizing the behaviour of \fIwhyse\fP with hooks"
 .P
 WHYSE is meant to be customizable, defining as little as necessary to "implement a development environment for Noweb as described by Brown and"
 Czejdo (\TODO{cite these again}).
@@ -384,10 +381,9 @@ tool syntax.
 .P
 The
 .it peg
-package provides automatic parser generation from a
-formal PEG. grammar.  The grammar is based off of the description of the tool
-syntax given in the Noweb Hacker's Guide. \#formally cite the Noweb Hacker's
-Guide}
+package provides automatic parser generation from a formal PEG grammar. The
+grammar is based off of the description of the tool syntax given in the Noweb
+Hacker's Guide. \# formally cite the Noweb Hacker's Guide
 
 \" NOTE: to match the new line character in a text stream, the string
 \" literal "\n" must be included. The (eol) PEG rule /tests/ for the end
@@ -395,7 +391,7 @@ Guide}
 \" Lisp (eolp). To test if point is at the end of a line, use (eol), to
 \" match the end of line, and permit parsing the next line of input,
 \" include the string literal "\n".
-.H 1 "PEG rules"
+.H 2 "PEG rules"
 .P
 Every character of an input text to be parsed by parsing expressions in
 a PEG must be defined in terminal rules of the formal grammar.  The root
@@ -404,8 +400,8 @@ rule in the grammar for Noweb tool syntax is the appropriately named
 root rule [[noweb]] is ran on the buffer containing the tool syntax
 produced by the project shell script.
 .P
-The grammar can be broken into five sections, each covering some part of
-parsing.
+The grammar can be broken into five sections,
+each covering some part of parsing.
 .
 <<PEG rules>>= (emacs-lisp)
 <<high-level Noweb tool syntax structure>>
@@ -524,34 +520,32 @@ chunk-related tokens on the stack are balanced.
 Valid [[chunk-contents]] is somewhat confusing, because chunks
 can contain many types of information other than text and new
 lines.  The definition of what is valid follows.
-.
-.nr PI 2n
-.IP \*(BU
+.P 1 \*(BU
 .CW text
-.IP \*(BU
+.P 1 \*(BU
 .CW nl
-.IP \*(BU
+.P 1 \*(BU
 .CW defn
 .I name
-.IP \*(BU
+.P 1 \*(BU
 .CW use
 .I name
-.IP \*(BU
+.P 1 \*(BU
 .CW line
 .I n
-.IP \*(BU
+.P 1 \*(BU
 .CW language
 .I language
-.IP \*(BU
+.P 1 \*(BU
 .CW index ...
-.IP \*(BU
+.P 1 \*(BU
 .CW xref ...
 .
 .P
 Any other keywords are invalid inside a code block.  An example of an invalid
 keyword is anything related to quotations!
 .
-.I This restriction only applies to code blocks, however, and documentation chunks may contain quotations, of course.
+.I "This restriction only applies to code blocks, however, and documentation chunks may contain quotations, of course."
 .
 As an exception, the keywords were originally banned inside code
 chunks, but to parse the noweb document in which WHYSE itself was written it
@@ -661,13 +655,12 @@ references to) a chunk are important keywords.
                          (cons 'chunk-child-usage name)
                        (error "UH-OH! There's a syntax error in the tool output!"))))
 @
-.RS
-.IP
+.P 1
 Documentation may contain text and newlines, represented by @text and [@nwnl].
-It may also contain quoted code bracketed by [[@quote]] and [[@endquote]]. Every
-[[@quote]] must be terminated by an [[@endquote]] within the same chunk. Quoted
-code corresponds to the [[...]] construct in the noweb source.
-.RE
+It may also contain quoted code bracketed by [[@quote]] and [[@endquote]].
+Every [[@quote]] must be terminated by an [[@endquote]] within the same chunk.
+Quoted code corresponds to the [[...]] construct in the noweb source.
+.
 <<quotations>>= (emacs-lisp)
 (quotation (bol) "@quote" nl
            (action (when w--peg-parser-within-codep
@@ -697,12 +690,10 @@ The \textit{Noweb Hacker's Guide} lists these two lines in the ``Tagging
 keywords'' table, indicating that it's unlikely (or forbidden) that the
 index or xref keywords would appear alone without any subsequent
 information on the same line.
-.RS
-.IP
-@index ... Index information.
-.IP
-@xref ... Cross-reference information
-.RE
+.P 1
+\f(CW\@index\fP ... (Index information)
+.P 1
+\@xref ... (Cross-reference information)
 .P
 There are many keywords defined by the Noweb tool syntax, so they
 are referenced in this block and defined and documented
@@ -729,7 +720,6 @@ Further keywords are categorized neatly as Indexing or
 Cross--referencing keywords, so they are contained in subsections.
 .P
 .H 2 "indexing"
-.P
 Indexing keywords, both those used within chunks and those used outside
 of chunks, are defined in this section.  The [[<<fundamental indexing
 keywords, which are restricted to within a code chunk>>]], index
@@ -792,11 +782,12 @@ those recognized by the autodefinitions filter).
             `(use lst -- (cons 'use lst)))
 @
 .P
-The following chunk's name is documentation enough for the purposes of
-WHYSE. See the Noweb Hacker's Guide for more information. ".P"
-[[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
-not widely used (assumedly) nor well-documented, so it is unsupported by
-WHYSE (contributions for improved support are welcomed). ".P"
+The following chunk's name is documentation enough for the purposes of WHYSE.
+See the Noweb Hacker's Guide for more information.
+[[@index nl]] was deprecated in Noweb 2.10,
+and [[@index localdefn]] is not widely used (assumedly) nor well-documented,
+so it is unsupported by WHYSE (contributions for improved support are welcomed).
+.
 <<unsupported indexing keywords>>= (emacs-lisp)
 ;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
 ;; widely used (assumedly) nor well-documented, so it is unsupported by
@@ -806,7 +797,6 @@ WHYSE (contributions for improved support are welcomed). ".P"
       (action (error <<index nl error message>>)))
 @
 .H 3 "cross referencing"
-.P
 <<cross-referencing keywords>>= (emacs-lisp)
 (x-label xr (substring "label" spc label) nl
          `(substr -- (cons 'x-label (cadr (split-string substr)))))
@@ -945,7 +935,6 @@ member of that list."
   "The success or failure of the last parsing of noweb tool syntax.")
 @
 .H 1 "Processing parsed nowebs into SQL"
-.P
 This section covers how the parsed text generated in the last section is
 processed, creating a series of SQL statements that will be executed by
 SQLite using the interface provided by the EmacSQL package.
@@ -959,25 +948,25 @@ on the commmand-line elsewhere when the document is used).
 Deeper, each document-list contains as the second atom a list of all of
 its contents, which is an association list thereof.  Each association in
 the alist should be self-explanatory.
-.DS
-.CW
-'((noweb-document-one
-\ \ \ ((docs\ .\ 0)
-\ \ \ \ (text\ .\ "\tex{}\ is\ cool!"))
-\ \ \ ((code\ .\ 1)
-\ \ \ \ (text\ .\ "(message\ \"LISP\ is\ awesome!\")")))
-\ \ (noweb-document-two
-\ \ \ ((code\ .\ 0)
-\ \ \ \ (text\ .\ "asdf\ is\ a\ system\ definition\ format\ in\ Common\ LISP,"))
-\ \ \ \ (nwnl\ .\ "\n")
-\ \ \ \ (text\ .\ "and\ I\ like\ to\ use\ it.")
-\ \ \ ((code\ .\ 1)
-\ \ \ \ (text\ .\ "jkl;\ is\ the\ right-handed\ corollary\ of\ asdf."))
-\ \ \ ((docs\ .\ 2)
-\ \ \ \ (text\ .\ "\latex{}\ is\ great!"))
-\ \ \ ((docs\ .\ 3)
-\ \ \ \ (text\ .\ "Noweb,\ written\ by\ Norman\ Ramsey\ is\ sweet!"))))
-.DE
+.P
+.VERBON
+\'((noweb-document-one
+   ((docs . 0)
+    (text . "\\tex{} is cool!"))
+   ((code . 1)
+    (text . "(message ``LISP is awesome!'')")))
+  (noweb-document-two
+   ((code . 0)
+    (text . "asdf is a system definition format in Common LISP,"))
+    (nwnl . "\\n")
+    (text . "and I like to use it.")
+   ((code . 1)
+    (text . "jkl; is the right-handed corollary of asdf."))
+   ((docs . 2)
+    (text . "\\latex{} is great!"))
+   ((docs . 3)
+    (text . "Noweb, written by Norman Ramsey is sweet!"))))
+.VERBOFF
 .P
 There are many steps to compiling the parse tree into SQL that can be
 directly executed by the backend database engine. The first step is to
@@ -993,16 +982,16 @@ and form feed characters. These tokens exist because the
 cross-referencing tokens fragment the text lines, and new lines in the
 noweb document are treated specially to facilitate this fragmentation.
 The parsed from of the tool syntax is shown in this example from a
-development version of
-.I WHYSE.
-.B1
+development version of \fIWHYSE\fP.
+.P
+.VERBON
 (text . "  and \\textsc{Noweb}'s \texttt{finduses.nw}!")
 (nwnl . "\\n")
 (text . "\\end{enumerate}")
 (nwnl . "\\n")
 (text . "")
 (nwnl . "\\nl")
-.B2
+.VERBOFF
 .P
 In this development version it was not fully decided how tokens and the
 data they correspond to should be arranged, so the newlines are not part
@@ -1152,7 +1141,7 @@ command-line used to tangle and weave WHYSE..
 <<Code>>
 <<provide the whyse feature and list the file local variables>>
 @
-.PP
+.P
 <<Emacs Lisp package headers>>= (emacs-lisp)
 ;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: nil -*-
 ;; Yes, you read that right: no lexical binding in this file.
@@ -1167,7 +1156,7 @@ command-line used to tangle and weave WHYSE..
 ;; This file is not part of GNU Emacs.
 
 @
-.PP
+.P
 The version in the following package definition file is updated with an AWK
 script with GNU Make, while in the noroff source (nroff with noweb) the string
 after "whyse" actually appears as "VERSION".
@@ -1176,7 +1165,7 @@ after "whyse" actually appears as "VERSION".
 (define-package "whyse" "VERSION" "noWeb HYpertext System in Emacs"
   '(<<required packages>>))
 @
-.PP
+.P
 The following chunk lists the [[<<required packages>>]]; as of
 [[whyse-0.1-devel]] the only required packages are [[peg]] and
 [[cl-lib]].
@@ -1243,22 +1232,17 @@ The following chunk lists the [[<<required packages>>]]; as of
 (provide 'whyse)
 
 @
-..H 1
-INDICES
-.P
+\" .H 1 INDICES
 \" section{Indices}
 \"subsection{Chunks}
 \" FIXME: How do I include nowebchunks?
 \"subsection{Identifiers}
 \" FIXME: How do I include nowebindex?
-.
-.H 1 "TESTING"
-.P
+\" .H 1 TESTING
 \" TODO: Adopt the ERT (Emacs Regression Tests) package to test WHYSE features as they are developed and become featureful. When a feature is implemented a test should be written which conforms to the current documentation so that regressions can be caught when changes are made.
 \" TODO: Adopt/use makem.sh by alphapapa.
-
+\" .
 .H 2 "Parsing tool syntax within a temporary buffer"
-.P
 <<test-parser-with-temporary-buffer.el>>= (emacs-lisp)
 ;; -*- lexical-binding: nil; -*-
 (defvar w--parse-success t

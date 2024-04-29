@@ -1,0 +1,10 @@
+This file contains code excerpts and thoughts related to issues in both the
+documentation and implementation of whyse.
+
+FIXME: finduses.nw and the recognizer.nw need some tweaking to better support
+LISP identifiers. It may be as simple as moving `-' from SYMBOLS to
+ALPHANUMERIC.
+
+FIXME: Noweb's troff macros cause code chunks to have an inconsistent size, and
+also prohibit chunks breaking over multiple pages (which must be possible in the
+case of very large chunks).

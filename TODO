@@ -1,0 +1,4 @@
+TODO: The Emacs poly-noweb mode should have syntax highlighting that does not
+hightlight quotations of chunk names within \LaTeX{} comments. should be aware
+that this is a comment, so that the proper syntax highlighting is applied (i.e.
+none is applied to the quotation).

@@ -11,8 +11,12 @@ hack:
 
 .PHONY: weave
 weave: clean hack
-	noweave -troff -autodefs elisp -index $(TEMP_FILE) > whyse.troff
+	noweave -n -delay -troff -autodefs elisp -index $(TEMP_FILE) > whyse.troff # first run
+	noroff whyse.troff > /dev/null # ignore warnings about CLIST and ILIST
+	noweave -n -delay -troff -autodefs elisp -index $(TEMP_FILE) > whyse.troff # second run
 
+# The noroff shell script is a wrapper around groff, which passes along
+# arguments to groff, like grog, but specific to noweb documents.
 .PHONY: compile-pdf
 compile-pdf: tangle weave
 	noroff -mm -Tpdf whyse.troff > whyse.pdf
@@ -21,7 +25,7 @@ compile-pdf: tangle weave
 tangle: clean hack
 	notangle -Rwhyse.el ${TEMP_FILE} > whyse.el
 	notangle -Rwhyse-pkg.el ${TEMP_FILE} > whyse-pkg.el
-	notangle -Rtest-parser-with-temporary-buffer.el ${TEMP_FILE} > test-parser-with-temporary-buffer.el
+# notangle -Rtest-parser-with-temporary-buffer.el ${TEMP_FILE} > test-parser-with-temporary-buffer.el
 	mkdir whyse-${VERSION}
 	mv -t whyse-${VERSION} whyse.el whyse-pkg.el
 	cp -t whyse-${VERSION} LICENSE
