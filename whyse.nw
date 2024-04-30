@@ -434,43 +434,6 @@ tree, preparing it into a suitable format usable with EmacSQL (which the
 author is aware he's stated elsewhere).
 
 <<default hook functions>>=
-(defun w--log-in-buffer (buffer-name &rest body)
-  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
-  (save-mark-and-excursion
-    (with-current-buffer
-        (generate-new-buffer buffer-name)
-      (insert (format-message "%S" body)))))
-
-(defun w--prepare-sexp-sql-from-file-tokens ()
-  "Prepare an s-expression of SQL statements for `emacsql'.
-
-This hook depends on this object being in scope: `parse-tree'.
-That object is in scope when this hook runs with the default
-implementation of `whyse' (this is not meant to imply there are
-non-default implementations, only that hacked up installs won't
-operate with any guarantees)."
-  (mapcar
-   (lambda (file-token)
-     (let ((file-name (car file-token))
-           (chunks (cdr file-token)))
-       (emacsql (w-project-database-connection project)
-                (vector :insert :into 'module
-                        :values (mapcar (lambda (chunk)
-                                          "Convert an individual chunk to a vector of objects."
-                                          ;; If the chunk has a name, it is a code chunk;
-                                          ;; otherwise it's documentation.
-                                          (vector (w--chunk-name chunk)
-                                                  (w--chunk-text chunk)
-                                                  file-name
-                                                  nil
-                                                  nil
-                                                  (w--chunk-number chunk)))
-                                        ;; An illustration of the structure of `chunks':
-                                        ;; (list '((a . 1) (b . 2) (c . 3))
-                                        ;;       '((a . 1) (b . 2) (c . 3)))
-                                        chunks)))))
-   parse-tree))
-
 (add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
 
 @ 
@@ -1193,7 +1156,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 TODO: place this inclusion better
 
-<<Code>>= 
+<<Code>>=
 <<functions for navigating WHYSE parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
@@ -1239,6 +1202,47 @@ If the two associations shouldn't be joined, return them to the stack."
 
 @
 
+\TODO{Document the functionality of the default hook function: [[w--prepare-sexp-sql-from-file-tokens]].}
+
+<<default hook functions>>=
+(defun w--prepare-sexp-sql-from-file-tokens ()
+  "Prepare an s-expression of SQL statements for `emacsql'.
+
+This hook depends on this object being in scope: `parse-tree'.
+That object is in scope when this hook runs with the default
+implementation of `whyse' (this is not meant to imply there are
+non-default implementations, only that hacked up installs won't
+operate with any guarantees)."
+  (mapcar
+   (lambda (file-token)
+     (let ((file-name (car file-token))
+           (chunks (cdr file-token)))
+       (emacsql (w-project-database-connection project)
+                (vector :insert :into 'module
+                        :values (mapcar (lambda (chunk)
+                                          "Convert an individual chunk to a vector of objects."
+                                          ;; If the chunk has a name, it is a code chunk;
+                                          ;; otherwise it's documentation.
+                                          (vector (w--chunk-name chunk)
+                                                  (w--chunk-text chunk)
+                                                  file-name
+                                                  nil
+                                                  nil
+                                                  (w--chunk-number chunk)))
+                                        ;; An illustration of the structure of `chunks':
+                                        ;; (list '((a . 1) (b . 2) (c . 3))
+                                        ;;       '((a . 1) (b . 2) (c . 3)))
+                                        chunks)))))
+   parse-tree))
+@ 
+
+When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
+might be better controlled with DCL (the data control langauge
+featureset of SQL). \TODO{Make the number of entries in this history
+  list customizable, limited to some given number or a default of one
+  hundred.} The history of SEQL statements compiled is treated like a
+stack, with the newest statement being the first element of the list.
+
 <<push the compiled SQL to the database and to the history stack>>=
 ;; NOTE: the result of evaluating the SQL is pushed to the history stack
 ;; alongside the SQL that was executed.
@@ -1252,7 +1256,15 @@ If the two associations shouldn't be joined, return them to the stack."
 
 
 
-
+\section{Miscellaneous code and functions useful for development and debugging}.
+<<Code>>=
+(defun w--log-in-buffer (buffer-name &rest body)
+  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
+  (save-mark-and-excursion
+    (with-current-buffer
+        (generate-new-buffer buffer-name)
+      (insert (format-message "%S" body)))))
+@ 
 
 
 
