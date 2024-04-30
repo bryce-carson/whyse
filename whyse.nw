@@ -1,11 +1,15 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
-\documentclass{article}
+\documentclass[draft]{report}
+
+\title{The Implementation of WHYSE} % Codename "Wise Eel"
+\author{Bryce Carson}
 
 %%% FIXME: finduses.nw and the recognizer.nw need some tweaking to
 %%% better support LISP identifiers. It may be as simple as moving `-'
 %%% from SYMBOLS to ALPHANUMERIC.
 
+%%% ---- PREAMBLE ---- %%%
 %% FONT
 \usepackage[rm]{roboto}
 \usepackage[T1]{fontenc}
@@ -13,7 +17,15 @@
 \setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]
 
 %% MARGIN
-\usepackage[margin=1.5in]{geometry}
+\usepackage{geometry}
+ \geometry{
+   top=0.625in,
+   left=0.625in,
+   right=0.625in,
+   bottom=0.625in,
+   %% "Octavo" size: https://papersizes.io/books/octavo
+   papersize={6in, 9in}
+ }
 \usepackage{mparhack}
 \usepackage{mathptmx}
 
@@ -21,43 +33,65 @@
 %% \usepackage{biblatex}
 %% \addbibresource{\whyse.bib}
 
-\usepackage[smallcode,nohyperidents]{knoweb}
+%%% --- NOWEB LaTeX PACKAGE --- %%%
+\usepackage[breakcode,footnotesizecode]{knoweb}
+\setlength{\nwbreakcodespace}{0.2in}
+%% MAYBE TODO: Modify knoweb to use the typographic conventions of Bert
+%% Burgemeister's ``Common Lisp Quick Reference''
+%% (http://clqr.boundp.org/clqr-letter-consec.pdf). TODO: Motivating the
+%% previous todo, modify autodefs.elisp and finduses.nw to work better
+%% for LISPs with multiple slots (like Maclisp or Emacs Lisp). There
+%% should be no problem differentiating between whyse the customization
+%% group, and whyse the function, and whyse the variable. This is a
+%% difficult one and probably requires manual annotation, something
+%% filters should be used for after hacking on Joseph S. Riel's
+%% autodefs.elisp and Noweb's finduses.nw!
+
+%% TODO: investigate the use of the varioref, prettyref, and cleveref
+%% macro packages. These packages are useful for references internal to
+%% the document (cross-references), not references external to the
+%% document (references). See:
+%% https://texblog.org/2017/12/17/fancy-labels-and-references-in-latex/.
 \usepackage[colorlinks,backref]{hyperref}
 
+\usepackage{verbatim}
 \usepackage{syntax}
 \usepackage{xspace}
 \usepackage{paralist}
 \usepackage{color}
-
-%% NOTE: used in the figure of the WHYSE frame layout.
-\usepackage{fancyvrb}
-
+\usepackage{fancyvrb} % NOTE: used in the figure of the WHYSE frame layout.
 \usepackage{fixmetodonotes}
 
-%% BEGIN
+
+
+
+
+
 \pagestyle{noweb}
+
+
+
+
+
+%%% ---- BEGINNING OF DOCUMENT ---- %%%
 \begin{document}
 
-\TODO{Modify knoweb to use the typographic conventions of
-  \href{http://clqr.boundp.org/clqr-letter-consec.pdf}{Bert Burgemeister
-    in his Common Lisp Quick Reference}.}
+\frontmatter
 
-\TODO{Motivating the previous item, modify \texttt{autodefs.elisp} and
-  \texttt{finduses.nw} to work better for LISPs with multiple slots
-  (like Maclisp / Emacs Lisp). There should be no problem
-  differentiating between \texttt{whyse} the customization group, and
-  \texttt{whyse} the function, and \texttt{whyse} the variable. This is
-  a difficult one and probably requires manual annotation, something
-  filters should be used for after hacking on \textsc{Joseph S. Riel}'s
-  \texttt{autodefs.elisp} and \textsc{Noweb}'s \texttt{finduses.nw}!}
+\maketitle
 
-%% NOTE: when commenting a region of LaTeX in Poly-Noweb-mode the
-%% quotations should be guarded with at-signs, like [[@<<name>>]].
+\tableofcontents
 
-\TODO{The Emacs poly-noweb mode should have syntax highlighting that
-  does not hightlight quotations within \LaTeX{} comments. should be
-  aware that this is a comment, so that the proper syntax highlighting
-  is applied (i.e. none is applied to the quotation).}
+\mainmatter
+
+%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
+%% quotations should be guarded with at-signs, like [[@<<name>>]]. The
+%% Emacs poly-noweb mode should have syntax highlighting that does not
+%% hightlight quotations within LaTeX comments. The font-locking should
+%% be aware that this is a comment, so that the proper syntax
+%% highlighting is applied (i.e. none is applied to the quotation, or at
+%% least it is another shade of the comment syntax colouring, rather
+%% than pure white like body text).
 
 \begin{abstract}
   \textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
@@ -85,24 +119,6 @@
   organized, and writing literately; you'll thank yourself later for
   doing so.
 \end{abstract}
-
-%% \section{Preface}
-%% \subsection{On literate programming}
-%% Literate programs can be organized in multiple ways; particularly, I
-%% note these forms of organization here. How WHYSE implementations may
-%% influence literate programming style, taste, or form will be interesting
-%% to observe (as it is a multi-langual art and will benefit from both the
-%% traditional language arts greatly as well as ``code smell'' [a strange
-%%   term programmers have invented to somewhat describe computer--language
-%%   arts]).
-
-%% \begin{enumerate}
-%% \item Algorithmic
-%% \item Architectural
-%% \item Linear
-%% \item Notebook--like (Jupyter and iPython--like, which were influenced by Sweave)
-%% \item Sweave--like (R Noweb ::= R Markdown)
-%% \end{enumerate}
 
 \section{WHYSE Projects}\label{Projects}
 The organization of this literate program is \textit{linear}, with
@@ -136,7 +152,7 @@ struct used during runtime.
 
 @
 
-%% The Widget feature is required by the registered projects variable,
+%% NOTE: The Widget feature is required by the registered projects variable,
 %% but may be redundant because the Easy Customization Interface is
 %% itself implemented with The Emacs Widget Library. Requiring the
 %% library may be undesirable, as @[@[(require 'widget)]] will be
@@ -195,7 +211,7 @@ PEG parser.
 
 @
 
-%% NB: Comments may be superfluous in a literate document like this, but
+%% NOTE: Comments may be superfluous in a literate document like this, but
 %% some effort was made to produce a readable source file regardless of
 %% the general principles of literate programming; other authors write
 %% warnings into their tangled source files: ``Don't read this file!
@@ -398,6 +414,10 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
           (:primary-key [topic-name module-number]))]))
 @
 
+
+
+
+
 \section{Customizing the behaviour of [[whyse]] with hooks}
 WHYSE is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by Brown and
@@ -454,6 +474,11 @@ operate with any guarantees)."
 (add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
 
 @ 
+
+
+
+
+
 \section{Parsing project nowebs}
 This section covers the parsing of the noweb tool syntax produced when
 [[whyse]] executes the project's defined shell script to generate the
@@ -1044,6 +1069,10 @@ member of that list."
   "The success or failure of the last parsing of noweb tool syntax.")
 @ 
 
+
+
+
+
 \section{Processing parsed nowebs into SQL}\label{processing lists}
 This section covers how the parsed text generated in the last section is
 processed, creating a series of SQL statements that will be executed by
@@ -1219,6 +1248,21 @@ If the two associations shouldn't be joined, return them to the stack."
             (w-project-history-sql-commands default-project))
 @
 
+
+
+
+
+
+
+
+
+
+\appendix
+
+
+
+
+
 \section{Packaging whyse}
 Installing an Emacs Lisp package is quite easy if the system is
 distributed through the GNU Emacs Lisp Package Archive (GNU ELPA), and
@@ -1339,11 +1383,9 @@ The following chunk lists the [[<<required packages>>]]; as of
 ;; End:
 @ 
 
-\section{Indices}
-\subsection{Chunks}
-\nowebchunks
-\subsection{Identifiers}
-\nowebindex
+
+
+
 
 \newpage
 \subsection{TESTING}
@@ -1363,7 +1405,6 @@ The following chunk lists the [[<<required packages>>]]; as of
   attempt to parse a buffer of Noweb tool syntax.")
 
 <<buffer parsing function>>
-
 (with-temp-buffer
   (insert (shell-command-to-string
            "make --silent --file ~/src/whyse/Makefile tool-syntax"))
@@ -1376,11 +1417,29 @@ The following chunk lists the [[<<required packages>>]]; as of
 ;; no-native-compile: t
 ;; eval: (read-only-mode)
 ;; End:
-@ 
+@
 
-%% This is done on purpose so I know not to remove the font setting here.
-\newpage
+
+
+
+
+
+
+
+
+
+\backmatter
+\section{Indices}
+
+\subsection{Chunks}
+\nowebchunks
+
+\subsection{Identifiers}
+\nowebindex
+
 \section{NOTES}
 \listofnotes
 
 \end{document}
+%%% ---- END OF FILE ---- %%%
+%%% ---- IGNORED ---- %%%%

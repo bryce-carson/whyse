@@ -10,12 +10,14 @@ compile-pdf: tangle weave
 tangle: clean
 	notangle -Rwhyse.el whyse.nw > whyse.el
 	notangle -Rwhyse-pkg.el whyse.nw > whyse-pkg.el
-	notangle -Rtest-parser-with-temporary-buffer.el whyse.nw > test-parser-with-temporary-buffer.el
 	mkdir whyse-${VERSION}
 	mv -t whyse-${VERSION} whyse.el whyse-pkg.el
 	cp -t whyse-${VERSION} LICENSE
 	tar --create --file whyse-${VERSION}.tar whyse-${VERSION}
 	tar --list --file whyse-${VERSION}.tar
+
+test: clean tangle
+	notangle -Rtest-parser-with-temporary-buffer.el whyse.nw > test-parser-with-temporary-buffer.el
 
 # Remove backup files and LaTeX garbage and cache files.
 clean:

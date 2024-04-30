@@ -245,7 +245,6 @@
 
     (goto-char (point-max))
     (message "PEXes which failed:\n%S" lst)))
-
 (with-temp-buffer
   (insert (shell-command-to-string
            "make --silent --file ~/src/whyse/Makefile tool-syntax"))
