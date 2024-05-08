@@ -4,8 +4,8 @@ weave: clean
 	noweave -delay -autodefs elisp -index whyse.nw > whyse.tex
 
 compile-pdf: tangle weave
-	latexmk --lualatex --interaction=nonstopmode -f whyse.tex
-	lualatex whyse.tex
+	latexmk --xelatex --interaction=nonstopmode -f whyse.tex
+	xelatex -f whyse.tex
 
 tangle: clean
 	notangle -Rwhyse.el whyse.nw > whyse.el
@@ -21,12 +21,12 @@ test: clean tangle
 
 # Remove backup files and LaTeX garbage and cache files.
 clean:
-	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml *.tex *.toc *.xdy
+	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml whyse.tex *.toc *.xdy
 	rm -rf whyse-*/
 
 tool-syntax:
-	/usr/lib/noweb/markup ~/src/whyse/whyse.nw | \
-  /usr/lib/noweb/autodefs.elisp | \
-  /usr/lib/noweb/finduses | \
+	/usr/local/lib/markup ~/src/whyse/whyse.nw | \
+  /usr/local/lib/autodefs.elisp | \
+  /usr/local/lib/finduses | \
   ~/src/whyse/clean-docs.awk | \
-  /usr/lib/noweb/noidx -delay
+  /usr/local/lib/noidx -delay

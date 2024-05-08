@@ -10,6 +10,8 @@
 %%% from SYMBOLS to ALPHANUMERIC.
 
 %%% ---- PREAMBLE ---- %%%
+\usepackage{standalone}
+
 %% FONT
 \usepackage[rm]{roboto}
 \usepackage[T1]{fontenc}
@@ -34,8 +36,10 @@
 %% \addbibresource{\whyse.bib}
 
 %%% --- NOWEB LaTeX PACKAGE --- %%%
-\usepackage[breakcode,footnotesizecode]{knoweb}
-\setlength{\nwbreakcodespace}{0.2in}
+%% \usepackage[breakcode,footnotesizecode]{knoweb}
+\usepackage{noweb}
+%% \setlength{\nwbreakcodespace}{0.2in}
+
 %% MAYBE TODO: Modify knoweb to use the typographic conventions of Bert
 %% Burgemeister's ``Common Lisp Quick Reference''
 %% (http://clqr.boundp.org/clqr-letter-consec.pdf). TODO: Motivating the
@@ -60,7 +64,7 @@
 \usepackage{paralist}
 \usepackage{color}
 \usepackage{fancyvrb} % NOTE: used in the figure of the WHYSE frame layout.
-\usepackage{fixmetodonotes}
+\usepackage[nowatermark]{fixmetodonotes}
 
 
 
@@ -76,13 +80,13 @@
 %%% ---- BEGINNING OF DOCUMENT ---- %%%
 \begin{document}
 
-\frontmatter
+%% \frontmatter
 
 \maketitle
 
 \tableofcontents
 
-\mainmatter
+%% \mainmatter
 
 %% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
 %% quotations should be guarded with at-signs, like [[@<<name>>]]. The
@@ -120,7 +124,7 @@
   doing so.
 \end{abstract}
 
-\section{WHYSE Projects}\label{Projects}
+\chapter{WHYSE Projects}\label{Projects}
 The organization of this literate program is \textit{linear}, with
 aspects of the program explained as the user would encounter them, more
 or less. A user will read from the package description that they should
@@ -328,7 +332,7 @@ Initialization when the interactive command is called is covered next;
 to summarize: [[w-open-project-hook]] is run. \TODO{Describe
   initialization of the system after parsing.}
 
-\subsection{Database initialization}
+\section{Database initialization}
 \TODO{finish the creation of a database. Use what I learned in the fall!}
 
 Every project should have a database file located somewhere within the
@@ -366,7 +370,13 @@ appropriate slot of the project struct.
 
 <<create a database connection>>=
 (setf (w-project-database-connection project)
-      (emacsql-sqlite <<return a filename for the project database>>))
+      (emacsql-sqlite <<return a filename for the project database>>
+                      ;; TODO: make this debug log buffer into a package
+                      ;; customization.
+                      :debug (with-current-buffer
+                                 (get-buffer-create "emacsql-sqlite-debug-log")
+                               (erase-buffer)
+                               (current-buffer))))
 @ 
 
 The only thing left to do is establish the schema of the tables, which
@@ -385,33 +395,31 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 (mapcar (lambda (expression)
           (emacsql (w-project-database-connection project) expression))
 
-      ;; A list of SQL s-expressions to create the tables.
+        ;; A list of SQL s-expressions to create the tables.
         '([:create-table-if-not-exists module
-         ([module-name
-           content
-           file-name
-           section-name
-           (displacement integer)
-           (module-number integer :primary-key)])]
+           ([module-name content file-name section-name displacement
+             module-number])]
 
-        [:create-table-if-not-exists parent-child
-         ([(parent integer) (child  integer) (line-number integer)]
-          (:primary-key [parent child]))]
+          [:create-table-if-not-exists parent-child
+           ([(parent integer) (child  integer)]
+            ;; [(parent integer) (child  integer) (line-number integer)]
+            (:primary-key [parent child])
+            (:foreign-key parent :references module-number :in module)
+            (:foreign-key child :references module-number :in module))]
 
-        [:create-table-if-not-exists identifier-used-in-module
-         ([identifier-name
-           (module-number integer)
-           (line-number integer)
-           type-of-usage]
-          (:primary-key [identifier-name
-                         module-number
-                         line-number
-                         type-of-usage]))]
+          [:create-table-if-not-exists identifier-used-in-module
+           ([identifier-name
+             (module-number integer)
+             (line-number integer)
+             type-of-usage]
+            ;; (:primary-key [identifier-name module-number line-number
+            ;;                type-of-usage])
+            )]
 
-        [:create-table-if-not-exists topic-referenced-in-module
-         ([(topic-name nil)
-           (module-number integer)]
-          (:primary-key [topic-name module-number]))]))
+          [:create-table-if-not-exists topic-referenced-in-module
+           ([(topic-name nil) (module-number integer)]
+            ;; (:primary-key [topic-name module-number])
+            )]))
 @
 
 
@@ -420,8 +428,8 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
 \section{Customizing the behaviour of [[whyse]] with hooks}
 WHYSE is meant to be customizable, defining as little as necessary to
-implement a development environment for Noweb as described by Brown and
-Czejdo (\TODO{cite these again}).
+implement a development environment for Noweb as described by
+(\CITE{Brown and Czejdo}).
 
 <<open-project-hook>>=
 (defvar w-open-project-hook '()
@@ -442,15 +450,14 @@ author is aware he's stated elsewhere).
 
 
 
-\section{Parsing project nowebs}
+\chapter{Parsing project nowebs}
 This section covers the parsing of the noweb tool syntax produced when
 [[whyse]] executes the project's defined shell script to generate the
 tool syntax.
 
 The \textsc{peg} package provides automatic parser generation from a
 formal PEG grammar. The grammar is based off of the description of the
-tool syntax given in the Noweb Hacker's Guide. \TODO{formally cite the
-  Noweb Hacker's Guide}
+tool syntax given in the \CITE{Noweb Hacker's Guide}.
 
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
@@ -466,7 +473,7 @@ tool syntax given in the Noweb Hacker's Guide. \TODO{formally cite the
 %% Lisp (eolp). To test if point is at the end of a line, use (eol), to
 %% match the end of line, and permit parsing the next line of input,
 %% include the string literal "\n".
-\subsection{PEG rules}\label{rules}
+\section{PEG rules}\label{rules}
 Every character of an input text to be parsed by parsing expressions in
 a PEG must be defined in terminal rules of the formal grammar. The root
 rule in the grammar for Noweb tool syntax is the appropriately named
@@ -784,7 +791,7 @@ grouping.
 Further keywords are categorized neatly as Indexing or
 Cross--referencing keywords, so they are contained in subsections.
 
-\subsubsection{indexing}
+\subsection{indexing}
 Indexing keywords, both those used within chunks and those used outside
 of chunks, are defined in this section. The [[<<fundamental indexing
 keywords, which are restricted to within a code chunk>>]], index
@@ -863,7 +870,7 @@ WHYSE (contributions for improved support are welcomed).
       (action (error <<index nl error message>>)))
 @
 
-\subsubsection{cross referencing}
+\subsection{cross referencing}
 <<cross-referencing keywords>>=
 (x-label xr (substring "label" spc label) nl
          `(substr -- (cons 'x-label (cadr (split-string substr)))))
@@ -963,9 +970,9 @@ WHYSE (contributions for improved support are welcomed).
 %% containing one or more chunks; minimally, a Noweb file will contain the
 %% default documentation chunk.
 
-To summarize this section, since it is longer than the previous section,
-the object is to convert the noweb document to tool syntax and parse it
-with the peg parser.
+%% To summarize this section, since it is longer than the previous section,
+%% the object is to convert the noweb document to tool syntax and parse it
+%% with the peg parser.
 
 %% In more explicit words, this section describes the actions that occur
 %% when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
@@ -1036,7 +1043,7 @@ member of that list."
 
 
 
-\section{Processing parsed nowebs into SQL}\label{processing lists}
+\chapter{Processing parsed nowebs into SQL}\label{processing lists}
 This section covers how the parsed text generated in the last section is
 processed, creating a series of SQL statements that will be executed by
 SQLite using the interface provided by the EmacSQL package.
@@ -1197,8 +1204,7 @@ If the two associations shouldn't be joined, return them to the stack."
         ;; caller push the new token to that stack.
         (push previous-token peg--stack)
         new-token)
-    (when w--first-stringy-token?
-      (setq w--first-stringy-token? nil))))
+    (when w--first-stringy-token? (setq w--first-stringy-token? nil))))
 
 @
 
@@ -1215,26 +1221,25 @@ non-default implementations, only that hacked up installs won't
 operate with any guarantees)."
   (mapcar
    (lambda (file-token)
-     (let ((file-name (car file-token))
-           (chunks (cdr file-token)))
-       (emacsql (w-project-database-connection project)
-                (vector :insert :into 'module
-                        :values (mapcar (lambda (chunk)
-                                          "Convert an individual chunk to a vector of objects."
-                                          ;; If the chunk has a name, it is a code chunk;
-                                          ;; otherwise it's documentation.
-                                          (vector (w--chunk-name chunk)
-                                                  (w--chunk-text chunk)
-                                                  file-name
-                                                  nil
-                                                  nil
-                                                  (w--chunk-number chunk)))
-                                        ;; An illustration of the structure of `chunks':
-                                        ;; (list '((a . 1) (b . 2) (c . 3))
-                                        ;;       '((a . 1) (b . 2) (c . 3)))
-                                        chunks)))))
+     (let* ((file-name (car file-token))
+            (chunks (cdr file-token))
+            (modules (vector
+                      :insert-into 'module
+                      :values (mapcar #'w--vectorize-chunk-data chunks)
+                     :on-conflict-do-nothing))
+            (connection (w-project-database-connection project)))
+       (mapcar (lambda (seql) (emacsql connection seql))
+               (list modules parent-child identifier-used-in-module
+                     topic-referenced-in-module))))
    parse-tree))
-@ 
+
+(defun w--vectorize-chunk-data (chunk)
+  "Convert an individual chunk to a vector of objects."
+  ;; NOTE: order of arguments: [module-name module-text file-name
+  ;; section displacement module-number]
+  (vector (w--chunk-name chunk) (w--chunk-text chunk) file-name nil nil
+          (w--chunk-number chunk)))
+@
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
@@ -1264,7 +1269,7 @@ stack, with the newest statement being the first element of the list.
     (with-current-buffer
         (generate-new-buffer buffer-name)
       (insert (format-message "%S" body)))))
-@ 
+@
 
 
 
@@ -1275,7 +1280,7 @@ stack, with the newest statement being the first element of the list.
 
 
 
-\section{Packaging whyse}
+\chapter{Packaging whyse}
 Installing an Emacs Lisp package is quite easy if the system is
 distributed through the GNU Emacs Lisp Package Archive (GNU ELPA), and
 only slightly less easy if it is distributed through MELPA
@@ -1314,14 +1319,14 @@ command-line used to tangle and weave WHYSE.
 ;; Author: Bryce Carson <bcars268@mtroyal.ca>
 ;; Created 2023-06-18
 ;; Keywords: tools tex hypermedia
-;; URL: https://cyberscientist.ca/whyse
+;; URL: https://github.com/bryce-carson/whyse
 
 ;; This file is not part of GNU Emacs.
 
 <<whyse-pkg.el>>=
 (define-package "whyse" "0.1" "noWeb HYpertext System in Emacs"
   '(<<required packages>>))
-@ 
+@
 
 The following chunk lists the [[<<required packages>>]]; as of
 [[whyse-0.1-devel]] the only required packages are [[peg]] and
@@ -1333,6 +1338,9 @@ The following chunk lists the [[<<required packages>>]]; as of
 (peg "1.0.1")
 (cl-lib "1.0")
 @
+
+The license text was included in this document using its \LaTeX{} form
+in the License section at the end of this document.
 
 <<Licensing and copyright>>=
 ;; This program is free software: you can redistribute it and/or
@@ -1400,7 +1408,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 
 
 \newpage
-\subsection{TESTING}
+\chapter{TESTING}
 \TODO{Adopt the ERT (Emacs Regression Tests) package to test
   WHYSE features as they are developed and become featureful. When a
   feature is implemented a test should be written which conforms to the
@@ -1409,7 +1417,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 
 \TODO{Adopt/use [[makem.sh]], by ``alphapapa''.}
 
-\subsubsection{Parsing tool syntax within a temporary buffer}
+\section{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=
 ;; -*- lexical-binding: nil; -*-
 (defvar w--parse-success t
@@ -1440,17 +1448,19 @@ The following chunk lists the [[<<required packages>>]]; as of
 
 
 
-\backmatter
-\section{Indices}
+%% \backmatter
+\chapter{Indices}
 
-\subsection{Chunks}
+\section{Chunks}
 \nowebchunks
 
-\subsection{Identifiers}
+\section{Identifiers}
 \nowebindex
 
-\section{NOTES}
 \listofnotes
+
+\chapter{License}
+\input{gpl-3.0.tex}
 
 \end{document}
 %%% ---- END OF FILE ---- %%%
