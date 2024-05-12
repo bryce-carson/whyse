@@ -100,14 +100,15 @@
 \begin{abstract}
   \textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
   development environment for Noweb and \LaTeX{} within Emacs, similar
-  to EDE but not sharing development principles. It is based off of an
-  academic paper written in 1991 by Brown and Czejdo. A paper describing
-  this implementation---written in Noweb and browsable, editable, and
-  auditable with WHYSE, or readable in the printed form---is hoped to be
-  submitted to The Journal of Open Source Software (JOSS) before the
-  year 2024. N.B.: the paper will include historical information about
-  literate programming, and citations (especially of those given credit
-  in the [[@<<Commentary>>]] for ideating WHYSE itself).
+  to EDE but not sharing development principles. It is based off of
+  \CITE{an academic paper written in 1991 by Brown and Czejdo}. A paper
+  describing this implementation---written in Noweb and browsable,
+  editable, and auditable with WHYSE, or readable in the printed
+  form---is hoped to be submitted to \em{The Journal of Open Source
+    Software (JOSS)} before the year 2024. N.B.: the paper will include
+  historical information about literate programming, and citations
+  (especially of those given credit in the [[@<<Commentary>>]] for
+  ideating WHYSE itself).
 
   Users of WHYSE in Emacs are expected to be familiar with Noweb; this
   does not include how Noweb is built from source (that is arcane,
@@ -265,7 +266,7 @@ whyse group."
            (project (make-w-project :name (cl-first default-project)
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project)))
-           (parse-tree (w-parse-with-project-and-temp-buffer project)))
+           (parse-tree <<parse-project-in-temp-buffer>>))
 
       ;; FIXME: peculiar error: "UNIQUE constraint failed:
       ;; module.module_number", 19, nil, "constraint failed"
@@ -992,17 +993,27 @@ WHYSE (contributions for improved support are welcomed).
 %% implementation anyways. Now it is a function, satisfying internal and
 %% API needs.
 
-<<with-project>>=
-(defun w-parse-with-project-and-temp-buffer (project)
-  "Parses a project PROJECT in a temporary buffer.
+<<parse-project-in-temp-buffer>>=
+(with-temp-buffer
+  (insert (shell-command-to-string (w-project-script project)))
+  (goto-char (point-min))
+  (w--parse-current-buffer-with-rules))
 
-PROJECT must be registerd with whyse in the
-`w-registered-projects' customization variable, and PROJECT is a
-member of that list."
-  (with-temp-buffer
-    (insert (shell-command-to-string (w-project-script project)))
-    (goto-char (point-min))
-    (w--parse-current-buffer-with-rules)))
+<<with-project>>=
+;; TODO: understand how and why this macro works like
+;; `with-temp-buffer'; I only copied a couple things from the defintion
+;; of that macro, but I don't yet understand its definition fully. I
+;; will need to before I really start to understand Emacs Lisp. I do
+;; understand enough, but there is a lot more to know. A whole lot.
+(defmacro w-with-project (project &rest body)
+  (declare (indent 0) (indent 2) (debug t))
+  "Evaluates BODY with PROJECT in scope. This is like `let' except
+it doesn't bind arbitrary values to arbitrary symbols. PROJECT is
+taken as the symbol `project' during evaluation of BODY.
+
+PROJECT is in scope because it is an argument of this macro. This
+may or may not work as expected."
+  (eval `(progn ,@body)))
 
 <<buffer parsing function>>=
 ;; FIXME: the current parse tree contains a `nil' after the chunk type
@@ -1054,9 +1065,31 @@ themselves. The first atom of an inner list, corresonding to a document,
 is the filename of that document (hopefully the same filename as passed
 on the commmand-line elsewhere when the document is used).
 
-Deeper, each document-list contains as the second atom a list of all of
-its contents, which is an association list thereof. Each association in
-the alist should be self-explanatory.
+Deeper, each document-list contains as the second atom a list of its
+contents, which is an association list thereof. Each association in the
+alist is bewteen the symbol relating to the rule that generated the cons
+cell, and the contents appropriate to the symbol.
+
+\section{Processing}
+There are many steps to compiling the parse tree into SQL. The first
+step is to ensure the association lists in the parse tree are in a
+format that is acceptable to built-in Emacs Lisp functions; this will
+make it easier to navigate the tree and transform it.
+%% FIXME: is it really true, and does it make sense for
+%% what I'm actually doing, or am I using the concept/name wrong?
+Other texts call this manipulation of the parse tree ``list
+destructuring'';
+%% 
+it could be thought of as code generation, since the data is used to
+generate DML which is partly code and partly data.
+
+Some associations are reductions from the initial parse tree---which
+thanks to the \textsc{peg} package and \em{PEG parsing in general}---are
+not reduced in a second step. Modifications to the parsing procedure can
+occur directly without losing information, and thanks to literate
+programming should be easy for advanced users.
+
+The initial parse tree begins like the one below.
 
 \begin{verbatim}
 '((noweb-document-one
@@ -1077,21 +1110,33 @@ the alist should be self-explanatory.
     (text . "Noweb, written by Norman Ramsey is sweet!"))))
 \end{verbatim}
 
-There are many steps to compiling the parse tree into SQL that can be
-directly executed by the backend database engine. The first step is to
-ensure the parse tree is in a format that is acceptable to other LISP
-functions; this will make it easier to navigate the tree and transform
-it. Other texts call this (list or expression) destructuring.
+The reductions which occur during parsing make chunk zero of the second
+noweb document look like this in the final result:
+\begin{verbatim}
+((code . 0)
+ (text .
+  "asdf is a system definition format in Common LISP,
+  and I like to use it."))
+\end{verbatim}
+; the new result is much easier to use as data for other programs (SQL
+in this case). In the verbatim text a literal newline was inserted
+rather than retaining the escape sequence, which is exactly what happens
+in the reduction step as well. The next subsection discusses the details
+of how the reduction in complexity exampled above is achieved.
 
+\subsection{Reducing complexity in the alist}
 The first step in making the parse tree navigable for other programs is
 collapsing adjacent ``stringy'' tokens into single [[text]] tokens. The
 output tool syntax of notangle, and the parse tree resulting from the
-PEG, contain individual text tokens for fragments of whole text lines
-and form feed characters. These tokens exist because the
+PEG, (breifly) contain individual text tokens for fragments of whole
+text lines and form feed characters. These tokens exist because the
 cross-referencing tokens fragment the text lines, and new lines in the
 noweb document are treated specially to facilitate this fragmentation.
-The parsed from of the tool syntax is shown in this example from a
-development version of \textsc{WHYSE}.
+
+A small quote from the tool syntax of a development version of
+\textsc{WHYSE} is shown in this example in its parsed form. However,
+during actual parsing these adjacent tokens are \em{immediately
+  collapsed} into singular tokens.
 
 \begin{verbatim}
 (text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
@@ -1102,17 +1147,12 @@ development version of \textsc{WHYSE}.
 (nwnl . "@nl")
 \end{verbatim}
 
-In this development version it was not fully decided how tokens and the
-data they correspond to should be arranged, so the newlines are not part
-of a list, while the text characters are part of an outer plist of which
-the parentheses are not visible in this example.
-
 To collapse these tokens into a single text token the
 \texttt{peg--stack} must be manipulated carefully. It isn't advisable to
-manipulate this variable in the course of a PEG grammar's actions,
-however, there is a use case for it when the previous rules and actions
-won't accomodate the necessary action without refactoring a larger part
-of the grammar. In this development version that is not a goal; basic
+manipulate this variable in the course of a PEG grammar's actions. There
+is a use case for it when the previous rules and actions won't
+accomodate the necessary action without refactoring a larger part of the
+grammar. In this development version that is not a goal; basic
 functionality is sought after, not robustness or beauty, so hacking the
 desired behaviour together quickly is better.
 
@@ -1208,17 +1248,34 @@ If the two associations shouldn't be joined, return them to the stack."
 
 @
 
-\TODO{Document the functionality of the default hook function: [[w--prepare-sexp-sql-from-file-tokens]].}
+\TODO{\em{Better} document the functionality of the default hook
+  function: [[w--prepare-sexp-sql-from-file-tokens]]. The current
+  explanation is a copy of the brief explanation in the hook
+  documentation string.}
+
+The `parse-tree' from the lexical environment (or scope, given
+that WHYSE is not implemented with lexical binding) is mapped
+over until every file token has been processed and records have
+been inserted into all four tables of the database.
 
 <<default hook functions>>=
 (defun w--prepare-sexp-sql-from-file-tokens ()
   "Prepare an s-expression of SQL statements for `emacsql'.
 
+The `parse-tree' from the lexical environment (or scope, given
+that WHYSE is not implemented with lexical binding) is mapped
+over until every file token has been processed and records have
+been inserted into all four tables of the database.
+
 This hook depends on this object being in scope: `parse-tree'.
 That object is in scope when this hook runs with the default
-implementation of `whyse' (this is not meant to imply there are
-non-default implementations, only that hacked up installs won't
-operate with any guarantees)."
+implementation of `whyse'. (This is not meant to imply other
+implementations exist [yet], only that hacked up installations
+won't operate with any guarantees or according to the original
+documentation. You know that, though, because you're reading the
+source code and documentation for the original right now, and it
+should be obvious that changing the source code should have been
+accompanied with changes in the documentation.)"
   (mapcar
    (lambda (file-token)
      (let* ((file-name (car file-token))
@@ -1226,13 +1283,22 @@ operate with any guarantees)."
             (modules (vector
                       :insert-into 'module
                       :values (mapcar #'w--vectorize-chunk-data chunks)
-                     :on-conflict-do-nothing))
+                      :on-conflict-do-nothing))
             (connection (w-project-database-connection project)))
        (mapcar (lambda (seql) (emacsql connection seql))
-               (list modules parent-child identifier-used-in-module
-                     topic-referenced-in-module))))
+               (list modules
+                     ;; TODO 2024-05-11: find the parent-child
+                     ;; relationships using the used and not-used tokens
+                     ;; in the parse tree. parent-child should be quite
+                     ;; easy.
+                     ;;;
+                     ;; parent-child
+                     ;; identifier-used-in-module
+                     ;; topic-referenced-in-module
+                     ))))
    parse-tree))
 
+;; TODO 2024-05-11: find the sections each module is defined within.
 (defun w--vectorize-chunk-data (chunk)
   "Convert an individual chunk to a vector of objects."
   ;; NOTE: order of arguments: [module-name module-text file-name
@@ -1241,12 +1307,22 @@ operate with any guarantees)."
           (w--chunk-number chunk)))
 @
 
+<<the sections of all modules>>=
+;; Find the titles of sections in SECTION-ALIST using the functions
+;; associated with the sectioning command symbol. This function assumes
+;; it is called with a whyse project in scope under the symbol
+;; `project'.
+(vector :update 'modules :values <<find section titles>>
+        :on-conflict-do-nothing)
+@ 
+
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
 featureset of SQL). \TODO{Make the number of entries in this history
   list customizable, limited to some given number or a default of one
   hundred.} The history of SEQL statements compiled is treated like a
-stack, with the newest statement being the first element of the list.
+stack, with the newest statement being the first element of the list. A
+shoddy implementation of a ``stack-based history'' is given next.
 
 <<push the compiled SQL to the database and to the history stack>>=
 ;; NOTE: the result of evaluating the SQL is pushed to the history stack
@@ -1261,15 +1337,52 @@ stack, with the newest statement being the first element of the list.
 
 
 
-\section{Miscellaneous code and functions useful for development and debugging}.
-<<Code>>=
-(defun w--log-in-buffer (buffer-name &rest body)
-  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
-  (save-mark-and-excursion
-    (with-current-buffer
-        (generate-new-buffer buffer-name)
-      (insert (format-message "%S" body)))))
-@
+\subsection{Determining parent-child relationships in a multiple inheritance environment}
+The solution is simple: inbreeding. Every now and then in real-life
+heredity there are cases of inbreeding. It affects ``natural
+populations'' and humans too (who are also ``natural populations'').
+Thinking of multiple inheritance in object-orientation is much more
+difficult, and I don't know anything about it other than the following
+name: ``the multiple inheritance problem''. That's why the solution to the problem is
+simple in this state.
+
+There is also no actual inheritance, other than the \texttt{section},
+\texttt{chapter}, or other sectioning command that preceeds or contains
+the chunk. The children of a chunk will ``inherit'' that section, even
+if they occur in another section of the literate document. Referring to
+[[<<WHYSE>>]] in a documentation chunk is easily understood as a
+cross-reference, and a [[use]] of a chunk in another constitutes the
+parent-child relationship between the two chunks. Thus, if the
+sectioning commands preceeding a chunk are ``inherited'', they are inherited
+only indirectly and not because they've actually received a copy of a
+gene or a pointer to a function.
+
+What section does a chunk belong to? Whatever sectioning command is ``in
+effect'' when the chunk is defined will work nicely, and as long as it
+remains sufficient, a user might query the sections of all the parents
+of that chunk rather than concern themselves with the multiple sections
+the chunk ``belongs'' to. That's how the ``problem'' is interpreted in
+the literate document.
+
+I do not have enough experience in \LaTeX{} to know how to search for
+all of the sectioning commands that may be in use from any given macro
+package. I don't know if that's possible. The easiest way to get the
+needed information is to parse the human-readable noweb document looking
+for any sectioning commands defined by the user; if the user is using a
+custom sectioning macro package in their document nobody else might know
+about it, and it would be unsupported in that case and there would be
+unnecessarily missing information in their project database.
+
+There needs to be a function which can take a generalizable approach to
+determining the name of a section defined by any possible sectioning
+command. To easily do that a function could be provided by the user for
+any sectioning commands that are exotic, and those functions will
+accommodate the \LaTeX{} command while the calling function will handle
+finding them and collecting their output.
+
+<<find section titles>>=
+@ 
+
 
 
 
@@ -1458,6 +1571,16 @@ in the License section at the end of this document.
 \nowebindex
 
 \listofnotes
+
+\section{Miscellaneous code and functions useful for development and debugging}.
+<<Code>>=
+(defun w--log-in-buffer (buffer-name &rest body)
+  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
+  (save-mark-and-excursion
+    (with-current-buffer
+        (generate-new-buffer buffer-name)
+      (insert (format-message "%S" body)))))
+@
 
 \chapter{License}
 \input{gpl-3.0.tex}
