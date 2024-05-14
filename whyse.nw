@@ -1,6 +1,6 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
-\documentclass[draft]{report}
+\documentclass[draft,enabledeprecatedfontcommands]{report}
 
 \title{The Implementation of WHYSE} % Codename "Wise Eel"
 \author{Bryce Carson}
@@ -38,23 +38,25 @@
 %%% --- NOWEB LaTeX PACKAGE --- %%%
 %% \usepackage[breakcode,footnotesizecode]{knoweb}
 \usepackage{noweb}
+\noweboptions{smallcode,longchunks}
 %% \setlength{\nwbreakcodespace}{0.2in}
 
-%% MAYBE TODO: Modify knoweb to use the typographic conventions of Bert
-%% Burgemeister's ``Common Lisp Quick Reference''
-%% (http://clqr.boundp.org/clqr-letter-consec.pdf). TODO: Motivating the
-%% previous todo, modify autodefs.elisp and finduses.nw to work better
-%% for LISPs with multiple slots (like Maclisp or Emacs Lisp). There
-%% should be no problem differentiating between whyse the customization
-%% group, and whyse the function, and whyse the variable. This is a
-%% difficult one and probably requires manual annotation, something
-%% filters should be used for after hacking on Joseph S. Riel's
-%% autodefs.elisp and Noweb's finduses.nw!
+%% MAYBE TODO: Modify knoweb to use the typographic conventions
+%% of Bert Burgemeister's ``Common Lisp Quick Reference''
+%% (http://clqr.boundp.org/clqr-letter-consec.pdf). TODO:
+%% Motivating the previous todo, modify autodefs.elisp and
+%% finduses.nw to work better for LISPs with multiple slots (like
+%% Maclisp or Emacs Lisp). There should be no problem
+%% differentiating between whyse the customization group, and
+%% whyse the function, and whyse the variable. This is a
+%% difficult one and probably requires manual annotation,
+%% something filters should be used for after hacking on Joseph
+%% S. Riel's autodefs.elisp and Noweb's finduses.nw!
 
-%% TODO: investigate the use of the varioref, prettyref, and cleveref
-%% macro packages. These packages are useful for references internal to
-%% the document (cross-references), not references external to the
-%% document (references). See:
+%% TODO: investigate the use of the varioref, prettyref, and
+%% cleveref macro packages. These packages are useful for
+%% references internal to the document (cross-references), not
+%% references external to the document (references). See:
 %% https://texblog.org/2017/12/17/fancy-labels-and-references-in-latex/.
 \usepackage[colorlinks,backref]{hyperref}
 
@@ -88,55 +90,52 @@
 
 %% \mainmatter
 
-%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
-%% quotations should be guarded with at-signs, like [[@<<name>>]]. The
-%% Emacs poly-noweb mode should have syntax highlighting that does not
-%% hightlight quotations within LaTeX comments. The font-locking should
-%% be aware that this is a comment, so that the proper syntax
-%% highlighting is applied (i.e. none is applied to the quotation, or at
-%% least it is another shade of the comment syntax colouring, rather
-%% than pure white like body text).
+%% MAYBE TODO: when commenting a region of LaTeX in
+%% Poly-Noweb-mode the quotations should be guarded with
+%% at-signs, like [[@<<name>>]]. The Emacs poly-noweb mode should
+%% have syntax highlighting that does not hightlight quotations
+%% within LaTeX comments. The font-locking should be aware that
+%% this is a comment, so that the proper syntax highlighting is
+%% applied (i.e. none is applied to the quotation, or at least it
+%% is another shade of the comment syntax colouring, rather than
+%% pure white like body text).
 
 \begin{abstract}
   \textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
-  development environment for Noweb and \LaTeX{} within Emacs, similar
-  to EDE but not sharing development principles. It is based off of
-  \CITE{an academic paper written in 1991 by Brown and Czejdo}. A paper
-  describing this implementation---written in Noweb and browsable,
-  editable, and auditable with WHYSE, or readable in the printed
-  form---is hoped to be submitted to \em{The Journal of Open Source
-    Software (JOSS)} before the year 2024. N.B.: the paper will include
-  historical information about literate programming, and citations
-  (especially of those given credit in the [[@<<Commentary>>]] for
+  development environment for Noweb and \LaTeX{} within Emacs, similar to EDE
+  but not sharing development principles. It is based off of \CITE{an academic
+    paper written in 1991 by Brown and Czejdo}. A paper describing this
+  implementation---written in Noweb and browsable, editable, and auditable with
+  WHYSE, or readable in the printed form---is hoped to be submitted to \em{The
+    Journal of Open Source Software (JOSS)} before the year 2024. N.B.: the
+  paper will include historical information about literate programming, and
+  citations (especially of those given credit in the [[@<<Commentary>>]] for
   ideating WHYSE itself).
 
-  Users of WHYSE in Emacs are expected to be familiar with Noweb; this
-  does not include how Noweb is built from source (that is arcane,
-  supposedly). It may, however, include the writing of filters
-  implemented with Sed, AWK, or other languages. Users must know how to
-  write a custom command-line for noweave (read the manual section
-  regarding the \texttt{-v} option). If you only know how to call the
-  noweave command you're reading the wrong document. Read the Noweb
-  manual first, please. Developers of WHYSE extensions should read the
+  Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
+  include how Noweb is built from source (that is arcane, supposedly). It may,
+  however, include the writing of filters implemented with Sed, AWK, or other
+  languages. Users must know how to write a custom command-line for noweave
+  (read the manual section regarding the \texttt{-v} option). If you only know
+  how to call the noweave command you're reading the wrong document. Read the
+  Noweb manual first, please. Developers of WHYSE extensions should read the
   Noweb Hacker's Guide until they understand it, afterwards reading this
-  documentation several times until the full implementation is
-  understood. I recommend modifying the system using itself to keep
-  organized, and writing literately; you'll thank yourself later for
-  doing so.
+  documentation several times until the full implementation is understood. I
+  recommend modifying the system using itself to keep organized, and writing
+  literately; you'll thank yourself later for doing so.
 \end{abstract}
 
 \chapter{WHYSE Projects}\label{Projects}
-The organization of this literate program is \textit{linear}, with
-aspects of the program explained as the user would encounter them, more
-or less. A user will read from the package description that they should
-call an interactive command to create a project. The \textsc{WHYSE}
-application has a single interactive command: [[whyse]]. The command
-loads the first element of the customization variable
-[[w-registered-projects]], considering that the default project, or it
-opens the ``Easy Customization Interface'' for the application's
-customization group ([[M-x customize-group whyse]]): an effective prompt
-for the user to enter the necessary information. If user's dislike this,
-they can disable it.
+The organization of this literate program is \textit{linear}, with aspects of
+the program explained as the user would encounter them, more or less. A user
+will read from the package description that they should call an interactive
+command to create a project. The \textsc{WHYSE} application has a single
+interactive command: [[whyse]]. The command loads the first element of the
+customization variable [[w-registered-projects]], considering that the default
+project, or it opens the ``Easy Customization Interface'' for the application's
+customization group ([[M-x customize-group whyse]]): an effective prompt for the
+user to enter the necessary information. If user's dislike this, they can
+disable it.
 
 A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
@@ -212,7 +211,21 @@ PEG parser.
            be excluded from this script. The script should output
            the full syntax to standard output. See the Noweb
            implementation of WHYSE for explanation."
-           :value "")))
+           :value "")
+
+          ;; FIXME: this widget doesn't work. There needs to be a widget for a list of strings here.
+          ;; (list :tag "LaTeX sectioning commands" :format "%t\n%v"
+          ;;       :documentation "The strings here should be the maximum length of the command
+          ;;       possible, because substrings like 'section' will not match the
+          ;;       sectioning command only. It is likely that these will have false
+          ;;       positive matches (Sectioning command might be called like
+          ;;       '\\section{}' or '\\mySectionCommand[bold]{name}'.)"
+          ;;       :convert-widget
+          ;;       :args 'widget-types-convert-widget
+          ;;       (string :tag "A sectioning command string"
+          ;;               :format "%t: %v"
+          ;;               :value "\\section{"))
+          ))
 
 @
 
@@ -307,6 +320,7 @@ simple. \TODO{Ensure that the previous statement in-prose [not in the
   name
   noweb
   script
+  sectioning-commands-regexs
   database-file
   database-connection
 
@@ -402,11 +416,10 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
              module-number])]
 
           [:create-table-if-not-exists parent-child
-           ([(parent integer) (child  integer)]
-            ;; [(parent integer) (child  integer) (line-number integer)]
+           ([(parent integer) (child integer)]
             (:primary-key [parent child])
-            (:foreign-key parent :references module-number :in module)
-            (:foreign-key child :references module-number :in module))]
+            (:foreign-key [parent] :references module [module-number])
+            (:foreign-key [child] :references module [module-number]))]
 
           [:create-table-if-not-exists identifier-used-in-module
            ([identifier-name
@@ -546,6 +559,7 @@ after the last file.
 ;; Technically, file is a tagging keyword, but that classification only
 ;; makes sense in the Hacker's guide, not in the syntax.
 (file (bol) "@file" spc (substring path) nl
+      (action (setq w--file-current-line 0))
       (list (and (+ chunk)
                  (list (or (and x-chunks i-identifiers)
                            (and i-identifiers x-chunks))))
@@ -704,14 +718,15 @@ they are adjacent on the [[peg--stack]].
 <<chunks and their boundaries>>=
 (text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
       `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
-(nwnl (bol) (substring "@nl") nl
+(nwnl (bol) (substring "@nl") nl (action (setf w--file-current-line
+                                               (1+ w--file-current-line)))
       ;; Be sure that when thinking about the symbol `nl' here that
       ;; you're not confusing it with the peg rule nl.
       `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
 @
 
-Nowebs are built from chunks, so the definition and usage of (i.e.
-references to) a chunk are important keywords.
+Nowebs are built from chunks, so the definition and usage of (i.e. references
+to) a chunk are important keywords.
 
 <<chunks and their boundaries>>=
 (defn "@defn" spc (substring !eol) nl
@@ -1282,7 +1297,7 @@ accompanied with changes in the documentation.)"
             (chunks (cdr file-token))
             (modules (vector
                       :insert-into 'module
-                      :values (mapcar #'w--vectorize-chunk-data chunks)
+                      :values (message "%S" (mapcar #'w--vectorize-chunk-data chunks))
                       :on-conflict-do-nothing))
             (connection (w-project-database-connection project)))
        (mapcar (lambda (seql) (emacsql connection seql))
@@ -1303,18 +1318,15 @@ accompanied with changes in the documentation.)"
   "Convert an individual chunk to a vector of objects."
   ;; NOTE: order of arguments: [module-name module-text file-name
   ;; section displacement module-number]
-  (vector (w--chunk-name chunk) (w--chunk-text chunk) file-name nil nil
-          (w--chunk-number chunk)))
+  (let ((chunk-name (w--chunk-name chunk)))
+    (vector chunk-name
+            (w--chunk-text chunk)
+            file-name
+            (when chunk-name
+              (w--chunk-section chunk-name))
+            nil
+            (w--chunk-number chunk))))
 @
-
-<<the sections of all modules>>=
-;; Find the titles of sections in SECTION-ALIST using the functions
-;; associated with the sectioning command symbol. This function assumes
-;; it is called with a whyse project in scope under the symbol
-;; `project'.
-(vector :update 'modules :values <<find section titles>>
-        :on-conflict-do-nothing)
-@ 
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
@@ -1343,8 +1355,8 @@ heredity there are cases of inbreeding. It affects ``natural
 populations'' and humans too (who are also ``natural populations'').
 Thinking of multiple inheritance in object-orientation is much more
 difficult, and I don't know anything about it other than the following
-name: ``the multiple inheritance problem''. That's why the solution to the problem is
-simple in this state.
+name: ``the multiple inheritance problem''. That's why the solution to
+the problem is simple in this state.
 
 There is also no actual inheritance, other than the \texttt{section},
 \texttt{chapter}, or other sectioning command that preceeds or contains
@@ -1353,9 +1365,9 @@ if they occur in another section of the literate document. Referring to
 [[<<WHYSE>>]] in a documentation chunk is easily understood as a
 cross-reference, and a [[use]] of a chunk in another constitutes the
 parent-child relationship between the two chunks. Thus, if the
-sectioning commands preceeding a chunk are ``inherited'', they are inherited
-only indirectly and not because they've actually received a copy of a
-gene or a pointer to a function.
+sectioning commands preceeding a chunk are ``inherited'', they are
+inherited only indirectly and not because they've actually received a
+copy of a gene or a pointer to a function.
 
 What section does a chunk belong to? Whatever sectioning command is ``in
 effect'' when the chunk is defined will work nicely, and as long as it
@@ -1364,23 +1376,51 @@ of that chunk rather than concern themselves with the multiple sections
 the chunk ``belongs'' to. That's how the ``problem'' is interpreted in
 the literate document.
 
-I do not have enough experience in \LaTeX{} to know how to search for
-all of the sectioning commands that may be in use from any given macro
-package. I don't know if that's possible. The easiest way to get the
-needed information is to parse the human-readable noweb document looking
-for any sectioning commands defined by the user; if the user is using a
-custom sectioning macro package in their document nobody else might know
-about it, and it would be unsupported in that case and there would be
-unnecessarily missing information in their project database.
+I do not have enough experience in \LaTeX{} to know how to search
+for all of the sectioning commands that may be in use from any
+given macro package. I don't know if that's possible. The easiest
+way to get the needed information is to parse the human-readable
+noweb document looking for any sectioning commands defined by the
+user; if the user is using a custom sectioning macro package in
+their document nobody else might know about it, and it would be
+unsupported in that case and there would be unnecessarily missing
+information in their project database.
 
-There needs to be a function which can take a generalizable approach to
-determining the name of a section defined by any possible sectioning
-command. To easily do that a function could be provided by the user for
-any sectioning commands that are exotic, and those functions will
-accommodate the \LaTeX{} command while the calling function will handle
-finding them and collecting their output.
+There needs to be a function which can take a generalizable
+approach to determining the name of a section defined by any
+possible sectioning command. To easily do that a function could
+be provided by the user for any sectioning commands that are
+exotic, and those functions will accommodate the \LaTeX{} command
+while the calling function will handle finding them and
+collecting their output.
 
-<<find section titles>>=
+<<Code>>=
+<<find section title>>
+
+<<find section title>>=
+;; TODO 2024-05-13: this function is really rough. It still needs a
+;; working algorithm to search through the noweb text to find the
+;; section that a chunk belongs to. I think that searching for all of
+;; the sections that preceed a chunk definition will be necessary before
+;; finding the last section command that preceeds a chunk (thereby
+;; finding the section the chunk belongs to). There may be a better
+;; algorithm; this is the first algorithm I thought of to find the
+;; section that a chunk belongs to regardless of the regular expression
+;; used.
+;;
+;; Another algorithm might use Emacs Lisp regular expressions to search
+;; for the first match to any of the set of regular expressions that
+;; would search for a given sectioning command.
+;;
+;; For now, I trust the Emacs Lisp manual when it says that `regex-opt'
+;; is efficient; it is damned convenient right now.
+(defun w--chunk-section (chunk-name)
+  (with-temp-buffer
+    (insert-file-contents (w-project-noweb project))
+    (re-search-forward (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
+    (re-search-backward
+     (regexp-opt (w-project-sectioning-commands-regexs project)))
+    (buffer-substring (match-beginning) (match-end))))
 @ 
 
 
