@@ -26,12 +26,15 @@
    right=0.625in,
    bottom=0.625in,
    %% "Octavo" size: https://papersizes.io/books/octavo
-   papersize={6in, 9in}
+   %% papersize={6in, 9in}
+   %% papersize={9in, 12in}
+   papersize={8.5in, 11in}
  }
 \usepackage{mparhack}
 \usepackage{mathptmx}
 
-%% FIXME: biblatex causes knoweb to be unable to compile.
+%% FIXME: biblatex causes knoweb to be unable to compile. Does it work
+%% with the unenhanced noweb macro package?
 %% \usepackage{biblatex}
 %% \addbibresource{\whyse.bib}
 
@@ -170,16 +173,18 @@ struct used during runtime.
 %% than later is okay. The feature is required by the package
 %% regardless.
 
-The [[w--project-widget]] type used for the registered projects
-variable is a simple list widget containing the name of the project and
-its Noweb source file, along with a filename for a shell script which
-generates the Noweb tool syntax for this project. Each Noweb project has
-a different command-line, and some are complex enough to have a
-makefile, or multiple makefiles! Noweb itself is an example of that
-level of complexity. The shell script is later executed by WHYSE upon
-loading the project, and the standard output captured for parsing by a
-PEG parser.
+The [[w--project-widget]] type used for the registered projects variable
+is a simple list widget containing the name of the project and a path to
+its Noweb source file, along with a shell command which generates the
+Noweb tool syntax for this project. Each Noweb project has a different
+command-line, and some are complex enough to have a makefile, or
+multiple makefiles! Noweb itself is an example of that level of
+complexity. The shell command is executed by WHYSE upon loading the
+project, and the standard output captured for parsing by a PEG parser.
 
+The widget itself is explained in \ref{widgetry}.
+
+\section{Widgetry}\label{widgetry}
 <<Widgets>>=
 (define-widget 'w--project-widget 'list
   "The WHYSE project widget type."
@@ -213,21 +218,37 @@ PEG parser.
            implementation of WHYSE for explanation."
            :value "")
 
-          ;; FIXME: this widget doesn't work. There needs to be a widget for a list of strings here.
-          ;; (list :tag "LaTeX sectioning commands" :format "%t\n%v"
-          ;;       :documentation "The strings here should be the maximum length of the command
-          ;;       possible, because substrings like 'section' will not match the
-          ;;       sectioning command only. It is likely that these will have false
-          ;;       positive matches (Sectioning command might be called like
-          ;;       '\\section{}' or '\\mySectionCommand[bold]{name}'.)"
-          ;;       :convert-widget
-          ;;       :args 'widget-types-convert-widget
-          ;;       (string :tag "A sectioning command string"
-          ;;               :format "%t: %v"
-          ;;               :value "\\section{"))
+          (editable-list
+           :tag "LaTeX sectioning commands"
+           :format "%t\n%v%i\n"
+           :documentation "The strings here should be the maximum length of the command
+                  possible, because substrings like 'section' will not match the
+                  sectioning command only. It is likely that these will have false
+                  positive matches (Sectioning command might be called like
+                  '\\section{}' or '\\mySectionCommand[bold]{name}'.)"
+           :args ((string :tag "Sectioning command"
+                          :format "%t: %v"
+                          :value "\\section{"
+                          ;; FIXME: even with regex-builder I can't seem
+                          ;; to write a regular expression that doesn't
+                          ;; reject seemingly valid strings.
+                          ;; :valid-regexp "\\.*\\(\\[.*\\]\\)?{?"
+                          :documentation "More than simply 'section', use '\\section{' or '\mySection[]{' at least."
+                          )))
           ))
 
+(define-widget 'w--module-header 'group
+  "Code and docs module editor headerbar.
+
+This widget represents the headerbar for the code and docs module
+editor."
+  <<module-header top-level>>)
+
 @
+
+The top-level definition of the module-header is saved for later,
+because the organization of the editing buffer is experimental and
+therefore kept in the development miscellany section \ref{misc}.
 
 %% NOTE: Comments may be superfluous in a literate document like this, but
 %% some effort was made to produce a readable source file regardless of
@@ -280,12 +301,12 @@ whyse group."
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project)))
            (parse-tree <<parse-project-in-temp-buffer>>))
-
-      ;; FIXME: peculiar error: "UNIQUE constraint failed:
-      ;; module.module_number", 19, nil, "constraint failed"
       (progn
         <<setup project database>>
-        (run-hooks 'w-open-project-hook))
+        (run-hooks 'w-open-project-hook)
+        ;; TODO: connection closure should be on a timer that is reset
+        ;; everytime a `w-'prefixed function is called, or something.
+        (emacsql-close (w-project-database-connection project)))
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
 
@@ -411,29 +432,39 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
           (emacsql (w-project-database-connection project) expression))
 
         ;; A list of SQL s-expressions to create the tables.
-        '([:create-table-if-not-exists module
-           ([module-name content file-name section-name displacement
-             module-number])]
+        '([:create-table :if-not-exists module
+           ([modulename content filename sectionname displacement
+             modulenumber]
+            (:primary-key [modulenumber modulename filename]))]
 
-          [:create-table-if-not-exists parent-child
-           ([(parent integer) (child integer)]
-            (:primary-key [parent child])
-            (:foreign-key [parent] :references module [module-number])
-            (:foreign-key [child] :references module [module-number]))]
+          [:create-table :if-not-exists parentchild
+           ([parent child]
+            (:primary-key [parent child]))]
 
-          [:create-table-if-not-exists identifier-used-in-module
-           ([identifier-name
-             (module-number integer)
-             (line-number integer)
-             type-of-usage]
-            ;; (:primary-key [identifier-name module-number line-number
-            ;;                type-of-usage])
-            )]
+          ;; NOTE: Identifier_used_in_module is a relation with the
+          ;; attributes identifier_name and module_number. An identifier
+          ;; can be used several different ways in each module that it
+          ;; is in. It can be defined, referenced or modified. Each of
+          ;; this functions correspond to different value of the
+          ;; attribute type_of_usage. The type_of_usage attribute can
+          ;; have three values: modified, referenced, and defined.
+          ;; Line_number is an attribute of each relationship. All
+          ;; attributes are included in the key.
+          [:create-table :if-not-exists identifierusedinmodule
+           ([identifiername modulenumber linenumber typeofusage]
+            (:primary-key [identifiername modulenumber typeofusage]))]
 
-          [:create-table-if-not-exists topic-referenced-in-module
-           ([(topic-name nil) (module-number integer)]
-            ;; (:primary-key [topic-name module-number])
-            )]))
+          ;;; HOLD: the concept of "topic" is not present in Noweb, but
+          ;;; is present in WEB. Consult CWEB documentation and the
+          ;;; original WEB documenation to see the meaning of this
+          ;;; table.
+          ;; NOTE: Toplc_referenced_in_module is a relation with
+          ;; attributes topic_name and module_number. The same topic may
+          ;; be in several modules and each module can contain several
+          ;; topics. Both attributes compose the primary key.
+          [:create-table :if-not-exists topicreferencedinmodule
+           ([topicname modulenumber]
+            (:primary-key [topicname modulenumber]))]))
 @
 
 
@@ -667,7 +698,10 @@ which may be used inside the contents of a chunk are given next.
 text
 nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
 defn
-use ;; NOTE: related to the `identifier-used-in-module' table.
+;;; NOTE: previously, a note on the following line incorrectly stated
+;;; the `use' token was related to the `identifierusedinmodule' table,
+;;; when it is actually related to the `parentchild' table.
+use
 @ 
 
 All structural keywords, then, are:
@@ -732,10 +766,14 @@ to) a chunk are important keywords.
 (defn "@defn" spc (substring !eol) nl
   `(name -- (cons 'chunk name)))
 
-(use (bol) "@use" spc (substring !eol) nl
-     `(name -- (if name
-                         (cons 'chunk-child-usage name)
-                       (error "UH-OH! There's a syntax error in the tool output!"))))
+;; In @<<whyse.el>>=, it leads to usages tokens like below:
+;; (chunk-child-usage . "Commentary")
+;; (chunk-child-usage . "Code")
+(use
+ (bol) "@use" spc (substring !eol) nl
+ `(name --
+        (if name (cons 'chunk-child-usage name)
+          (error "UH-OH! There's a syntax error in the tool output!"))))
 @
 
 \begin{quotation}
@@ -1296,28 +1334,27 @@ accompanied with changes in the documentation.)"
      (let* ((file-name (car file-token))
             (chunks (cdr file-token))
             (modules (vector
-                      :insert-into 'module
-                      :values (message "%S" (mapcar #'w--vectorize-chunk-data chunks))
+                      :insert :into 'module
+                      :values (mapcar #'w--vectorize-chunk-data chunks)
                       :on-conflict-do-nothing))
+            (parent-child (vector
+                           :insert :into 'parentchild
+                           :values (w--parent-child-relationships)
+                           :on-conflict-do-nothing))
             (connection (w-project-database-connection project)))
        (mapcar (lambda (seql) (emacsql connection seql))
                (list modules
-                     ;; TODO 2024-05-11: find the parent-child
-                     ;; relationships using the used and not-used tokens
-                     ;; in the parse tree. parent-child should be quite
-                     ;; easy.
-                     ;;;
-                     ;; parent-child
+                     parent-child
                      ;; identifier-used-in-module
                      ;; topic-referenced-in-module
                      ))))
    parse-tree))
 
-;; TODO 2024-05-11: find the sections each module is defined within.
 (defun w--vectorize-chunk-data (chunk)
-  "Convert an individual chunk to a vector of objects."
-  ;; NOTE: order of arguments: [module-name module-text file-name
-  ;; section displacement module-number]
+  "Convert an individual chunk to a vector of objects.
+
+NOTE: order of arguments: [module-name module-text file-name
+section displacement module-number]"
   (let ((chunk-name (w--chunk-name chunk)))
     (vector chunk-name
             (w--chunk-text chunk)
@@ -1326,6 +1363,35 @@ accompanied with changes in the documentation.)"
               (w--chunk-section chunk-name))
             nil
             (w--chunk-number chunk))))
+
+(defun w--parent-child-relationships ()
+  "Make a list of vectors of parent-child relationships.
+
+The elements are taken from applying `w--get-chunk-uses-of-chunks' to
+every chunk in the noweb."
+  (apply #'append (cl-mapcar #'w--get-chunk-uses-of-chunks chunks)))
+
+(defun w--get-chunk-uses-of-chunks (chunk)
+  "Make a list of vectors of parent-child relationships.
+
+The parent is CHUNK, and the first element of each vector in the
+list will be the number of this chunk. The chunks this chunk uses
+will be named in the vectors in the returned list."
+  (with-temp-buffer
+    (let* ((iter 0)
+           (parent-uses-child (list nil))
+           (chunk-number (assoc-default 'code chunk))
+           (chunk-formatted (format "%S" chunk)))
+      (insert chunk-formatted)
+      (goto-char (point-min))
+      (cl-remove
+       nil
+       (cl-mapcar (lambda (assoc)
+                    (when (equal (car assoc) 'chunk-child-usage)
+                      (vconcat (list (number-to-string chunk-number)
+                                     (cdr assoc)))))
+                  chunk)))))
+
 @
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
@@ -1349,51 +1415,7 @@ shoddy implementation of a ``stack-based history'' is given next.
 
 
 
-\subsection{Determining parent-child relationships in a multiple inheritance environment}
-The solution is simple: inbreeding. Every now and then in real-life
-heredity there are cases of inbreeding. It affects ``natural
-populations'' and humans too (who are also ``natural populations'').
-Thinking of multiple inheritance in object-orientation is much more
-difficult, and I don't know anything about it other than the following
-name: ``the multiple inheritance problem''. That's why the solution to
-the problem is simple in this state.
-
-There is also no actual inheritance, other than the \texttt{section},
-\texttt{chapter}, or other sectioning command that preceeds or contains
-the chunk. The children of a chunk will ``inherit'' that section, even
-if they occur in another section of the literate document. Referring to
-[[<<WHYSE>>]] in a documentation chunk is easily understood as a
-cross-reference, and a [[use]] of a chunk in another constitutes the
-parent-child relationship between the two chunks. Thus, if the
-sectioning commands preceeding a chunk are ``inherited'', they are
-inherited only indirectly and not because they've actually received a
-copy of a gene or a pointer to a function.
-
-What section does a chunk belong to? Whatever sectioning command is ``in
-effect'' when the chunk is defined will work nicely, and as long as it
-remains sufficient, a user might query the sections of all the parents
-of that chunk rather than concern themselves with the multiple sections
-the chunk ``belongs'' to. That's how the ``problem'' is interpreted in
-the literate document.
-
-I do not have enough experience in \LaTeX{} to know how to search
-for all of the sectioning commands that may be in use from any
-given macro package. I don't know if that's possible. The easiest
-way to get the needed information is to parse the human-readable
-noweb document looking for any sectioning commands defined by the
-user; if the user is using a custom sectioning macro package in
-their document nobody else might know about it, and it would be
-unsupported in that case and there would be unnecessarily missing
-information in their project database.
-
-There needs to be a function which can take a generalizable
-approach to determining the name of a section defined by any
-possible sectioning command. To easily do that a function could
-be provided by the user for any sectioning commands that are
-exotic, and those functions will accommodate the \LaTeX{} command
-while the calling function will handle finding them and
-collecting their output.
-
+\subsection{finding the section title of a chunk}
 <<Code>>=
 <<find section title>>
 
@@ -1417,10 +1439,67 @@ collecting their output.
 (defun w--chunk-section (chunk-name)
   (with-temp-buffer
     (insert-file-contents (w-project-noweb project))
-    (re-search-forward (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
+    (re-search-forward
+     ;; It is an error if no chunks are found.
+     (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
     (re-search-backward
-     (regexp-opt (w-project-sectioning-commands-regexs project)))
-    (buffer-substring (match-beginning) (match-end))))
+     (regexp-opt (w-project-sectioning-commands-regexs project))
+     ;; It is not an error if no section is found because sectioning is
+     ;; entirely optional in a literate document with LaTeX.
+     nil t)
+    (buffer-substring (line-beginning-position) (line-end-position))))
+@ 
+
+While it's certain that some of the data from a search operation are
+markers of a match (some of them are non-nil), substrings corresponding
+to the used chunk name in the current chunk are appended to a list that
+is ultimately returned.
+
+\subsection{Determining parent-child relationships}
+There needs to be a function which can take a generalizable
+approach to determining the name of a section defined by any
+possible sectioning command. To easily do that a function could
+be provided by the user for any sectioning commands that are
+exotic, and those functions will accommodate the \LaTeX{} command
+while the calling function will handle finding them and
+collecting their output.
+
+\begin{verbatim*}
+  ((code . 32)
+   (x-label . "NW2ucZJx-3LzQog-2")
+   (ref . "NW2ucZJx-3LzQog-1")
+   (chunk . "chunks and their bou...")
+   (prevdef . "NW2ucZJx-3LzQog-1")
+   (nextdef . "NW2ucZJx-3LzQog-3")
+   (text . "\n(chunk-contents\n (o...")
+   (x-label . "NW2ucZJx-3LzQog-2-u1")
+   (ref . "NW2ucZJx-2ZphFz-1")
+   (chunk-child-usage . "structural keywords")
+   (text . "\n  ")
+   (x-label . "NW2ucZJx-3LzQog-2-u2")
+   (ref . "NW2ucZJx-44iV1g-1")
+   (chunk-child-usage . "tagging keywords")
+   (text . "\n  x-notused\n  ")
+   (x-label . "NW2ucZJx-3LzQog-2-u3")
+   (ref . "NW2ucZJx-1ZiKLq-1")
+   (chunk-child-usage . "tool errors")
+   (text . "))\n"))
+\end{verbatim*}
+
+<<collect child chunk uses>>=
+(with-temp-buffer
+  (let* ((iter 0)
+         (parent-uses-child (list nil))
+         (chunk-number (assoc-default 'code chunk))
+         (chunk-formatted (format "%S" chunk)))
+    (insert chunk-formatted)
+    (goto-char (point-min))
+    (cl-remove
+     nil
+     (cl-mapcar (lambda (assoc)
+                  (when (equal (car assoc) 'chunk-child-usage)
+                    (vconcat (list chunk-number (cdr assoc)))))
+                chunk))))
 @ 
 
 
@@ -1612,7 +1691,7 @@ in the License section at the end of this document.
 
 \listofnotes
 
-\section{Miscellaneous code and functions useful for development and debugging}.
+\section{Miscellaneous code and functions useful for development and debugging}\label{misc}
 <<Code>>=
 (defun w--log-in-buffer (buffer-name &rest body)
   "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
@@ -1620,6 +1699,66 @@ in the License section at the end of this document.
     (with-current-buffer
         (generate-new-buffer buffer-name)
       (insert (format-message "%S" body)))))
+
+<<module-header top-level>>
+@
+
+The top-level of the module header is defined here now.
+
+Code modules have names, but documentation modules only sometimes have
+sections. Sometimes a documentation module doesn't have a section
+because the definition of one or more sections occur within it, and
+therefore a section cannot apply to it by reason of occurring before the
+beginning of the module. Therefore the headerbar must have a section
+within it for holding a program code module name or \LaTeX{} section
+name. Additionally it must also have an area to contain further buttons.
+It makes sense to define, loosely, a left, right, and center area to be
+filled with other widgets (which will inherit widths of the area).
+
+<<module-header top-level>>=
+:width (buffer-size)
+:tag "🍫"
+:format "%t%v"
+;; :keymap w-widget-headerbar-map
+@ 
+
+A keymap provides for handling keyboard and mouse events.
+
+<<Code>>= 
+<<module-header keymap>>
+<<module-header keymap>>=
+@ 
+
+<<module-header top-level>>=
+:value '(module-header-left module-header-center module-header-right)
+@ 
+
+<<Code>>=
+<<module-header-left>>
+<<module-header-center>>
+<<module-header-right>>
+@ 
+
+<<module-header-left>>=
+(define-widget 'w--module-header-left 'group
+  "DOCSTRING"
+  (link :format "%t"
+        :tag (format "@<<%s>>%s%s%d"
+                     module-name
+                     addition?
+                     modified?
+                     module-number)))
+
+<<module-header-center>>=
+(define-widget 'w--module-header-center 'group
+  "DOCSTRING"
+  '((item :tag "module")))
+
+<<module-header-right>>=
+(define-widget 'w--module-header-right 'group
+  "DOCSTRING"
+  '((item :tag "module")))
+
 @
 
 \chapter{License}
