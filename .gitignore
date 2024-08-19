@@ -9,3 +9,13 @@
 
 # Undo-tree save-files
 *.~undo-tree
+/auto/
+/whyse-0.1/
+/whyse.xdv
+/whyse.toc
+/whyse.tex
+/whyse.notes
+/whyse.log
+/whyse.fls
+/whyse.fdb_latexmk
+/whyse.aux

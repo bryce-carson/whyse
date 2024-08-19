@@ -246,16 +246,19 @@ editor."
 
 @
 
-The top-level definition of the module-header is saved for later,
+The definition of [[<<module-header top-level>>]] is saved for later,
 because the organization of the editing buffer is experimental and
-therefore kept in the development miscellany section \ref{misc}.
+therefore kept in the developer-oriented miscellany section \ref{misc}.
 
-%% NOTE: Comments may be superfluous in a literate document like this, but
-%% some effort was made to produce a readable source file regardless of
-%% the general principles of literate programming; other authors write
-%% warnings into their tangled source files: ``Don't read this file!
-%% Read the Noweb source only!''. I don't say that, especially for an
-%% Emacs application.
+%% NOTE: Comments may be superfluous in a literate document like this,
+%% but some effort was made to produce a readable source file regardless
+%% of the conventions other literate programmers follow; other authors
+%% write warnings into their tangled source files like, ``Don't read
+%% this file! Read the Noweb source only!''. I don't say that,
+%% especially for an Emacs application, which should always be
+%% self-documenting whatever format it was distributed in: a Noweb
+%% source or printed literate program, or a tangled source tarball for
+%% installation on a user's machine.
 
 %% TODO: include a customization variable that allows users to trigger
 %% an error or a warning rather than opening Customize when no default
@@ -376,7 +379,9 @@ user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
 cache directory is used, otherwise the database is made in the user's
 Emacs directory and not a sub-directory thereof.
 
-The form used to create the absolute path for the location of the
+The
+form %% LISP form? Yes.
+used to create the absolute path for the location of the
 database joins three things: the user's Emacs directory, \texttt{nil} or
 Spacemacs' cache directory, and the name of the project with ``.db''
 appended. Note that concatenating \texttt{nil} with a string is the same
@@ -408,7 +413,9 @@ appropriate slot of the project struct.
 (setf (w-project-database-connection project)
       (emacsql-sqlite <<return a filename for the project database>>
                       ;; TODO: make this debug log buffer into a package
-                      ;; customization.
+                      ;; customization. NOTE: this erases the contents
+                      ;; of the named buffer and then returns the buffer
+                      ;; object for that buffer.
                       :debug (with-current-buffer
                                  (get-buffer-create "emacsql-sqlite-debug-log")
                                (erase-buffer)
@@ -458,7 +465,7 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
           ;;; is present in WEB. Consult CWEB documentation and the
           ;;; original WEB documenation to see the meaning of this
           ;;; table.
-          ;; NOTE: Toplc_referenced_in_module is a relation with
+          ;; NOTE: topic_referenced_in_module is a relation with
           ;; attributes topic_name and module_number. The same topic may
           ;; be in several modules and each module can contain several
           ;; topics. Both attributes compose the primary key.
@@ -1136,6 +1143,7 @@ destructuring'';
 it could be thought of as code generation, since the data is used to
 generate DML which is partly code and partly data.
 
+%% FIXME 2024-08-10 what the fuck am I saying here?
 Some associations are reductions from the initial parse tree---which
 thanks to the \textsc{peg} package and \em{PEG parsing in general}---are
 not reduced in a second step. Modifications to the parsing procedure can
@@ -1164,14 +1172,16 @@ The initial parse tree begins like the one below.
 \end{verbatim}
 
 The reductions which occur during parsing make chunk zero of the second
-noweb document look like this in the final result:
+noweb document look like this in the final result.
+
 \begin{verbatim}
 ((code . 0)
  (text .
   "asdf is a system definition format in Common LISP,
   and I like to use it."))
 \end{verbatim}
-; the new result is much easier to use as data for other programs (SQL
+
+The new result is much easier to use as data for other programs (SQL
 in this case). In the verbatim text a literal newline was inserted
 rather than retaining the escape sequence, which is exactly what happens
 in the reduction step as well. The next subsection discusses the details
@@ -1204,7 +1214,7 @@ To collapse these tokens into a single text token the
 \texttt{peg--stack} must be manipulated carefully. It isn't advisable to
 manipulate this variable in the course of a PEG grammar's actions. There
 is a use case for it when the previous rules and actions won't
-accomodate the necessary action without refactoring a larger part of the
+accommodate the necessary action without refactoring a larger part of the
 grammar. In this development version that is not a goal; basic
 functionality is sought after, not robustness or beauty, so hacking the
 desired behaviour together quickly is better.
@@ -1236,6 +1246,9 @@ zeroth-indexed document."
   (or (cdr (assq 'code chunk))
       (cdr (assq 'docs chunk))))
 
+(defun w--nth-chunk-of-nth-noweb-document (nth-chunk nth-document parse-tree)
+  (w--nth-chunk-of-document nth-chunk (w--nth-document nth-document parse-tree)))
+
 (defun w--chunk-text (chunk)
   "Join all the strings returned from the collection in the loop,
 and return the single string."
@@ -1254,7 +1267,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 @ 
 
-TODO: place this inclusion better
+\TODO{Place the insertion of the functions into the code chunk better.}
 
 <<Code>>=
 <<functions for navigating WHYSE parse trees>>
@@ -1464,6 +1477,7 @@ exotic, and those functions will accommodate the \LaTeX{} command
 while the calling function will handle finding them and
 collecting their output.
 
+%% FIXME 2024-08-10: what is this and why is it here? It seems out of place.
 \begin{verbatim*}
   ((code . 32)
    (x-label . "NW2ucZJx-3LzQog-2")
@@ -1562,7 +1576,7 @@ command-line used to tangle and weave WHYSE.
 
 The following chunk lists the [[<<required packages>>]]; as of
 [[whyse-0.1-devel]] the only required packages are [[peg]] and
-[[cl-lib]].
+[[cl-lib]], [[emacsql]].
 
 <<required packages>>=
 (emacs "25.1")

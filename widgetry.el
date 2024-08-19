@@ -1,97 +1,32 @@
-(widget-create 'push-button
-               :notify (lambda (&rest ignore)
-                         (w--reinitialize-whsye-buffer))
-               "Reinitialize whyse widget-test buffer")
-[Reinitialize whyse widget-test buffer]
+(require 'widget)
 
-(defun erase-widget-enabled-buffer ()
+(eval-when-compile
+  (require 'wid-edit))
+
+(defun w--create-module-headerbar (&optional w--chunk)
+  "Create a headerbar for a module."
+  (interactive) ; Only during development
+
+  ;; Buffer setup
+  (switch-to-buffer (get-buffer-create "w-headerbar-devel"))
+  ;; The following prevents local variables controlling buffer editing and
+  ;; things related to widget from interfering with the process of resetting the
+  ;; buffer.
   (kill-all-local-variables)
+  ;; TODO: it would be nice to have `yank-all-local-variables'.
   (let ((inhibit-read-only t))
     (erase-buffer))
-  (remove-overlays))
+  (remove-overlays)
 
-(defun w--reinitialize-whsye-buffer (&optional number name)
-  "Create a widget-enabled buffer for whyse development."
-  (interactive)
-  (switch-to-buffer "*whyse development*")
-  (erase-widget-enabled-buffer)
-  (widget-create 'push-button
-                 ;; TODO: activating this button should offer to rename the
-                 ;; chunk or go to its first definoition. Presently it is a no-op with a message.
-                 :notify #'ignore
-                 :format "%[<<%t>>%]"
-                 :tag (format "%s %s"
-                              w--buffer-chunk-name
-                              (w--current-chunk-first-definition-chunk-number)))
-  (widget-insert " ")
-  (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-                           (w--switch-to-chunk
-                            (w--get-chunk-continuation-number
-                             w--buffer-chunk-number)))
-                 :format "%[ %t %]"
-                 :tag (format "%s"
-                              (if-let ((n (w--get-chunk-continuation-number)))
-                                  n
-                                "NONE")))
-  (widget-insert (w--get-chunk-contents
-                  w--buffer-chunk-number
-                  w--buffer-file-number)))
+  ;; Widgetry
+  (widget-create 'w--module-header))
 
-;; TODO
-(defun w--get-chunk-contents (chunk-number file-number)
-  "Return the text contents of the chunk CHUNK-NUMBER.
+(defun w--create-module-text-field (&optional w--chunk)
+  "Create a multi-line, editable text field (for W--CHUNK)."
+  (switch-to-buffer (get-buffer-create "w-headerbar-devel"))
+  ;; FIXME: `eval-last-sexp' on the following form causes `: \n' to be inserted.
+  (widget-create '(text :keymap global-map)))
 
-If the chunk is empty `nil' is returned."
-  (w--nth-chunk-of-document
-   chunk-number
-   (w--nth-document file-number parse-tree)))
 
-;; TODO
-(defun w--current-chunk-first-definition-chunk-number ()
-  "non-nil and a number for code chunks; nil for documentation chunks.
-
-Code chunks may have more than one chunk comprising their
-definition, hence all code chunks have a first definition chunk.
-This retrieves the number of that chunk."
-  nil)
-
-;; TODO
-(defun w--get-chunk-continuation-number ()
-  "non-nil if chunk NUMBER has a continued chunk defintion.
-
-If this is the only or last definition of this chunk then nil is returned.
-
-If at least one more chunk continues this definition its chunk number is returned."
- nil)
-
-(defun w--switch-to-chunk (number)
-  "Switch the current buffer's noweb chunk to the chunk numbered NUMBER.
-
-This function changes the state of the whyse application
-significantly."
-  (setq w--buffer-chunk-number number
-        w--buffer-chunk-name (w--get-chunk-name number))
-  (w--reinitialize-whsye-buffer))
-
-;; TODO
-(defun w--get-chunk-name (number)
-  "Get the name of the chunk with number NUMBER, or return the default name."
-  "UNKNOWN")
-
-(make-variable-buffer-local
- (defvar w--buffer-chunk-name "↔DOCUMENTATION↔"
-   "The name of the code chunk in the current buffer.
-
-If the current buffer's chunk is a documentation chunk, then the
-default value is displayed indicating that it is not a code
-chunk. It is possible, but quite unlikely the default value is
-the same as a code chunk."))
-
-(make-variable-buffer-local
- (defvar w--buffer-chunk-number 0
-   "The index number of the current buffer's displayed chunk."))
-
-(make-variable-buffer-local
- (defvar w--buffer-file-number 0
-   "The index number of the file of the current buffer's displayed chunk."))
+(progn (w--create-module-headerbar)
+       (w--create-module-text-field))

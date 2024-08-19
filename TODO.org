@@ -1,0 +1,1 @@
+* Write Emacs LISP functions for recognizing arbitrary LaTeX sectioning commands
