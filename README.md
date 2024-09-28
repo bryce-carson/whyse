@@ -1,14 +1,13 @@
 # WHYSE ⸺ The WEB HYpertext System in Emacs
-WHYSE is an integrated development environment for Noweb and $\LaTeX{}$,
-integrating these tools with new system features for editing and reviewing
-literate programs. The IDE is based off of the work by Brown and Czejdo from
-199x, and is in early development.
+WHYSE is an integrated development environment for Noweb and LaTeX,
+integrating these tools with new system features for editing and reviewing literate programs.
+The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
 
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
 
-Firstly run `make compile-pdf`; Noweb 2.13 and $\LaTeX{}$ are required.
+Firstly run `make compile-pdf`; Noweb 2.13 and LaTeX are required.
 
 The files I have in my directory are as follows.
 
@@ -30,7 +29,7 @@ sounds, movies, etc. are under their own license, if any works of these mediums
 exist within the project at any time.
 
 The Makefile has commands to `weave` Noweb to LaTeX source, `tangle` files from
-Noweb sources, and `compile-pdf`s from generated $\LaTeX{}$ sources. It also
+Noweb sources, and `compile-pdf`s from generated LaTeX sources. It also
 contains a command to generate Noweb intermediate tool syntax for developer
 inspection.
 
@@ -48,6 +47,6 @@ environment. Therefore an operating system image (in ISO format) may be made
 available for development purposes.
 
 Due the difficulties time was taken to revert the project to using the standard
-noweb macro package. It compiles best with $\XeTeX{}$. With $\LuaTeX{}$ there
-are compilation issues for some reason (I am not a $\LaTeX{}$
+noweb macro package. It compiles best with XeTeX. With LuaTeX there
+are compilation issues for some reason (I am not a LaTeX
 macro-understander, so I can't debug the issues).
