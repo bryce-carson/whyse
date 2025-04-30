@@ -1,12 +1,7 @@
 # WHYSE ⸺ The WEB HYpertext System in Emacs
-WHYSE is an integrated development environment for Noweb and $\LaTeX{}$,
-integrating these tools with new system features for editing and reviewing
-literate programs. The IDE is based off of an academic paper from nineteen
-ninety-one by Brown and Czejdo (subject /Hypertext/).
-
-References are listed here:
-
-- Brown, M. and Bogdan D. Czejdo. "A Hypertext for Literate Programming." International Conference on Computing and Information [1991].
+WHYSE is an integrated development environment for Noweb and LaTeX,
+integrating these tools with new system features for editing and reviewing literate programs.
+The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
 
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
@@ -35,7 +30,7 @@ sounds, movies, etc. are under their own license, if any works of these mediums
 exist within the project at any time.
 
 The Makefile has commands to `weave` Noweb to LaTeX source, `tangle` files from
-Noweb sources, and `compile-pdf`s from generated $\LaTeX{}$ sources. It also
+Noweb sources, and `compile-pdf`s from generated LaTeX sources. It also
 contains a command to generate Noweb intermediate tool syntax for developer
 inspection.
 
@@ -53,9 +48,9 @@ environment. Therefore an operating system image (in ISO format) or a Docker
 container may be made available for development purposes; don't count on it.
 Consider using `docker pull texlive/texlive:TL2020-historic`.
 
-Due to the these difficulties some time was taken to revert the project to using
-the standard noweb macro package. It compiles best with $\XeTeX{}$. With
-$\LuaTeX{}$ there are compilation issues for some reason (I am not a $\LaTeX{}$
+Due the difficulties time was taken to revert the project to using the standard
+noweb macro package. It compiles best with XeTeX. With LuaTeX there
+are compilation issues for some reason (I am not a LaTeX
 macro-understander, so I can't debug the issues).
 
 # Returning to development after a long hiatus
