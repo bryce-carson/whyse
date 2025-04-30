@@ -6,6 +6,7 @@ weave: clean
 compile-pdf: tangle weave
 	latexmk --xelatex --interaction=nonstopmode -f whyse.tex
 	xelatex -f whyse.tex
+pdf: compile-pdf
 
 tangle: clean
 	notangle -Rwhyse.el whyse.nw > whyse.el
@@ -22,7 +23,7 @@ test: clean tangle
 # Remove backup files and LaTeX garbage and cache files.
 clean:
 	$(RM) ~/.config/emacs/.cache/whyse.db
-	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml whyse.tex *.toc *.xdy
+	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof *.log *.out *.pdf *.run.xml whyse.tex *.toc *.xdy *.xdv
 	$(RM) -rf whyse-*/
 
 tool-syntax:
@@ -46,48 +47,48 @@ tool-syntax:
 # conflict with Make's own arguments through Make to the script.
 # Using -- doesn't seem to do it.
 
-ifdef install-deps
-	INSTALL_DEPS = "--install-deps"
-endif
-ifdef install-linters
-	INSTALL_LINTERS = "--install-linters"
-endif
+# ifdef install-deps
+# 	INSTALL_DEPS = "--install-deps"
+# endif
+# ifdef install-linters
+# 	INSTALL_LINTERS = "--install-linters"
+# endif
 
-ifdef sandbox
-	ifeq ($(sandbox), t)
-		SANDBOX = --sandbox
-	else
-		SANDBOX = --sandbox=$(sandbox)
-	endif
-endif
+# ifdef sandbox
+# 	ifeq ($(sandbox), t)
+# 		SANDBOX = --sandbox
+# 	else
+# 		SANDBOX = --sandbox=$(sandbox)
+# 	endif
+# endif
 
-ifdef debug
-	DEBUG = "--debug"
-endif
+# ifdef debug
+# 	DEBUG = "--debug"
+# endif
 
-# ** Verbosity
+# # ** Verbosity
 
-# Since the "-v" in "make -v" gets intercepted by Make itself, we have
-# to use a variable.
+# # Since the "-v" in "make -v" gets intercepted by Make itself, we have
+# # to use a variable.
 
-verbose = $(v)
+# verbose = $(v)
 
-ifneq (,$(findstring vvv,$(verbose)))
-	VERBOSE = "-vvv"
-else ifneq (,$(findstring vv,$(verbose)))
-	VERBOSE = "-vv"
-else ifneq (,$(findstring v,$(verbose)))
-	VERBOSE = "-v"
-endif
+# ifneq (,$(findstring vvv,$(verbose)))
+# 	VERBOSE = "-vvv"
+# else ifneq (,$(findstring vv,$(verbose)))
+# 	VERBOSE = "-vv"
+# else ifneq (,$(findstring v,$(verbose)))
+# 	VERBOSE = "-v"
+# endif
 
-# * Rules
+# # * Rules
 
-# TODO: Handle cases in which "test" or "tests" are called and a
-# directory by that name exists, which can confuse Make.
+# # TODO: Handle cases in which "test" or "tests" are called and a
+# # directory by that name exists, which can confuse Make.
 
-%:
-	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS) $(@)
+# %:
+# 	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS) $(@)
 
-.DEFAULT: init
-init:
-	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS)
+# .DEFAULT: init
+# init:
+# 	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS)

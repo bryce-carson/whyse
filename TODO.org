@@ -1,1 +1,3 @@
-* Write Emacs LISP functions for recognizing arbitrary LaTeX sectioning commands
+* DONE Write Emacs LISP functions for recognizing arbitrary LaTeX sectioning commands
+CLOSED: [2025-04-28 Mon 13:33]
+- Use RefTeX's [[help:reftex-section-regexp][retex-section-regexp]]

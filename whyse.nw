@@ -104,15 +104,16 @@
 %% pure white like body text).
 
 \begin{abstract}
-  \textsc{(no)Web HYpertext System in Emacs (WHYSE)} is an integrated
-  development environment for Noweb and \LaTeX{} within Emacs, similar to EDE
-  but not sharing development principles. It is based off of \CITE{an academic
-    paper written in 1991 by Brown and Czejdo}. A paper describing this
-  implementation---written in Noweb and browsable, editable, and auditable with
-  WHYSE, or readable in the printed form---is hoped to be submitted to \em{The
-    Journal of Open Source Software (JOSS)} before the year 2024. N.B.: the
-  paper will include historical information about literate programming, and
-  citations (especially of those given credit in the [[@<<Commentary>>]] for
+  \textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
+  development environment for Noweb-based hypertexts within Emacs,
+  similar to EDE but not sharing development principles. It is based off
+  of \CITE{an academic paper written in 1991 by Brown and Czejdo}. A
+  paper describing this implementation---written in Noweb and browsable,
+  editable, and auditable with WHYSE, or readable in the printed
+  form---is hoped to be submitted to \em{The Journal of Open Source
+    Software (JOSS)} before the year 2024. N.B.: the paper will include
+  historical information about literate programming, and citations
+  (especially of those given credit in the [[@<<Commentary>>]] for
   ideating WHYSE itself).
 
   Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
@@ -129,16 +130,17 @@
 \end{abstract}
 
 \chapter{WHYSE Projects}\label{Projects}
-The organization of this literate program is \textit{linear}, with aspects of
-the program explained as the user would encounter them, more or less. A user
-will read from the package description that they should call an interactive
-command to create a project. The \textsc{WHYSE} application has a single
-interactive command: [[whyse]]. The command loads the first element of the
-customization variable [[w-registered-projects]], considering that the default
-project, or it opens the ``Easy Customization Interface'' for the application's
-customization group ([[M-x customize-group whyse]]): an effective prompt for the
-user to enter the necessary information. If user's dislike this, they can
-disable it.
+The organization of this literate program is linear, with aspects of the
+program explained as the user would encounter them in the user
+documenation, more or less. A user will read from the package
+description that they should call an interactive command to create a
+project. The \textsc{WHYSE} application is started with the interactive
+command: [[whyse]]. The command loads the first element of the
+customization variable [[w-registered-projects]], considering that the
+default project, or it opens the ``Easy Customization Interface'' for
+the application's customization group ([[M-x customize-group whyse]]):
+an effective prompt for the user to enter the necessary information. If
+user's dislike this, they can disable it.
 
 A customization group for WHYSE is defined to organize its customization
 variables, and these details are explained before moving on to explain the
@@ -1723,17 +1725,18 @@ Code modules have names, but documentation modules only sometimes have
 sections. Sometimes a documentation module doesn't have a section
 because the definition of one or more sections occur within it, and
 therefore a section cannot apply to it by reason of occurring before the
-beginning of the module. Therefore the headerbar must have a section
-within it for holding a program code module name or \LaTeX{} section
+beginning of the module. Therefore the headerbar must have an area
+within it for holding a code module's name or \LaTeX{} section
 name. Additionally it must also have an area to contain further buttons.
 It makes sense to define, loosely, a left, right, and center area to be
 filled with other widgets (which will inherit widths of the area).
 
 <<module-header top-level>>=
-:width (buffer-size)
-:tag "🍫"
-:format "%t%v"
-;; :keymap w-widget-headerbar-map
+(define-widget 'module-header 'group
+  ;; :keymap w-widget-headerbar-map
+  :width (buffer-size)
+  :tag "🍫"
+  :format "%t%v")
 @ 
 
 A keymap provides for handling keyboard and mouse events.
@@ -1741,7 +1744,12 @@ A keymap provides for handling keyboard and mouse events.
 <<Code>>= 
 <<module-header keymap>>
 <<module-header keymap>>=
+(define-keymap :name "module-header-keymap" :parent global-map)
 @ 
+
+The module header keymap derives from the global keymap for now. I don't
+know anything about keymaps, and I always consult documenation when
+defining or deleting defintions for key bindings in Emacs.
 
 <<module-header top-level>>=
 :value '(module-header-left module-header-center module-header-right)
@@ -1755,7 +1763,11 @@ A keymap provides for handling keyboard and mouse events.
 
 <<module-header-left>>=
 (define-widget 'w--module-header-left 'group
-  "DOCSTRING"
+  "The left-most area of the module header widget.
+
+It contains the name of the module, whether the module is an
+addition, whether it has been modified, and the number of the
+module."
   (link :format "%t"
         :tag (format "@<<%s>>%s%s%d"
                      module-name
