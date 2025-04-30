@@ -1,9 +1,24 @@
-# WHYSE ⸺ The WEB HYpertext System in Emacs
-WHYSE is an integrated development environment for Noweb and LaTeX,
-integrating these tools with new system features for editing and reviewing literate programs.
-The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
+The README file is tangled with the following chunks in the order given.
 
+<<README.md>>=
+<<about>>
+<<development>>
+<<latex>>
+<<hiatus>>
+<<directory>>
+@ 
 
+I need to tell first-time visitors what WHYSE is, and why they might like to use it.
+
+For those interested in using it they need to know how to download and install
+it; it is not my purpose to teach them how to use GitHub. There's a big green
+button, if a visitor cannot press that they won't be able to use WHYSE
+regardless.
+
+As an Emacs mode it doesn't require LaTeX or make on the user's system. As a
+literate document this is required.
+
+<<development>>=
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
@@ -40,6 +55,11 @@ a reference to Brown & Czejdo's 1991 paper that inspired this package.
 
 The only other source file is `whyse.nw`, the Noweb source for WHYSE itself.
 
+@ 
+
+# Compiling the source documentation.
+
+<<latex>>=
 ## LaTeX compilation difficulties
 I have not had success compiling a knoweb styled LaTeX document outside of a
 Debian 11 environment with TeXLive 2020. Only this combination works; other
@@ -54,6 +74,18 @@ noweb macro package. It compiles best with XeTeX. With LuaTeX there
 are compilation issues for some reason (I am not a LaTeX
 macro-understander, so I can't debug the issues).
 
+@ 
+
+<<about>>=
+# WHYSE ⸺ The WEB HYpertext System in Emacs
+WHYSE is an integrated development environment for Noweb and LaTeX,
+integrating these tools with new system features for editing and reviewing literate programs.
+The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
+
+
+@ 
+
+<<hiatus>>=
 # Returning to development after a long hiatus
 One of the hallmarks of literate programming is the supposed speed with which a
 developer can acquaint (or re-acquaint) themselves with a codebase. The
@@ -68,6 +100,9 @@ MDT). I am not sure how long I have been away; after checking the git log it
 appears I've been largely inactive since May 13th, 2024. That's nearly one year!
 
 
+@ 
+
+<<directory>>=
 # Ignored files
 
 If you've received a tarball of this source code you may have received
@@ -75,3 +110,4 @@ additional files which are otherwise ignored. One of these is whs.pdf,
 which is a rendering of the source code from an earlier version of
 whyse retained only to show what a PDF should look like.
 
+@ 
