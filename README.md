@@ -70,3 +70,10 @@ and omissions).
 I'm returning to the project on April 19th, 2025 (Sat 19 Apr 2025 12:34:49 AM
 MDT). I am not sure how long I have been away; after checking the git log it
 appears I've been largely inactive since May 13th, 2024. That's nearly one year!
+
+# Ignored files
+
+If you've received a tarball of this source code you may have received
+additional files which are otherwise ignored. One of these is whs.pdf,
+which is a rendering of the source code from an earlier version of
+whyse retained only to show what a PDF should look like.
