@@ -1,3 +1,7 @@
 * DONE Write Emacs LISP functions for recognizing arbitrary LaTeX sectioning commands
 CLOSED: [2025-04-28 Mon 13:33]
 - Use RefTeX's [[help:reftex-section-regexp][retex-section-regexp]]
+
+* TODO Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests
+- Primarily useful for the PDF
+  - Using a container increases reproducibility; [[https://github.com/marketplace/actions/github-action-for-latex][this existing latex workflow on GitHub actions]] is sufficient
