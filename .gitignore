@@ -1,5 +1,6 @@
 # Compiled
 *.elc
+/build/
 
 # Packaging
 .cask
@@ -9,16 +10,15 @@
 
 # Undo-tree save-files
 *.~undo-tree
-/auto/
-/whyse-0.1/
+
+
+# LaTeX
 /whyse.xdv
 /whyse.toc
 /whyse.tex
-/whyse.notes
 /whyse.log
 /whyse.fls
 /whyse.fdb_latexmk
 /whyse.aux
-
-/noweb-hypertext-system/
-/whs.pdf
+# exemplary compilation
+whs.pdf
