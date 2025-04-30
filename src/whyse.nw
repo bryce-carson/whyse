@@ -1791,5 +1791,7 @@ module."
 \input{gpl-3.0.tex}
 
 \end{document}
-%%% ---- END OF FILE ---- %%%
-%%% ---- IGNORED ---- %%%%
+
+%%% Do not delete the above form feed charcter. It prevents Emacs from
+%%% mistakenly applying a local variables list contained within a noweb
+%%% chunk on a previous "page". END OF FILE

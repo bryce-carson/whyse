@@ -8,21 +8,44 @@ The IDE is based off of the work by Brown and Czejdo from 1991, and is in early 
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
 
-Firstly, Noweb 2.13 and $\LaTeX{}$ are required for development. Run `make
+Firstly, Noweb 2.13 and LaTeX are required for development. Run `make
 compile-pdf` to compile and render the PDF on your system.
 
 The files /I have in my directory/ are as follows.
 
 ```
-autodefs.elisp  offsets.awk  test.el    whyse-0.1.tar      whyse.log  whyse.tex
-knoweb.sty      pextest.el   test.nw    whyse.aux          whyse.nw
-LICENSE         pextest.nw   whyse.bib  whyse.fdb_latexmk  whyse.out
-Makefile        README.md    whyse-0.1  whyse.fls          whyse.pdf
+~/Documents/src/whyse $ tree
+.
+├── build
+│   ├── artifacts
+│   └── whyse-0.1.tar
+├── LICENSE
+├── Makefile
+├── README.md
+├── src
+│   ├── clean-docs.awk
+│   ├── offsets.awk
+│   ├── README.nw
+│   ├── whyse.bib
+│   └── whyse.nw
+├── test
+│   ├── makem.sh
+│   ├── test-parser-with-temporary-buffer.el
+│   └── widgetry.el
+├── TODO.org
+└── vendor
+    ├── autodefs.elisp
+    ├── gpl-3.0.tex
+    ├── knoweb.el
+    ├── knoweb.sty
+    └── noweb.sty
+
+6 directories, 18 files
 ```
 
-`autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which provides
-LaTeX support for Noweb and Emacs Lisp identifier definitions in AWK for Noweb
-to use for indexing. Upstream knoweb is not required.
+`autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which
+provides LaTeX support for Noweb and Emacs Lisp identifier definitions in AWK
+for Noweb to use for indexing. Upstream knoweb is not required.
 
 The *project* license is contained in `LICENSE`. Particular files, if released
 under a different license, contian separate licensing notices where appropriate
