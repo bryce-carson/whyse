@@ -17,14 +17,18 @@
 %% MARGIN
 \usepackage{geometry}
  \geometry{
-   top=0.625in,
-   left=0.625in,
-   right=0.625in,
-   bottom=0.625in,
+   %% top=0.625in,
+   %% left=0.625in,
+   %% right=0.625in,
+   %% bottom=0.625in,
+   top=1.0in,
+   right=1.0in,
+   bottom=1.0in,
+   left=1.0in,
    %% "Octavo" size: https://papersizes.io/books/octavo
    %% papersize={6in, 9in}
-   %% papersize={9in, 12in}
-   papersize={8.5in, 11in}
+   papersize={9in, 12in}
+   %% papersize={8.5in, 11in}
  }
 \usepackage{mparhack}
 \usepackage{mathptmx}
