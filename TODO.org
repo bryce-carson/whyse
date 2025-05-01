@@ -5,3 +5,14 @@ CLOSED: [2025-04-28 Mon 13:33]
 * TODO Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests
 - Primarily useful for the PDF
   - Using a container increases reproducibility; [[https://github.com/marketplace/actions/github-action-for-latex][this existing latex workflow on GitHub actions]] is sufficient
+
+* TODO Hack on the recognizer.nw and finduses.nw to better support (emacs) lisp
+finduses.nw and the recognizer.nw need some tweaking to better support LISP
+identifiers. It may be as simple as moving `-' from SYMBOLS to ALPHANUMERIC.
+
+* TODO Improve the parse tree, per the FIXME in =test/test-parser-with-temporary-buffer.el=
+The current parse tree contains a ~nil~ after the chunk type and number assoc,
+and that needs to be analyzed. Why is this ~nil~ in the stack? I assume and
+believe it is because of the collapsing of stringy tokens; when a token should
+be put back onto the stack it may also be putting a ~nil~ onto the stack in the
+first call to the function.

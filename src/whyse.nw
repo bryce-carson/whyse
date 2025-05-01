@@ -5,10 +5,6 @@
 \title{The Implementation of WHYSE} % Codename "Wise Eel"
 \author{Bryce Carson}
 
-%%% FIXME: finduses.nw and the recognizer.nw need some tweaking to
-%%% better support LISP identifiers. It may be as simple as moving `-'
-%%% from SYMBOLS to ALPHANUMERIC.
-
 %%% ---- PREAMBLE ---- %%%
 \usepackage{standalone}
 
