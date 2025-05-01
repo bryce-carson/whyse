@@ -1679,8 +1679,6 @@ in the License section at the end of this document.
 \section{Identifiers}
 \nowebindex
 
-\listofnotes
-
 \section{Miscellaneous code and functions useful for development and debugging}\label{misc}
 <<Code>>=
 (defun w--log-in-buffer (buffer-name &rest body)
