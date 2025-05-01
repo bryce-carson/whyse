@@ -476,7 +476,7 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
 
 
-\section{Customizing the behaviour of [[whyse]] with hooks}
+\section{Customizing the behaviour of WHYSE with hooks}
 WHYSE is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by
 (\CITE{Brown and Czejdo}).
