@@ -1734,8 +1734,8 @@ filled with other widgets (which will inherit widths of the area).
 <<module-header top-level>>=
 (define-widget 'module-header 'group
   ;; :keymap w-widget-headerbar-map
-  :width (buffer-size)
-  :tag "🍫"
+  :width (frame-width)
+  :tag "|"
   :format "%t%v")
 @ 
 
