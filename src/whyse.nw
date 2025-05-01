@@ -29,10 +29,9 @@
 \usepackage{mparhack}
 \usepackage{mathptmx}
 
-%% FIXME: biblatex causes knoweb to be unable to compile. Does it work
-%% with the unenhanced noweb macro package?
-%% \usepackage{biblatex}
-%% \addbibresource{\whyse.bib}
+%% FIXME: biblatex causes knoweb to be unable to compile.
+\usepackage[style=ieee]{biblatex}
+\addbibresource{whyse.bib}
 
 %%% --- NOWEB LaTeX PACKAGE --- %%%
 %% \usepackage[breakcode,footnotesizecode]{knoweb}
@@ -57,7 +56,7 @@
 %% references internal to the document (cross-references), not
 %% references external to the document (references). See:
 %% https://texblog.org/2017/12/17/fancy-labels-and-references-in-latex/.
-\usepackage[colorlinks,backref]{hyperref}
+\usepackage[colorlinks,backref=true]{hyperref}
 
 \usepackage{verbatim}
 \usepackage{syntax}
@@ -101,14 +100,16 @@
   \textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
   development environment for Noweb-based hypertexts within Emacs,
   similar to EDE but not sharing development principles. It is based off
-  of \CITE{an academic paper written in 1991 by Brown and Czejdo}. A
-  paper describing this implementation---written in Noweb and browsable,
-  editable, and auditable with WHYSE, or readable in the printed
-  form---is hoped to be submitted to \em{The Journal of Open Source
-    Software (JOSS)} before the year 2024. N.B.: the paper will include
-  historical information about literate programming, and citations
-  (especially of those given credit in the [[@<<Commentary>>]] for
-  ideating WHYSE itself).
+  of an academic paper written in
+  \cite[1991 by Brown and Czejdo]{brown1991}.
+  A paper describing this implementation---written in Noweb and
+  browsable, editable, and auditable with WHYSE, or readable in the
+  printed form---is hoped to be submitted to
+  \em{The Journal of Open Source Software (JOSS)}\
+  before the year 2024. N.B.: the paper will include historical
+  information about literate programming, and citations (especially of
+  those given credit in the [[@<<Commentary>>]] for ideating WHYSE
+  itself).
 
   Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
   include how Noweb is built from source (that is arcane, supposedly). It may,
@@ -473,7 +474,7 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 \section{Customizing the behaviour of WHYSE with hooks}
 WHYSE is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by
-(\CITE{Brown and Czejdo}).
+\cite[Brown and Czejdo]{brown1991}.
 
 <<open-project-hook>>=
 (defvar w-open-project-hook '()
@@ -501,7 +502,7 @@ tool syntax.
 
 The \textsc{peg} package provides automatic parser generation from a
 formal PEG grammar. The grammar is based off of the description of the
-tool syntax given in the \CITE{Noweb Hacker's Guide}.
+tool syntax given in the \cite[Noweb Hacker's Guide]{ramsey1992}.
 
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
@@ -1452,16 +1453,27 @@ to the used chunk name in the current chunk are appended to a list that
 is ultimately returned.
 
 \subsection{Determining parent-child relationships}
-There needs to be a function which can take a generalizable
-approach to determining the name of a section defined by any
-possible sectioning command. To easily do that a function could
-be provided by the user for any sectioning commands that are
-exotic, and those functions will accommodate the \LaTeX{} command
-while the calling function will handle finding them and
-collecting their output.
+There needs to be a function which can take a generalizable approach to
+determining the name of a section defined by any possible sectioning
+command. To easily do that a function could be provided by the user for
+any sectioning commands that are exotic, and those functions will
+accommodate the LaTeX command while the calling function will handle
+finding them and collecting their output.
 
-%% FIXME 2024-08-10: what is this and why is it here? It seems out of place.
-\begin{verbatim*}
+%% NOTE: There may be some semantic or logical connection between the
+%% parent-child chunk relationship and the latex sections which ocntain
+%% parent chunks, or even child chunks! What is that?
+
+The following association list gives the keyword and the value
+corresponding to that which were seen in the intermediate representation
+used by noweb itself. To implement WHYSE we utilize the intermediate
+representation for both editing and document compilation. Features
+unique to WHYSE would add in new keywords, and these would only be
+processed by WHYSE (hopefully without impacting other applications,
+though the only other application that uses the noweb intermediate
+representation is noweb itsefl).
+
+\begin{verbatim}
   ((code . 32)
    (x-label . "NW2ucZJx-3LzQog-2")
    (ref . "NW2ucZJx-3LzQog-1")
@@ -1481,7 +1493,7 @@ collecting their output.
    (ref . "NW2ucZJx-1ZiKLq-1")
    (chunk-child-usage . "tool errors")
    (text . "))\n"))
-\end{verbatim*}
+\end{verbatim}
 
 <<collect child chunk uses>>=
 (with-temp-buffer
@@ -1759,8 +1771,11 @@ module."
 
 @
 
+\chapter{Bibliography}
+\printbibliography
+
 \chapter{License}
-\input{gpl-3.0.tex}
+\input{../vendor/gpl-3.0.tex}
 
 \end{document}
 
