@@ -1726,7 +1726,7 @@ sections. Sometimes a documentation module doesn't have a section
 because the definition of one or more sections occur within it, and
 therefore a section cannot apply to it by reason of occurring before the
 beginning of the module. Therefore the headerbar must have an area
-within it for holding a code module's name or \LaTeX{} section
+within it for holding a code module's name or LaTeX section
 name. Additionally it must also have an area to contain further buttons.
 It makes sense to define, loosely, a left, right, and center area to be
 filled with other widgets (which will inherit widths of the area).
