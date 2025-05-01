@@ -16,3 +16,8 @@ and that needs to be analyzed. Why is this ~nil~ in the stack? I assume and
 believe it is because of the collapsing of stringy tokens; when a token should
 be put back onto the stack it may also be putting a ~nil~ onto the stack in the
 first call to the function.
+
+* TODO Improve documentation of the default hook
+Better document the functionality of the default hook function
+~w--prepare-sexp-sql-from-file-tokens~. The current explanation is a copy of the
+brief explanation in the hook documentation string.

@@ -1312,11 +1312,6 @@ If the two associations shouldn't be joined, return them to the stack."
 
 @
 
-\TODO{\em{Better} document the functionality of the default hook
-  function: [[w--prepare-sexp-sql-from-file-tokens]]. The current
-  explanation is a copy of the brief explanation in the hook
-  documentation string.}
-
 The `parse-tree' from the lexical environment (or scope, given
 that WHYSE is not implemented with lexical binding) is mapped
 over until every file token has been processed and records have
