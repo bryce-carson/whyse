@@ -65,8 +65,6 @@
 \usepackage{paralist}
 \usepackage{color}
 \usepackage{fancyvrb} % NOTE: used in the figure of the WHYSE frame layout.
-\usepackage[nowatermark]{fixmetodonotes}
-
 
 
 
@@ -332,8 +330,7 @@ defined."
 @
 
 The structure accessed in the namesake command of the package is rather
-simple. \TODO{Ensure that the previous statement in-prose [not in the
-    TODO summary] is still correct.} It is defined quickly, then explained briefly.
+simple. It is defined quickly, then explained briefly.
 
 <<WHYSE project structure>>=
 (cl-defstruct w-project
@@ -366,12 +363,9 @@ given values when appropriate later in operation (such as
 [[date-last-exported]]) or upon initialization ([[frame]]).
 
 Initialization when the interactive command is called is covered next;
-to summarize: [[w-open-project-hook]] is run. \TODO{Describe
-  initialization of the system after parsing.}
+to summarize: [[w-open-project-hook]] is run.
 
 \section{Database initialization}
-\TODO{finish the creation of a database. Use what I learned in the fall!}
-
 Every project should have a database file located somewhere within the
 user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
 cache directory is used, otherwise the database is made in the user's
@@ -732,15 +726,13 @@ x-label
 x-ref
 @ 
 
-\TODO{Verify that this statement is true: ``Usually Noweb will warn a
-  user that a chunk was referenced but undefined, or that there was some
-  other issue with chunks.''} Sometimes, however, the system will permit
-a chunk to be undefined and this leads to the only cases in the tool
-syntax where it is not line-oriented. [[noidx]] will read the cross
-references to other chunks and will be unable to generate the label, so
-it will insert [[@notdef]] where it would otherwise upcase ``nw'' and
-then insert the label. This is why [[x-undefined]] is placed among the
-other [[<<tool errors>>]] keywords.
+Sometimes, however, the system will permit a chunk to be undefined and
+this leads to the only cases in the tool syntax where it is not
+line-oriented. [[noidx]] will read the cross references to other chunks
+and will be unable to generate the label, so it will insert [[@notdef]]
+where it would otherwise upcase ``nw'' and then insert the label. This
+is why [[x-undefined]] is placed among the other [[<<tool errors>>]]
+keywords.
 
 <<tool errors>>=
 ;; error
@@ -1265,7 +1257,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 @ 
 
-\TODO{Place the insertion of the functions into the code chunk better.}
+
 
 <<Code>>=
 <<functions for navigating WHYSE parse trees>>
@@ -1402,9 +1394,7 @@ will be named in the vectors in the returned list."
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
-featureset of SQL). \TODO{Make the number of entries in this history
-  list customizable, limited to some given number or a default of one
-  hundred.} The history of SEQL statements compiled is treated like a
+featureset of SQL). The history of SEQL statements compiled is treated like a
 stack, with the newest statement being the first element of the list. A
 shoddy implementation of a ``stack-based history'' is given next.
 
@@ -1648,13 +1638,6 @@ in the License section at the end of this document.
 
 \newpage
 \chapter{TESTING}
-\TODO{Adopt the ERT (Emacs Regression Tests) package to test
-  WHYSE features as they are developed and become featureful. When a
-  feature is implemented a test should be written which conforms to the
-  current documentation so that regressions can be caught when changes are
-  made.}
-
-\TODO{Adopt/use [[makem.sh]], by ``alphapapa''.}
 
 \section{Parsing tool syntax within a temporary buffer}
 <<test-parser-with-temporary-buffer.el>>=

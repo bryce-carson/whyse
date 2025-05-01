@@ -21,3 +21,18 @@ first call to the function.
 Better document the functionality of the default hook function
 ~w--prepare-sexp-sql-from-file-tokens~. The current explanation is a copy of the
 brief explanation in the hook documentation string.
+
+* Prosaic improvements
+- [[file:src/whyse.nw::simple. It is defined quickly, then explained briefly.][Ensure that the previous statement in-prose [not in the TODO summary] is still correct.]]
+- [[file:src/whyse.nw::to summarize: \[\[w-open-project-hook\]\] is run.][Describe initialization of the system after parsing.]]
+- [[file:src/whyse.nw::Every project should have a database file located somewhere within the][Finish the creation of a database. Use what I learned in the fall!]]
+- [[file:src/whyse.nw::Sometimes, however, the system will permit a chunk to be undefined and][Verify that this statement is true]]: ``Usually Noweb will warn a user that a chunk was referenced but undefined, or that there was some other issue with chunks.''
+- [[file:src/whyse.nw::<<functions to collapse text and newline tokens into their largest possible form>>][Place the insertion of the functions into the code chunk better.]]
+- [[file:src/whyse.nw::featureset of SQL). The history of SEQL statements compiled is treated like a][Make the number of entries in this history list]] customizable, limited to some given number or a default of one hundred.
+- [[https://www.gnu.org/software/emacs/manual/html_node/ert/][Adopt the ERT (Emacs Regression Tests)]] package
+
+  To test WHYSE features as they are developed and become featureful. When a
+  feature is implemented a test should be written which conforms to the
+  current documentation so that regressions can be caught when changes are
+  made.
+- [[https://github.com/alphapapa/makem.sh][Adopt/use makem.sh]], by ``alphapapa''.
