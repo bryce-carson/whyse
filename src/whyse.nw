@@ -1775,6 +1775,201 @@ module."
 
 @
 
+\chapter{Commands for Human Languages}
+
+The Emacs Manual has a chapter dedicated to /Commands for Human
+Languages/. This software documentation shall have a chapter dedicated
+to that too, since literate programming (per Knuth) is primarily
+intended for Human readers.
+
+\section{Pages}
+\begin{quote}
+``Emacs provides commands to move over pages and to operate on them.''
+\end{quote}
+
+Such is the primary purpose of WHYSE, to extend this page-handling to
+noweb ``chunks'', which may be delimited by adding the following to
+the regular expression which normally matches only form-feed
+characters.
+
+<<customize page-delimiter regular expression for noweb>>=
+(customize-set-variable
+ 'page-delimiter
+ "^\\(@<<.*>>=\\)\\|^\\(@\\)\\|^\f"
+ "Modify the default value of the `page-delimiter' such that the
+built-in page navigation features are useful in noweb buffers.")
+@
+
+Navigating between chunks in a noweb source document is so fundamental
+to literate programming that you may want to bind
+\texttt{backward-page} and \texttt{forward-page} to the specially
+labelled "Page Up" and "Page Down" keys on your keyboard (represented
+in elisp with the special strings "<prior>" and "<next>" when you use
+\texttt{describe-key} on these keyboard buttons).
+
+\section{Advising the forward- and backward-page functions}
+
+Using the Emacs advise interface is probably the most straightforward
+way to implement widening and re-narrowing the buffer to when calling
+\texttt{forward-page} and \texttt{backward-page}, and to further echo
+the result of \texttt{what-page}.
+
+It would be simplest to not handle the page delimiter specially unless
+necessary, so leaving this delimiter in-place is most flexible.
+
+<<nwn.el>>=
+;;; Noweb Narrowing -*- mode: emacs-lisp -*-
+;;  Advise the `forward-page` and `backward-page` functions to widen
+;;  and then restore chunk-based narrowing when it is in effect (if
+;;  and only if the current buffer is editing a .nw file).
+
+<<current buffer is a noweb file>>=
+(string= "nw" (file-name-extension (buffer-file-name)))
+@
+
+After reviewing the function documentation for \texttt{narrow-to-page}
+I learned of the effect of the universal argument. The simplest way to
+advise the forward and backward page functions to work as desired
+would be to provide advise which replaces the function call with a
+call to narrow to page with an appropriate numeric argument.
+
+Undesireabley, page-based narrowing hides the code chunk definition
+line. It is permissible that it hides the documentation chunk
+definition, but it is simpler and more extensible to let these remain
+visible but read-only when narrowing is in effect.
+
+<<nwn.el>>=
+;;; nwn-narrow-to-page is a modified version of the built-in function
+;;; narrow-to-page.
+(defun nwn-narrow-to-page (&optional arg)
+  "Make text outside current page invisible.
+
+For this modified version of `narrow-to-page', a page is a noweb
+chunk (either code or docs). See the `page-delimiter'.
+
+A numeric arg specifies to move forward or backward by that many
+chunks, thus showing a chunk other than the one point was
+originally in."
+  <<declare the function interactivity-type and set arg to zero if missing>>
+  (save-excursion
+    <<widen the buffer then handle non-zero arg values>>
+@
+
+After widening the buffer and handling non-zero argument values, it is
+necessary to find the end of the current page (chunk) to establish the
+end of the region in which narrowing will take place (a region delimited
+by chunk boundaries).
+
+<<nwn.el>>=
+    <<find the end of the page>>
+    <<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>))
+
+<<declare the function interactivity-type and set arg to zero if missing>>=
+(interactive "P")
+(setq arg (if arg (prefix-numeric-value arg) 0))
+<<widen the buffer then handle non-zero arg values>>=
+(widen)
+(if (> arg 0)
+	  (forward-page arg)
+  (if (< arg 0)
+	    (let ((adjust 0)
+		        (opoint (point)))
+	      ;; If we are not now at the beginning of a page, move back one
+	      ;; extra time, to get to the start of this page.
+	      (save-excursion
+	        (beginning-of-line)
+	        (or (and (looking-at page-delimiter)
+		               (eq (match-end 0) opoint))
+		          (setq adjust 1)))
+	      (forward-page (- arg adjust)))))
+<<find the end of the page>>=
+(set-match-data nil)
+(forward-page)
+@
+
+%% TODO: credit this text, which came from the original source code for
+%% narrow-to-page.
+\begin{itemize}
+\item{If we stopped due to end of buffer, stay there.}
+\item{If we stopped after a page delimiter, put end of restriction at the beginning of that line.}
+\item{Before checking the match that was found, verify that forward-page actually set the match data.}
+\end{itemize}
+
+<<find the end of the page>>=
+(if (and (match-beginning 0)
+         (save-excursion
+           (goto-char (match-beginning 0))
+           (looking-at page-delimiter)))
+    (goto-char (match-beginning 0)))
+<<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>=
+(narrow-to-region (point)
+                  (progn
+	                  ;; Find the top of the page.
+	                  (forward-page -1)
+	                  ;; If we found beginning of buffer, stay there.
+	                  ;; If extra text follows page delimiter on same line,
+	                  ;; include it.
+	                  ;; Otherwise, show text starting with following line.
+	                  (if (and (eolp) (not (bobp)))
+	                      (forward-line 1))
+	                  (point)))
+@
+
+See these overlay properties: [[insert-in-front-hooks]],
+[[modification-hooks]], and [[insert-behind-hooks]]; also see
+[[keymap]]. These are sufficient, surprisingly, to implement the
+entirety of the "in-buffer" UI that I was imagining that I'd develop
+with \textit{widget.el}.
+
+The overlay property [[:before-string]] really helps!
+
+<<nwn.el>>=
+(define-minor-mode nwn-mode
+  "Noweb Narrowing minor mode provides alternative motion commands
+between pages, defined by a buffer-local value of
+`page-delimiter' appropriate for Noweb chunks."
+  :lighter " nWn "
+  :keymap '(("C-x ]" .  (nwn-narrow-to-page 1))
+            ("C-x [" . (nwn-narrow-to-page -1)))
+  (if <<current buffer is a noweb file>>
+      (if nwn-mode
+          (progn (make-local-variable 'page-delimiter)
+                 <<customize page-delimiter regular expression for noweb>>
+                 (nwn-narrow-to-page))
+        (kill-local-variable 'page-delimiter)
+        (when (buffer-narrowed-p)
+          (widen)))
+    (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
+
+(defvar nwn--chunk-delimiter-match nil
+  "The match data for the delimiter previous to the start of the
+currently active narrowed buffer region.")
+
+(defun nwn--make-overlay ()
+  "Insert the chunk name (page-delimiter) overlay for a narrowed chunk.
+
+Called when narrowing to a page delimited by the
+nwn--chunk-delimiter-match, this function inserts the delimiter
+preceeding the chunk (if a code chunk) or the most-recent LaTeX
+section name (if any, else \"@\" to indicate a documentation
+chunk)."
+  (let ((ov (make-overlay 0 0 (current-buffer) t)))
+    (overlay-put ov 'before-string (concat nwn--chunk-delimiter-match "
+"))
+    (overlay-put ov 'face widget-documentation-face)
+    ov))
+
+(defvar nwn--overlay (nwn--make-overlay))
+
+(defun nwn--forward-page-advice (&rest r)
+  (when (boundp 'nwn--overlay)
+    (delete-overlay nwn--overlay))
+  (nwn--make-overlay))
+
+(advice-add #'nwn-narrow-to-page
+            :after #'nwn--forward-page-advice)
+@
+
 \chapter{Bibliography}
 \printbibliography
 
