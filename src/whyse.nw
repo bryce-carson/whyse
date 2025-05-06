@@ -160,11 +160,11 @@ struct used during runtime.
 
 @
 
-%% NOTE: The Widget feature is required by the registered projects variable,
-%% but may be redundant because the Easy Customization Interface is
-%% itself implemented with The Emacs Widget Library. Requiring the
-%% library may be undesirable, as @[@[(require 'widget)]] will be
-%% eagerly evaluated upon Emacs' initialization when
+%% NOTE: The Widget feature is required by the registered projects
+%% variable, but may be redundant because the Easy Customization
+%% Interface is itself implemented with The Emacs Widget Library.
+%% Requiring the library may be undesirable, as @[@[(require 'widget)]]
+%% will be eagerly evaluated upon Emacs' initialization when
 %% @[@[w-registered-projects]] is set to its saved custom value.
 %% However, there may be a good reason to eagerly evaluate that form:
 %% the Widget feature will be available immediately, and widgets will be
@@ -266,8 +266,8 @@ therefore kept in the developer-oriented miscellany section \ref{misc}.
 %% project is available.
 
 An example of what the list generated from the information entered into
-Customize would look like is given here for elucidation (as it would exist in a
-[[custom-set-variables]] form).
+Customize would look like is given here for elucidation (as it would
+exist in a [[custom-set-variables]] form).
 
 \begin{verbatim}
 '(w-registered-projects
@@ -361,11 +361,11 @@ simple. It is defined quickly, then explained briefly.
 @
 
 Instances of this struct are only initialized with a few values:
-[[name]], [[noweb]], and [[script]]. The rest of the fields
-either have default values dependent upon the input data (like
-the database-file, database-connection, and date-created), or are
-given values when appropriate later in operation (such as
-[[date-last-exported]]) or upon initialization ([[frame]]).
+[[name]], [[noweb]], and [[script]]. The rest of the fields either have
+default values dependent upon the input data (like the database-file,
+database-connection, and date-created), or are given values when
+appropriate later in operation (such as [[date-last-exported]]) or upon
+initialization ([[frame]]).
 
 Initialization when the interactive command is called is covered next;
 to summarize: [[w-open-project-hook]] is run.
@@ -511,8 +511,9 @@ tool syntax given in the \cite[Noweb Hacker's Guide]{ramsey1992}.
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
 %% partially--directed graph, a digraph, of the network of chunks which
-%% have hierarchical, self and non-self references, with their sequential
-%% ordering and non-sequential orderings available for navigation (see
+%% have hierarchical, self and non-self references, with their
+%% sequential ordering and non-sequential orderings available for
+%% navigation (see
 %% \href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
 %%     Knowledge Organization}} for futher information).
 
@@ -1607,18 +1608,18 @@ in the License section at the end of this document.
 ;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
 ;; Programming_ (1991).
 ;;
-;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming.
-;;    In: Akl, S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in
-;;    Computing and Information — ICCI '90. ICCI 1990. Lecture Notes in
-;;    Computer Science, vol 468. Springer, Berlin, Heidelberg.
+;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,
+;;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and
+;;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol
+;;    468. Springer, Berlin, Heidelberg.
 ;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
 ;;
 ;; A paper describing this implementation---written in Noweb and browsable,
 ;; editable, and auditable with WHYSE, or readable in the printed form---is
-;; hoped to be submitted to The Journal of Open Source Software (JOSS)
-;; before the year 2024. N.B.: the paper will include historical
-;; information about literate programming, and citations (especially
-;; of those given credit here for ideating WHYSE itself).
+;; hoped to be submitted to The Journal of Open Source Software (JOSS) before
+;; the year 2024. N.B.: the paper will include historical information about
+;; literate programming, and citations (especially of those given credit here
+;; for ideating WHYSE itself).
 
 <<Code>>=
 ;;; Code:
@@ -1924,13 +1925,28 @@ with \textit{widget.el}.
 The overlay property [[:before-string]] really helps!
 
 <<nwn.el>>=
+(defun nwn--forward-page ()
+  "Move forward one chunk."
+  (interactive)
+  (nwn-narrow-to-page 1)
+  (goto-char (point-min))
+  (recenter-top-bottom 0))
+
+(defun nwn--backward-page ()
+  "Move backward one chunk."
+  (interactive)
+  (nwn-narrow-to-page -1)
+  (goto-char (point-min))
+  (recenter-top-bottom 0))
+
 (define-minor-mode nwn-mode
   "Noweb Narrowing minor mode provides alternative motion commands
 between pages, defined by a buffer-local value of
 `page-delimiter' appropriate for Noweb chunks."
   :lighter " nWn "
-  :keymap '(("C-x ]" .  (nwn-narrow-to-page 1))
-            ("C-x [" . (nwn-narrow-to-page -1)))
+  :list '(fundamental-mode text-mode latex-mode noweb-mode poly-noweb-mode)
+  :keymap '(([next] . nwn--forward-page)
+            ([prior] . nwn--backward-page))
   (if <<current buffer is a noweb file>>
       (if nwn-mode
           (progn (make-local-variable 'page-delimiter)
