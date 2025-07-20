@@ -16,20 +16,20 @@
 
 %% MARGIN
 \usepackage{geometry}
- \geometry{
-   %% top=0.625in,
-   %% left=0.625in,
-   %% right=0.625in,
-   %% bottom=0.625in,
-   top=1.0in,
-   right=1.0in,
-   bottom=1.0in,
-   left=1.0in,
-   %% "Octavo" size: https://papersizes.io/books/octavo
-   %% papersize={6in, 9in}
-   papersize={9in, 12in}
-   %% papersize={8.5in, 11in}
- }
+\geometry{
+%% top=0.625in,
+%% left=0.625in,
+%% right=0.625in,
+%% bottom=0.625in,
+top=1.0in,
+right=1.0in,
+bottom=1.0in,
+left=1.0in,
+%% "Octavo" size: https://papersizes.io/books/octavo
+%% papersize={6in, 9in}
+papersize={9in, 12in}
+%% papersize={8.5in, 11in}
+}
 \usepackage{mparhack}
 \usepackage{mathptmx}
 
@@ -101,31 +101,31 @@
 %% pure white like body text).
 
 \begin{abstract}
-  \textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
-  development environment for Noweb-based hypertexts within Emacs,
-  similar to EDE but not sharing development principles. It is based off
-  of an academic paper written in
-  \cite[1991 by Brown and Czejdo]{brown1991}.
-  A paper describing this implementation---written in Noweb and
-  browsable, editable, and auditable with WHYSE, or readable in the
-  printed form---is hoped to be submitted to
-  \em{The Journal of Open Source Software (JOSS)}\
-  before the year 2024. N.B.: the paper will include historical
-  information about literate programming, and citations (especially of
-  those given credit in the [[@<<Commentary>>]] for ideating WHYSE
-  itself).
+\textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
+development environment for Noweb-based hypertexts within Emacs,
+similar to EDE but not sharing development principles. It is based off
+of an academic paper written in
+\cite[1991 by Brown and Czejdo]{brown1991}.
+A paper describing this implementation---written in Noweb and
+browsable, editable, and auditable with WHYSE, or readable in the
+printed form---is hoped to be submitted to
+\em{The Journal of Open Source Software (JOSS)}\
+before the year 2024. N.B.: the paper will include historical
+information about literate programming, and citations (especially of
+those given credit in the [[@<<Commentary>>]] for ideating WHYSE
+itself).
 
-  Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
-  include how Noweb is built from source (that is arcane, supposedly). It may,
-  however, include the writing of filters implemented with Sed, AWK, or other
-  languages. Users must know how to write a custom command-line for noweave
-  (read the manual section regarding the \texttt{-v} option). If you only know
-  how to call the noweave command you're reading the wrong document. Read the
-  Noweb manual first, please. Developers of WHYSE extensions should read the
-  Noweb Hacker's Guide until they understand it, afterwards reading this
-  documentation several times until the full implementation is understood. I
-  recommend modifying the system using itself to keep organized, and writing
-  literately; you'll thank yourself later for doing so.
+Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
+include how Noweb is built from source (that is arcane, supposedly). It may,
+however, include the writing of filters implemented with Sed, AWK, or other
+languages. Users must know how to write a custom command-line for noweave
+(read the manual section regarding the \texttt{-v} option). If you only know
+how to call the noweave command you're reading the wrong document. Read the
+Noweb manual first, please. Developers of WHYSE extensions should read the
+Noweb Hacker's Guide until they understand it, afterwards reading this
+documentation several times until the full implementation is understood. I
+recommend modifying the system using itself to keep organized, and writing
+literately; you'll thank yourself later for doing so.
 \end{abstract}
 
 \chapter{WHYSE Projects}\label{Projects}
@@ -404,7 +404,7 @@ appropriate slot of the project struct.
 <<setup project database>>=
 <<create a database connection>>
 <<map over SQL s-expressions, creating the tables>>
-@ 
+@
 
 <<create a database connection>>=
 (setf (w-project-database-connection project)
@@ -417,7 +417,7 @@ appropriate slot of the project struct.
                                  (get-buffer-create "emacsql-sqlite-debug-log")
                                (erase-buffer)
                                (current-buffer))))
-@ 
+@
 
 The only thing left to do is establish the schema of the tables, which
 is done by mapping over several \textsc{EmacSQL} s-expressions.
@@ -437,13 +437,13 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
         ;; A list of SQL s-expressions to create the tables.
         '([:create-table :if-not-exists module
-           ([modulename content filename sectionname displacement
-             modulenumber]
-            (:primary-key [modulenumber modulename filename]))]
+                         ([modulename content filename sectionname displacement
+                                      modulenumber]
+                          (:primary-key [modulenumber modulename filename]))]
 
           [:create-table :if-not-exists parentchild
-           ([parent child]
-            (:primary-key [parent child]))]
+                         ([parent child]
+                          (:primary-key [parent child]))]
 
           ;; NOTE: Identifier_used_in_module is a relation with the
           ;; attributes identifier_name and module_number. An identifier
@@ -455,8 +455,8 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
           ;; Line_number is an attribute of each relationship. All
           ;; attributes are included in the key.
           [:create-table :if-not-exists identifierusedinmodule
-           ([identifiername modulenumber linenumber typeofusage]
-            (:primary-key [identifiername modulenumber typeofusage]))]
+                         ([identifiername modulenumber linenumber typeofusage]
+                          (:primary-key [identifiername modulenumber typeofusage]))]
 
           ;;; HOLD: the concept of "topic" is not present in Noweb, but
           ;;; is present in WEB. Consult CWEB documentation and the
@@ -467,8 +467,8 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
           ;; be in several modules and each module can contain several
           ;; topics. Both attributes compose the primary key.
           [:create-table :if-not-exists topicreferencedinmodule
-           ([topicname modulenumber]
-            (:primary-key [topicname modulenumber]))]))
+                         ([topicname modulenumber]
+                          (:primary-key [topicname modulenumber]))]))
 @
 
 
@@ -488,12 +488,12 @@ implement a development environment for Noweb as described by
 The default behaviour of WHYSE is to insert all the chunks of the parsed
 document into a database. Before it does that it works upon the parse
 tree, preparing it into a suitable format usable with EmacSQL (which the
-author is aware he's stated elsewhere).
+                                                                     author is aware he's stated elsewhere).
 
 <<default hook functions>>=
 (add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
 
-@ 
+@
 
 
 
@@ -515,7 +515,7 @@ tool syntax given in the \cite[Noweb Hacker's Guide]{ramsey1992}.
 %% sequential ordering and non-sequential orderings available for
 %% navigation (see
 %% \href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
-%%     Knowledge Organization}} for futher information).
+%% Knowledge Organization}} for futher information).
 
 %% NOTE: to match the new line character in a text stream, the string
 %% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
@@ -541,7 +541,7 @@ parsing.
 <<quotations>>
 <<keyword definitions>>
 <<meta rules>>
-@ 
+@
 
 As stated, the [[noweb]] rule defines the root expression---or starting
 expression---for the grammar. The tool syntax of Noweb is simply a list
@@ -562,7 +562,7 @@ human-readable documenation.
 The grammar needs to address the fact that the syntax of the Noweb tool
 format is highly line-oriented, given the influence of AWK on the design
 and usage of Noweb (a historical version was entirely implemented in
-AWK). The following [[<<meta rules>>]] define rules which organize the
+                      AWK). The following [[<<meta rules>>]] define rules which organize the
 constructs of a line-oriented, or data-oriented, syntax.
 
 <<meta rules>>=
@@ -649,7 +649,7 @@ stack are balanced.
 (ordinal (substring [0-9] (* [0-9]))
          `(number -- (string-to-number number)))
 (kind (substring (or "code" "docs")))
-@ 
+@
 
 Valid [[chunk-contents]] is somewhat confusing, because chunks
 can contain many types of information other than text and new
@@ -668,8 +668,8 @@ lines. The definition of what is valid follows.
 
 Any other keywords are invalid inside a code block. An example of an
 invalid keyword is anything related to quotations! \textit{This
-  restriction only applies to code blocks, however, and documentation
-  chunks may contain quotations, of course.} As an exception, the
+restriction only applies to code blocks, however, and documentation
+chunks may contain quotations, of course.} As an exception, the
 keywords were originally banned inside code chunks, but to parse the
 noweb document in which WHYSE itself was written it needed to be
 adjusted. The grammar should be studied again to ensure that textual
@@ -688,12 +688,12 @@ description and reality are in step.
   <<tagging keywords>>
   x-notused
   <<tool errors>>))
-@ 
+@
 
 It is easier to handle the fatal keyword appearing inside chunks when it
 is a permissible keyword to appear inside a chunk; this allows the
 parser to consider a chunk with fatal inside of it \textit{as a valid
-  chunk}, but that does not mean that a chunk with a fatal keyword
+chunk}, but that does not mean that a chunk with a fatal keyword
 inside it does not invalidate a Noweb, it still does: the fatal keyword
 causes a fatal crash in parsing regardless. Those structural keywords
 which may be used inside the contents of a chunk are given next.
@@ -707,14 +707,14 @@ defn
 ;;; the `use' token was related to the `identifierusedinmodule' table,
 ;;; when it is actually related to the `parentchild' table.
 use
-@ 
+@
 
 All structural keywords, then, are:
 
 <<structural keywords>>=
 <<structural keywords (except quotations)>>
 quotation
-@ 
+@
 
 <<tagging keywords>>=
 ;; tagging
@@ -730,7 +730,7 @@ i-usages
 x-usages
 x-label
 x-ref
-@ 
+@
 
 Sometimes, however, the system will permit a chunk to be undefined and
 this leads to the only cases in the tool syntax where it is not
@@ -744,10 +744,10 @@ keywords.
 ;; error
 fatal
 x-undefined
-@ 
+@
 
 The fundamental keywords are text and nwnl (new line, per Noweb
-convention). Text keywords contain source text, and any new line tokens
+                                                convention). Text keywords contain source text, and any new line tokens
 in the source text are replaced with the appropriate number of @nl
 keywords (per convention); these are reduced to a single text token when
 they are adjacent on the [[peg--stack]].
@@ -763,11 +763,11 @@ they are adjacent on the [[peg--stack]].
 @
 
 Nowebs are built from chunks, so the definition and usage of (i.e. references
-to) a chunk are important keywords.
+                                                                   to) a chunk are important keywords.
 
 <<chunks and their boundaries>>=
 (defn "@defn" spc (substring !eol) nl
-  `(name -- (cons 'chunk name)))
+      `(name -- (cons 'chunk name)))
 
 ;; In @<<whyse.el>>=, it leads to usages tokens like below:
 ;; (chunk-child-usage . "Commentary")
@@ -780,11 +780,11 @@ to) a chunk are important keywords.
 @
 
 \begin{quotation}
-  Documentation may contain text and newlines, represented by @text and
-  [@nwnl]. It may also contain quoted code bracketed by @quote . . .
-  @endquote. Every @quote must be terminated by an @endquote within the
-  same chunk. Quoted code corresponds to the [[…]] construct in
-  the noweb source.
+Documentation may contain text and newlines, represented by @text and
+[@nwnl]. It may also contain quoted code bracketed by @quote . . .
+@endquote. Every @quote must be terminated by an @endquote within the
+same chunk. Quoted code corresponds to the [[…]] construct in
+the noweb source.
 \end{quotation}
 
 <<quotations>>=
@@ -819,9 +819,9 @@ index or xref keywords would appear alone without any subsequent
 information on the same line.
 
 \begin{quotation}
-  @index ... Index information.
+@index ... Index information.
 
-  @xref ... Cross-reference information
+@xref ... Cross-reference information
 \end{quotation}
 
 There are many keywords defined by the Noweb tool syntax, so they
@@ -851,7 +851,7 @@ Cross--referencing keywords, so they are contained in subsections.
 \subsection{indexing}
 Indexing keywords, both those used within chunks and those used outside
 of chunks, are defined in this section. The [[<<fundamental indexing
-keywords, which are restricted to within a code chunk>>]], index
+                                                            keywords, which are restricted to within a code chunk>>]], index
 definitions or usages of identifiers and track the definitions of
 identifiers in a chunk and the usages of identifiers in a chunk. They
 may seem redundant, but are not; the Noweb Hacker's Guide offers a
@@ -867,7 +867,7 @@ better explanation of the differences.
  (substring (or "defn" "use")) spc (substring !eol) nl
  (action
   (unless w--peg-parser-within-codep
-      (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
+    (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
  `(s1 s2 -- (cons (make-symbol s1) s2)))
 
 <<identifiers defined in a chunk>>
@@ -894,7 +894,7 @@ better explanation of the differences.
 
 The summary index of identifiers is a file--specific set of keywords.
 The index lists all identifiers defined in the file (at least all of
-those recognized by the autodefinitions filter).
+                                                        those recognized by the autodefinitions filter).
 
 <<the index of identifiers>>=
 (i-identifiers idx "beginindex" nl
@@ -997,16 +997,16 @@ WHYSE (contributions for improved support are welcomed).
          (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
 (fatal (bol) "@fatal"
        (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
-@ 
+@
 
 <<index nl error message>>=
 (string-join
  '("\"@index nl\" detected."
-  "This indicates hand-written @ %def syntax in the Noweb source."
-  "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
-  "Write an autodefs AWK script for the language you are using.")
+   "This indicates hand-written @ %def syntax in the Noweb source."
+   "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
+   "Write an autodefs AWK script for the language you are using.")
  "\n")
-@ 
+@
 
 %%  NOTE: it would be helpful to construct this sort of parse tree at
 %%  the CHUNK level, and this information can be directly sent to the
@@ -1082,10 +1082,10 @@ may or may not work as expected."
 (defun w--parse-current-buffer-with-rules ()
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
   (with-peg-rules
-      (<<PEG rules>>)
-    (let (w--peg-parser-within-codep
-          (w--first-stringy-token? t))
-      (peg-run (peg noweb) #'w--parse-failure-function))))
+   (<<PEG rules>>)
+   (let (w--peg-parser-within-codep
+         (w--first-stringy-token? t))
+     (peg-run (peg noweb) #'w--parse-failure-function))))
 
 (defun w--parse-failure-function (lst)
   (setq w--parse-success nil)
@@ -1099,12 +1099,12 @@ may or may not work as expected."
 
     (goto-char (point-max))
     (message "PEXes which failed:\n%S" lst)))
-@ 
+@
 
 <<Customization and global variables>>=
 (defvar w--parse-success t
   "The success or failure of the last parsing of noweb tool syntax.")
-@ 
+@
 
 
 
@@ -1119,7 +1119,7 @@ First, the overall structure of the parsed text should be diagrammed.
 The parse tree is a list of noweb documents, each being a list
 themselves. The first atom of an inner list, corresonding to a document,
 is the filename of that document (hopefully the same filename as passed
-on the commmand-line elsewhere when the document is used).
+                                            on the commmand-line elsewhere when the document is used).
 
 Deeper, each document-list contains as the second atom a list of its
 contents, which is an association list thereof. Each association in the
@@ -1135,7 +1135,7 @@ make it easier to navigate the tree and transform it.
 %% what I'm actually doing, or am I using the concept/name wrong?
 Other texts call this manipulation of the parse tree ``list
 destructuring'';
-%% 
+%%
 it could be thought of as code generation, since the data is used to
 generate DML which is partly code and partly data.
 
@@ -1157,8 +1157,8 @@ The initial parse tree begins like the one below.
   (noweb-document-two
    ((code . 0)
     (text . "asdf is a system definition format in Common LISP,"))
-    (nwnl . "\n")
-    (text . "and I like to use it.")
+   (nwnl . "\n")
+   (text . "and I like to use it.")
    ((code . 1)
     (text . "jkl; is the right-handed corollary of asdf."))
    ((docs . 2)
@@ -1173,12 +1173,12 @@ noweb document look like this in the final result.
 \begin{verbatim}
 ((code . 0)
  (text .
-  "asdf is a system definition format in Common LISP,
+       "asdf is a system definition format in Common LISP,
   and I like to use it."))
 \end{verbatim}
 
 The new result is much easier to use as data for other programs (SQL
-in this case). In the verbatim text a literal newline was inserted
+                                                                 in this case). In the verbatim text a literal newline was inserted
 rather than retaining the escape sequence, which is exactly what happens
 in the reduction step as well. The next subsection discusses the details
 of how the reduction in complexity exampled above is achieved.
@@ -1195,7 +1195,7 @@ noweb document are treated specially to facilitate this fragmentation.
 A small quote from the tool syntax of a development version of
 \textsc{WHYSE} is shown in this example in its parsed form. However,
 during actual parsing these adjacent tokens are \em{immediately
-  collapsed} into singular tokens.
+collapsed} into singular tokens.
 
 \begin{verbatim}
 (text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
@@ -1261,7 +1261,7 @@ The return value, if non-nil, is actually the name of the chunk."
   (if-let ((name (assq 'chunk chunk)))
       (cdr name)))
 
-@ 
+@
 
 
 
@@ -1311,7 +1311,7 @@ If the two associations shouldn't be joined, return them to the stack."
 @
 
 The `parse-tree' from the lexical environment (or scope, given
-that WHYSE is not implemented with lexical binding) is mapped
+                                                  that WHYSE is not implemented with lexical binding) is mapped
 over until every file token has been processed and records have
 been inserted into all four tables of the database.
 
@@ -1400,7 +1400,7 @@ will be named in the vectors in the returned list."
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
-featureset of SQL). The history of SEQL statements compiled is treated like a
+                                         featureset of SQL). The history of SEQL statements compiled is treated like a
 stack, with the newest statement being the first element of the list. A
 shoddy implementation of a ``stack-based history'' is given next.
 
@@ -1450,7 +1450,7 @@ shoddy implementation of a ``stack-based history'' is given next.
      ;; entirely optional in a literate document with LaTeX.
      nil t)
     (buffer-substring (line-beginning-position) (line-end-position))))
-@ 
+@
 
 While it's certain that some of the data from a search operation are
 markers of a match (some of them are non-nil), substrings corresponding
@@ -1475,29 +1475,29 @@ used by noweb itself. To implement WHYSE we utilize the intermediate
 representation for both editing and document compilation. Features
 unique to WHYSE would add in new keywords, and these would only be
 processed by WHYSE (hopefully without impacting other applications,
-though the only other application that uses the noweb intermediate
-representation is noweb itsefl).
+                              though the only other application that uses the noweb intermediate
+                              representation is noweb itsefl).
 
 \begin{verbatim}
-  ((code . 32)
-   (x-label . "NW2ucZJx-3LzQog-2")
-   (ref . "NW2ucZJx-3LzQog-1")
-   (chunk . "chunks and their bou...")
-   (prevdef . "NW2ucZJx-3LzQog-1")
-   (nextdef . "NW2ucZJx-3LzQog-3")
-   (text . "\n(chunk-contents\n (o...")
-   (x-label . "NW2ucZJx-3LzQog-2-u1")
-   (ref . "NW2ucZJx-2ZphFz-1")
-   (chunk-child-usage . "structural keywords")
-   (text . "\n  ")
-   (x-label . "NW2ucZJx-3LzQog-2-u2")
-   (ref . "NW2ucZJx-44iV1g-1")
-   (chunk-child-usage . "tagging keywords")
-   (text . "\n  x-notused\n  ")
-   (x-label . "NW2ucZJx-3LzQog-2-u3")
-   (ref . "NW2ucZJx-1ZiKLq-1")
-   (chunk-child-usage . "tool errors")
-   (text . "))\n"))
+((code . 32)
+ (x-label . "NW2ucZJx-3LzQog-2")
+ (ref . "NW2ucZJx-3LzQog-1")
+ (chunk . "chunks and their bou...")
+ (prevdef . "NW2ucZJx-3LzQog-1")
+ (nextdef . "NW2ucZJx-3LzQog-3")
+ (text . "\n(chunk-contents\n (o...")
+ (x-label . "NW2ucZJx-3LzQog-2-u1")
+ (ref . "NW2ucZJx-2ZphFz-1")
+ (chunk-child-usage . "structural keywords")
+ (text . "\n  ")
+ (x-label . "NW2ucZJx-3LzQog-2-u2")
+ (ref . "NW2ucZJx-44iV1g-1")
+ (chunk-child-usage . "tagging keywords")
+ (text . "\n  x-notused\n  ")
+ (x-label . "NW2ucZJx-3LzQog-2-u3")
+ (ref . "NW2ucZJx-1ZiKLq-1")
+ (chunk-child-usage . "tool errors")
+ (text . "))\n"))
 \end{verbatim}
 
 <<collect child chunk uses>>=
@@ -1514,7 +1514,7 @@ representation is noweb itsefl).
                   (when (equal (car assoc) 'chunk-child-usage)
                     (vconcat (list chunk-number (cdr assoc)))))
                 chunk))))
-@ 
+@
 
 
 
@@ -1647,7 +1647,7 @@ in the License section at the end of this document.
 ;; no-byte-compile: t
 ;; no-native-compile: t
 ;; End:
-@ 
+@
 
 
 
@@ -1726,15 +1726,15 @@ filled with other widgets (which will inherit widths of the area).
   :width (frame-width)
   :tag "|"
   :format "%t%v")
-@ 
+@
 
 A keymap provides for handling keyboard and mouse events.
 
-<<Code>>= 
+<<Code>>=
 <<module-header keymap>>
 <<module-header keymap>>=
 (define-keymap :name "module-header-keymap" :parent global-map)
-@ 
+@
 
 The module header keymap derives from the global keymap for now. I don't
 know anything about keymaps, and I always consult documenation when
@@ -1742,13 +1742,13 @@ defining or deleting defintions for key bindings in Emacs.
 
 <<module-header top-level>>=
 :value '(module-header-left module-header-center module-header-right)
-@ 
+@
 
 <<Code>>=
 <<module-header-left>>
 <<module-header-center>>
 <<module-header-right>>
-@ 
+@
 
 <<module-header-left>>=
 (define-widget 'w--module-header-left 'group
@@ -1805,8 +1805,8 @@ Navigating between chunks in a noweb source document is so fundamental
 to literate programming that you may want to bind
 \texttt{backward-page} and \texttt{forward-page} to the specially
 labelled "Page Up" and "Page Down" keys on your keyboard (represented
-in elisp with the special strings "<prior>" and "<next>" when you use
-\texttt{describe-key} on these keyboard buttons).
+                                                          in elisp with the special strings "<prior>" and "<next>" when you use
+                                                          \texttt{describe-key} on these keyboard buttons).
 
 \section{Advising the forward- and backward-page functions}
 
@@ -1854,14 +1854,14 @@ originally in."
   <<declare the function interactivity-type and set arg to zero if missing>>
   (save-excursion
     <<widen the buffer then handle non-zero arg values>>
-@
+    @
 
-After widening the buffer and handling non-zero argument values, it is
-necessary to find the end of the current page (chunk) to establish the
-end of the region in which narrowing will take place (a region delimited
-by chunk boundaries).
+    After widening the buffer and handling non-zero argument values, it is
+    necessary to find the end of the current page (chunk) to establish the
+    end of the region in which narrowing will take place (a region delimited
+                                                            by chunk boundaries).
 
-<<nwn.el>>=
+    <<nwn.el>>=
     <<find the end of the page>>
     <<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>))
 
@@ -1871,18 +1871,18 @@ by chunk boundaries).
 <<widen the buffer then handle non-zero arg values>>=
 (widen)
 (if (> arg 0)
-	  (forward-page arg)
+    (forward-page arg)
   (if (< arg 0)
-	    (let ((adjust 0)
-		        (opoint (point)))
-	      ;; If we are not now at the beginning of a page, move back one
-	      ;; extra time, to get to the start of this page.
-	      (save-excursion
-	        (beginning-of-line)
-	        (or (and (looking-at page-delimiter)
-		               (eq (match-end 0) opoint))
-		          (setq adjust 1)))
-	      (forward-page (- arg adjust)))))
+      (let ((adjust 0)
+            (opoint (point)))
+        ;; If we are not now at the beginning of a page, move back one
+        ;; extra time, to get to the start of this page.
+        (save-excursion
+          (beginning-of-line)
+          (or (and (looking-at page-delimiter)
+                   (eq (match-end 0) opoint))
+              (setq adjust 1)))
+        (forward-page (- arg adjust)))))
 <<find the end of the page>>=
 (set-match-data nil)
 (forward-page)
@@ -1905,15 +1905,15 @@ by chunk boundaries).
 <<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>=
 (narrow-to-region (point)
                   (progn
-	                  ;; Find the top of the page.
-	                  (forward-page -1)
-	                  ;; If we found beginning of buffer, stay there.
-	                  ;; If extra text follows page delimiter on same line,
-	                  ;; include it.
-	                  ;; Otherwise, show text starting with following line.
-	                  (if (and (eolp) (not (bobp)))
-	                      (forward-line 1))
-	                  (point)))
+                    ;; Find the top of the page.
+                    (forward-page -1)
+                    ;; If we found beginning of buffer, stay there.
+                    ;; If extra text follows page delimiter on same line,
+                    ;; include it.
+                    ;; Otherwise, show text starting with following line.
+                    (if (and (eolp) (not (bobp)))
+                        (forward-line 1))
+                    (point)))
 @
 
 See these overlay properties: [[insert-in-front-hooks]],
@@ -1955,7 +1955,7 @@ between pages, defined by a buffer-local value of
         (kill-local-variable 'page-delimiter)
         (when (buffer-narrowed-p)
           (widen)))
-    (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
+      (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
 
 (defvar nwn--chunk-delimiter-match nil
   "The match data for the delimiter previous to the start of the

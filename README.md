@@ -3,7 +3,6 @@ WHYSE is an integrated development environment for Noweb and LaTeX,
 integrating these tools with new system features for editing and reviewing literate programs.
 The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
 
-
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
@@ -90,6 +89,16 @@ I'm returning to the project on April 19th, 2025 (Sat 19 Apr 2025 12:34:49 AM
 MDT). I am not sure how long I have been away; after checking the git log it
 appears I've been largely inactive since May 13th, 2024. That's nearly one year!
 
+## Exploring an alternative WHS-like implementation as an Org-mode extension
+Given Org mode has noweb syntax support, tangling, and even chunk execution
+support, it may be said that Org is a more modern solution, especially when
+Emacs is the development platform for the system. Given that criticism, I have
+begun exploring the use of sparse trees, extensions to org such as org-ql, and
+leveraging helm and occur to produce an extension implementing something
+WHS-like. Utilizing a separate language (SQL) and process for structuring the
+data and querying it doesn't make sense to me anymore, so something Emacs-native
+and within-process is what I have chosen; sqlite3 is conveniently embedded in
+Emacs now, however.
 
 # Ignored files
 
@@ -98,3 +107,9 @@ additional files which are otherwise ignored. One of these is whs.pdf,
 which is a rendering of the source code from an earlier version of
 whyse retained only to show what a PDF should look like.
 
+# About
+The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
+
+[^1]: Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
+
+[^2]: Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information [1991]
