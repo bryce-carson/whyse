@@ -1,7 +1,16 @@
+# About
+The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
+
+[^1]: Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
+
+[^2]: Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information (1991)
+
 # WHYSE ⸺ The WEB HYpertext System in Emacs
 WHYSE is an integrated development environment for Noweb and LaTeX,
 integrating these tools with new system features for editing and reviewing literate programs.
-The IDE is based off of the work by Brown and Czejdo from 1991, and is in early development.
+
+The IDE is inspired by the system described in Brown and Czejdo's 1991 ICCI
+conference proceeding, and is in early development.
 
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
@@ -106,10 +115,3 @@ If you've received a tarball of this source code you may have received
 additional files which are otherwise ignored. One of these is whs.pdf,
 which is a rendering of the source code from an earlier version of
 whyse retained only to show what a PDF should look like.
-
-# About
-The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
-
-[^1]: Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
-
-[^2]: Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information [1991]
