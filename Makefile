@@ -8,7 +8,7 @@ NOWEB_LIB = /usr/lib64/noweb
 markup = ${NOWEB_LIB}/markup
 finduses = ${NOWEB_LIB}/finduses
 noidx = ${NOWEB_LIB}/noidx
-clean_docs = ${ROOT_DIR}clean-docs.awk
+clean_docs = ${SRC}/clean-docs.awk
 
 # User serviceable parts
 autodefs_elisp = ${NOWEB_LIB}/autodefs.elisp
@@ -48,6 +48,6 @@ clean:
 tool-syntax:
 	${markup} ${SRC}/whyse.nw | \
 	${autodefs_elisp} | \
-	${finduses} | \
+	${finduses} | \ # TODO: use the new finduses
 	${clean_docs} | \
 	${noidx} -delay
