@@ -1110,6 +1110,66 @@ may or may not work as expected."
 
 
 
+\chatper{Event-hook Loop}\label{event hook loop}
+There has always been some confusion in my mind as to how the REPL will
+work. Reading a noweb file for a first time is no issue, nor is parsing
+the tool syntax at any time.
+
+Implementing the WHS using the UNIX philosophy---many small tools
+chained together to create solutions and systems---would make nineties
+noweb users happy. It's also how I thought of a solution to my
+confusion, which is one of the reasons why I stopped working on this
+project for almost two years (apart from normal life stresses and other
+projects taking up my time).
+
+\begin{verbatim}
+  example.nw | less# with options for noweb syntax highlighting
+\end{verbatim}
+
+Using [[less]], users will page through the source text until they find
+a chunk they'd wish to edit. Users directly edit the entire noweb source
+(or the current noweb source file if more than one is given on a command
+line) using whichever [[EDITOR]] they have configured less to invoke
+upon the press of the default or a customized [[lesskey]]. Whenever
+[[less]] re-reads the file after the editor exits it will invoke a
+command to convert the noweb sources to tool syntax again (rebuilding
+the index). The index may be browsed upon user demand, and it will
+provide hyperlinks to source chunks.
+
+Perhaps etags can be leveraged to benefit with the [[less]] option [[--tag-file]].
+https://www.gnu.org/software/emacs/manual/html_node/emacs/Tags-Tables.html
+
+<<test.sh>>=
+#!/usr/bin/env bash
+LIB="/usr/lib64/noweb"
+eval "${LIB}/markup whyse.nw" | parse-noweb-tool-syntax --save-tags --no-emit # "no emit" is identical to "quiet".
+@
+
+Parsing the noweb tool syntax is the job of [[parse-noweb-tool-syntax]],
+and it will save identifiers (identified with) -autodefs=emacslisp or
+something to an etags file, and when instructed will not echo anything
+on stdout.
+
+This will update all other files that [[less]] is currently visiting
+(they should all be in one directory with a predictable file name).
+
+The user will observe when returning to the [[less]] pager from their
+[[EDITOR]], hyperlinks to other chunks have been updated as well as tags
+for other identifiers. The user may navigate to hyperlinks and tags
+using the current [[lesskeys]].
+
+\section{Algorithm}
+\begin{enumerate}
+  \item{parse tool syntax}
+  \item{autoidentify definitions to produce etags file}
+  \item{create hyperlinks between files and chunks}
+  \item{re-emit files}
+\end{enumerate}
+
+
+
+
+
 \chapter{Processing parsed nowebs into SQL}\label{processing lists}
 This section covers how the parsed text generated in the last section is
 processed, creating a series of SQL statements that will be executed by
