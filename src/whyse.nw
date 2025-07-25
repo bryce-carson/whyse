@@ -34,14 +34,15 @@ papersize={9in, 12in}
 \usepackage{mathptmx}
 
 %% FIXME: biblatex causes knoweb to be unable to compile.
-\usepackage[style=ieee]{biblatex}
-\addbibresource{whyse.bib}
+%% \usepackage[style=ieee]{biblatex}
+%% \addbibresource{whyse.bib}
 
 %%% --- NOWEB LaTeX PACKAGE --- %%%
 %% \usepackage[breakcode,footnotesizecode]{knoweb}
+%% \setlength{\nwbreakcodespace}{0.2in}
+
 \usepackage{noweb}
 \noweboptions{smallcode,longchunks}
-%% \setlength{\nwbreakcodespace}{0.2in}
 
 %% MAYBE TODO: Modify knoweb to use the typographic conventions
 %% of Bert Burgemeister's ``Common Lisp Quick Reference''
@@ -86,19 +87,18 @@ papersize={9in, 12in}
 
 \maketitle
 
-\tableofcontents
+%% \tableofcontents
 
 %% \mainmatter
 
-%% MAYBE TODO: when commenting a region of LaTeX in
-%% Poly-Noweb-mode the quotations should be guarded with
-%% at-signs, like [[@<<name>>]]. The Emacs poly-noweb mode should
-%% have syntax highlighting that does not hightlight quotations
-%% within LaTeX comments. The font-locking should be aware that
-%% this is a comment, so that the proper syntax highlighting is
-%% applied (i.e. none is applied to the quotation, or at least it
-%% is another shade of the comment syntax colouring, rather than
-%% pure white like body text).
+%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
+%% quotations should be guarded with at-signs, like [[@<<name>>]]. The
+%% Emacs poly-noweb mode should have syntax highlighting that does not
+%% hightlight noweb quotations within LaTeX comments. The font-locking
+%% should be aware that this is a comment, so that the proper syntax
+%% highlighting is applied (i.e. none is applied to the quotation, or at
+%% least it is another shade of the comment syntax colouring, rather
+%% than pure white like body text).
 
 \begin{abstract}
 \textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
@@ -1122,7 +1122,7 @@ may or may not work as expected."
 
 
 
-\chatper{Event-hook Loop}\label{event hook loop}
+\chapter{Event-hook Loop}\label{event hook loop}
 There has always been some confusion in my mind as to how the REPL will
 work. Reading a noweb file for a first time is no issue, nor is parsing
 the tool syntax at any time.
@@ -2059,8 +2059,8 @@ chunk)."
             :after #'nwn--forward-page-advice)
 @
 
-\chapter{Bibliography}
-\printbibliography
+%% \chapter{Bibliography}
+%% \printbibliography
 
 \chapter{License}
 \input{../vendor/gpl-3.0.tex}
