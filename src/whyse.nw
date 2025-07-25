@@ -747,7 +747,7 @@ x-undefined
 @
 
 The fundamental keywords are text and nwnl (new line, per Noweb
-                                                convention). Text keywords contain source text, and any new line tokens
+convention). Text keywords contain source text, and any new line tokens
 in the source text are replaced with the appropriate number of @nl
 keywords (per convention); these are reduced to a single text token when
 they are adjacent on the [[peg--stack]].
@@ -894,7 +894,7 @@ better explanation of the differences.
 
 The summary index of identifiers is a file--specific set of keywords.
 The index lists all identifiers defined in the file (at least all of
-                                                        those recognized by the autodefinitions filter).
+those recognized by the autodefinitions filter).
 
 <<the index of identifiers>>=
 (i-identifiers idx "beginindex" nl
@@ -1119,7 +1119,7 @@ First, the overall structure of the parsed text should be diagrammed.
 The parse tree is a list of noweb documents, each being a list
 themselves. The first atom of an inner list, corresonding to a document,
 is the filename of that document (hopefully the same filename as passed
-                                            on the commmand-line elsewhere when the document is used).
+on the commmand-line elsewhere when the document is used).
 
 Deeper, each document-list contains as the second atom a list of its
 contents, which is an association list thereof. Each association in the
@@ -1475,8 +1475,8 @@ used by noweb itself. To implement WHYSE we utilize the intermediate
 representation for both editing and document compilation. Features
 unique to WHYSE would add in new keywords, and these would only be
 processed by WHYSE (hopefully without impacting other applications,
-                              though the only other application that uses the noweb intermediate
-                              representation is noweb itsefl).
+though the only other application that uses the noweb intermediate
+representation is noweb itsefl).
 
 \begin{verbatim}
 ((code . 32)

@@ -1,12 +1,14 @@
-* DONE Write Emacs LISP functions for recognizing arbitrary LaTeX sectioning commands
-CLOSED: [2025-04-28 Mon 13:33]
-- Use RefTeX's [[help:reftex-section-regexp][reftex-section-regexp]]
+* TODO Use RefTeX's ~reftex-section-regexp~ to recognize arbitrary LaTeX sectioning commands
+- [[elisp:(load-library "reftex")][ ~(load-library "reftex")~ # before clicking the function link]]
+- [[help:reftex-section-regexp][reftex-section-regexp]]
+- navigate to the ~setq~ for that symbol.
 
 * TODO Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests
 - Primarily useful for the PDF
   - Using a container increases reproducibility; [[https://github.com/marketplace/actions/github-action-for-latex][this existing latex workflow on GitHub actions]] is sufficient
 
-* TODO Hack on the recognizer.nw and finduses.nw to better support (emacs) lisp
+* DONE Hack on the recognizer.nw and finduses.nw to better support (Emacs) LISP
+CLOSED: [2025-07-25 Fri 01:17]
 Find Uses and the Recognizer (respectively in =finduses.nw= and =recognizer.nw=)
 need some tweaking to better support LISP identifiers. It may be as simple as
 moving =-= from ~SYMBOLS~ to ~ALPHANUMERIC~.
@@ -42,3 +44,71 @@ brief explanation in the hook documentation string.
 An implementation of something WHS-like in Org mode, rather than noweb-mode,
 would be interesting. It seems quite capable, and in fact is more featureful
 than noweb. Noweb may be outmoded, honestly, but it does have its place.
+
+* TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
+Rather than using widget.el in the main Polymode buffer it would be prudent to
+use the Button package to make buttons out of pre-existing text.
+
+There are utilities for mapping over all "spans" in a polymode buffer, e.g.
+[[help:pm-map-over-spans][polymode map over spans]].
+
+#+begin_quote markdown
+`:head-mode` and `:tail-mode` specify the major mode which should be used for
+head and tail respectively. Special symbol `'host` means that the host mode is
+used for head or tail, if `'body` [then] the mode of the chunk's body. Head and
+tail modes default to `poly-head-tail-mode` which is a very basic prog mode with
+no special powers.
+#+end_quote
+
+I need to define a mode. The mode must have a keymap to navigate chunks:
+preferrably a transient map or hydra like Info mode.
+
+#+begin_src elisp :noweb yes :tangle noweb-navigation-mode.el
+  (define-minor-mode nwn-mode
+    "Noweb Narrowing minor mode provides alternative motion commands
+            between pages, defined by a buffer-local value of
+            `page-delimiter' appropriate for Noweb chunks."
+    :lighter " nWn "
+    :list '(fundamental-mode text-mode latex-mode noweb-mode poly-noweb-mode)
+    :keymap '(([next] . nwn--forward-page)
+              ([prior] . nwn--backward-page))
+    (if <<current buffer is a noweb file>>
+        (if nwn-mode
+            (progn (make-local-variable 'page-delimiter)
+                   <<customize page-delimiter regular expression for noweb>>
+                   (nwn-narrow-to-page))
+          (kill-local-variable 'page-delimiter)
+          (when (buffer-narrowed-p)
+            (widen)))
+        (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
+
+  (define-child-mode noweb-navigation-mode text-mode)
+  (defun noweb-navigation-mode (&rest mode-arguments)
+    "\[COMMAND] is exclusively for use as a :head-mode and :tail-mode with poly-noweb. It has no other purpose.
+
+  \{KEYMAP}
+
+  \<KEYMAP>"
+
+    (kill-all-local-variables)
+    (set-variable 'major-mode noweb-navigation-mode)
+    (use-local-map
+     (let ((map (make-sparse-keymap)))
+       ;; TODO: these dwim functions should be cyclic. Once at the last definition
+       ;; of a chunk continuing to the next should return the user to the first
+       ;; definition of the chunk.
+       (define-key map "n" #'next-noweb-chunk-definition-dwim)
+       (define-key map "p" #'previous-noweb-chunk-definition-dwim)
+
+       ;; TODO: these dwim functions should cycle through the next visible
+       ;; defintions of a chunk which is the sibling of the currently visited
+       ;; chunk.
+       (define-key map "S-n" #'next-noweb-chunk-sibling-definition-dwim)
+       (define-key map "S-p" #'previous-noweb-chunk-sibling-definition-dwim)
+
+       ;; TODO: these dwim functions should cycle through parents of the currently
+       ;; visited chunk.
+       (define-key map "M-n" #'next-noweb-chunk-parent-definition-dwim)
+       (define-key map "M-p" #'previous-noweb-chunk-parent-definition-dwim)
+       map)))
+#+end_src
