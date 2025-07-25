@@ -527,6 +527,7 @@ tool syntax given in the \cite[Noweb Hacker's Guide]{ramsey1992}.
 Every character of an input text to be parsed by parsing expressions in
 a PEG must be defined in terminal rules of the formal grammar. The root
 rule in the grammar for Noweb tool syntax is the appropriately named
+%% TODO: modify with-peg-rules; it should have `(declare (indent 2))'.
 [[noweb]] rule. Beginning [[with-peg-rules]] brought into scope, the
 root rule [[noweb]] is ran on the buffer containing the tool syntax
 produced by the project shell script.
@@ -575,10 +576,15 @@ constructs of a line-oriented, or data-oriented, syntax.
 TODO: Review the following paragraph and rephrase it.
 
 With the [[<<meta rules>>]] enabling easier definitions of what a given
-``keyword'' looks like, the concept of a file needs to be defined. A
-file is ``anything that looks like a file to Noweb''. However, by
-default, only the chunk named ``*'' (it's chunk header is [[@<<*>>]]) is
-tangled when no specific root chunk is given on the command line.
+``keyword'' looks like, the /concept of a file/ can be defined. A file
+is ``anything that looks like a file to Noweb'';
+%% TODO: verify the functionality of:
+%% -Rone.el -Rtwo.el -Rthree.el#, or that of
+%% -Rone.el,two.el,three.el,four,five.h,six.c#
+files may be tangled from the noweb sources by specifying their root
+chunk names on the command-line. However, by default, only the chunk
+named ``*'' (it's chunk header is [[@<<*>>]]) is tangled when no
+specific root chunk is given on the command line.
 
 TODO: Write about the need for the overall document to be separate from
 the one-or-more files specified in the document. Exempli gratia: the
@@ -593,7 +599,8 @@ after the last file.
 
 <<files and their paths>>=
 ;; Technically, file is a tagging keyword, but that classification only
-;; makes sense in the Hacker's guide, not in the syntax.
+;; makes sense in the Hacker's Guide to Noweb, not in the parser for the
+;; tool syntax.
 (file (bol) "@file" spc (substring path) nl
       (action (setq w--file-current-line 0))
       (list (and (+ chunk)
@@ -606,6 +613,10 @@ after the last file.
       `(path chunk-list -- (cons path chunk-list)))
 (path (opt (or ".." ".")) (* path-component) file-name)
 (path-component (and path-separator (+ [word])))
+;; Perhaps I should instead `regexp-quote' the result of
+;; `f-path-separator' rather than hard-code the UNIX-like path
+;; separator. Doesn't Windows support automatic translation of UNIX-like
+;; paths to Windows-paths on the current drive now?
 (path-separator ["\\/"])
 (file-name (+ (or [word] ".")))
 @
@@ -746,7 +757,7 @@ fatal
 x-undefined
 @
 
-The fundamental keywords are text and nwnl (new line, per Noweb
+The fundamental keywords are ``text'' and ``nwnl'' (new line, per Noweb
 convention). Text keywords contain source text, and any new line tokens
 in the source text are replaced with the appropriate number of @nl
 keywords (per convention); these are reduced to a single text token when
@@ -1081,8 +1092,9 @@ may or may not work as expected."
 ;;;; Parsing expression grammar (PEG) rules
 (defun w--parse-current-buffer-with-rules ()
   "Parse the current buffer with the PEG defined for Noweb tool syntax."
-  (with-peg-rules
-   (<<PEG rules>>)
+  (with-peg-rules (<<PEG rules>>)
+
+   ;; FIXME: within this local, temporary scope there is no reason to use `w--' in a name.
    (let (w--peg-parser-within-codep
          (w--first-stringy-token? t))
      (peg-run (peg noweb) #'w--parse-failure-function))))
