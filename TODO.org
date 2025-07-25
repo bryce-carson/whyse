@@ -4,8 +4,25 @@
 - navigate to the ~setq~ for that symbol.
 
 * TODO Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests
+- DONE when the .workflow is tested and adopted
 - Primarily useful for the PDF
-  - Using a container increases reproducibility; [[https://github.com/marketplace/actions/github-action-for-latex][this existing latex workflow on GitHub actions]] is sufficient
+  - Using a container increases reproducibility; [[https://github.com/xu-cheng/texlive-action][this existing latex workflow on GitHub actions]] is sufficient
+
+#+begin_src yaml
+  on: [release]
+  jobs:
+    build_latex:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: xu-cheng/texlive-action@v3
+          with:
+            texlive_version: 2020
+            os: debian
+            run: |
+              - "markup -Rwhyse.el | autodefs.elisp | finduses.elisp | clean-docs | noidx -delay > whyse.tex"
+              - "latexmk -pdf -file-line-error -halt-on-error -interaction=nonstopmode whyse.tex"
+#+end_src
 
 * DONE Hack on the recognizer.nw and finduses.nw to better support (Emacs) LISP
 CLOSED: [2025-07-25 Fri 01:17]
@@ -45,7 +62,7 @@ An implementation of something WHS-like in Org mode, rather than noweb-mode,
 would be interesting. It seems quite capable, and in fact is more featureful
 than noweb. Noweb may be outmoded, honestly, but it does have its place.
 
-* TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
+** TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
 Rather than using widget.el in the main Polymode buffer it would be prudent to
 use the Button package to make buttons out of pre-existing text.
 
