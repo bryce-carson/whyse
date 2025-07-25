@@ -762,8 +762,8 @@ they are adjacent on the [[peg--stack]].
       `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
 @
 
-Nowebs are built from chunks, so the definition and usage of (i.e. references
-                                                                   to) a chunk are important keywords.
+Nowebs are built from chunks, so the definition and usage of (i.e.
+references to) a chunk are important keywords.
 
 <<chunks and their boundaries>>=
 (defn "@defn" spc (substring !eol) nl
@@ -850,9 +850,9 @@ Cross--referencing keywords, so they are contained in subsections.
 
 \subsection{indexing}
 Indexing keywords, both those used within chunks and those used outside
-of chunks, are defined in this section. The [[<<fundamental indexing
-                                                            keywords, which are restricted to within a code chunk>>]], index
-definitions or usages of identifiers and track the definitions of
+of chunks, are defined in this section. The
+[[<<fundamental indexing keywords, which are restricted to within a code chunk>>]],
+index definitions or usages of identifiers and track the definitions of
 identifiers in a chunk and the usages of identifiers in a chunk. They
 may seem redundant, but are not; the Noweb Hacker's Guide offers a
 better explanation of the differences.
@@ -1237,11 +1237,11 @@ noweb document look like this in the final result.
   and I like to use it."))
 \end{verbatim}
 
-The new result is much easier to use as data for other programs (SQL
-                                                                 in this case). In the verbatim text a literal newline was inserted
-rather than retaining the escape sequence, which is exactly what happens
-in the reduction step as well. The next subsection discusses the details
-of how the reduction in complexity exampled above is achieved.
+The new result is much easier to use as data for other programs (SQL in
+this case). In the verbatim text a literal newline was inserted rather
+than retaining the escape sequence, which is exactly what happens in the
+reduction step as well. The next subsection discusses the details of how
+the reduction in complexity exampled above is achieved.
 
 \subsection{Reducing complexity in the alist}
 The first step in making the parse tree navigable for other programs is
@@ -1370,10 +1370,10 @@ If the two associations shouldn't be joined, return them to the stack."
 
 @
 
-The `parse-tree' from the lexical environment (or scope, given
-                                                  that WHYSE is not implemented with lexical binding) is mapped
-over until every file token has been processed and records have
-been inserted into all four tables of the database.
+The `parse-tree' from the lexical environment (or scope, given that
+WHYSE is not implemented with lexical binding) is mapped over until
+every file token has been processed and records have been inserted into
+all four tables of the database.
 
 <<default hook functions>>=
 (defun w--prepare-sexp-sql-from-file-tokens ()
@@ -1460,9 +1460,10 @@ will be named in the vectors in the returned list."
 
 When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
 might be better controlled with DCL (the data control langauge
-                                         featureset of SQL). The history of SEQL statements compiled is treated like a
-stack, with the newest statement being the first element of the list. A
-shoddy implementation of a ``stack-based history'' is given next.
+featureset of SQL). The history of SEQL statements compiled is treated
+like a stack, with the newest statement being the first element of the
+list. A shoddy implementation of a ``stack-based history'' is given
+next.
 
 <<push the compiled SQL to the database and to the history stack>>=
 ;; NOTE: the result of evaluating the SQL is pushed to the history stack
