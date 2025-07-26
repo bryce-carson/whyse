@@ -84,18 +84,15 @@ The only other source file is `whyse.nw`, the Noweb source for WHYSE itself.
 
 <<latex>>=
 ## LaTeX compilation difficulties
-I have not had success compiling a knoweb styled LaTeX document outside of a
-Debian 11 environment with TeXLive 2020. Only this combination works; other
+I have not had success compiling a knoweb-styled LaTeX document in any environment apart from a
+Debian 11 OS environment with TeXLive 2020. Only this combination works; other
 versions of TexLive or newer versions of Debian, or other Linux distributions
 have not worked with the peculiarities of the style file and the latex
-environment. Therefore an operating system image (in ISO format) or a Docker
-container may be made available for development purposes; don't count on it.
-Consider using `docker pull texlive/texlive:TL2020-historic`.
+environment.
 
-Due the difficulties time was taken to revert the project to using the standard
-noweb macro package. It compiles best with XeTeX. With LuaTeX there
-are compilation issues for some reason (I am not a LaTeX
-macro-understander, so I can't debug the issues).
+As of Saturday, July 26 2025 there is now a Dockerfile which I successfully use
+with `podman` on my Fedora Silverblue machine to build whyse and all of its
+dependencies.
 
 @ 
 
@@ -131,6 +128,8 @@ I'm returning to the project on April 19th, 2025 (Sat 19 Apr 2025 12:34:49 AM
 MDT). I am not sure how long I have been away; after checking the git log it
 appears I've been largely inactive since May 13th, 2024. That's nearly one year!
 
+I was inactive after the last "return" until late-July 2025. Significant
+progress was made in terms of the Dockerfile.
 
 @ 
 
