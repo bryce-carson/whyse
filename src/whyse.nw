@@ -37,12 +37,13 @@ papersize={9in, 12in}
 %% \usepackage[style=ieee]{biblatex}
 %% \addbibresource{whyse.bib}
 
+%%%% NOTE: choose only one of the following
+%%% --- K NOWEB LaTeX PACKAGE --- %%%
+\usepackage[breakcode,footnotesizecode]{knoweb}
+\setlength{\nwbreakcodespace}{0.2in}
 %%% --- NOWEB LaTeX PACKAGE --- %%%
-%% \usepackage[breakcode,footnotesizecode]{knoweb}
-%% \setlength{\nwbreakcodespace}{0.2in}
-
-\usepackage{noweb}
-\noweboptions{smallcode,longchunks}
+%% \usepackage{noweb}
+%% \noweboptions{smallcode,longchunks}
 
 %% MAYBE TODO: Modify knoweb to use the typographic conventions
 %% of Bert Burgemeister's ``Common Lisp Quick Reference''
