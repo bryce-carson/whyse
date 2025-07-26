@@ -36,7 +36,7 @@ ENV NOWEB_BIN=/usr/local/bin \
 RUN cd /opt/noweb/src && \
     ./awkname gawk && \
     make CC=gcc CFLAGS="-Wall" \
-BIN=$NOWEB_BIN \
+    BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
     TEXINPUTS=$NOWEB_TEXINPUTS \
