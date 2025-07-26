@@ -1,0 +1,36 @@
+name: Build Whyse PDF & Emacs package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout whyse repo
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t whyse .
+
+    - name: Run container to copy build artifacts
+      run: |
+        container_id=$(docker create whyse)
+        docker cp $container_id:/workspace/build ./build
+        docker rm $container_id
+
+    - name: Upload PDF
+      uses: actions/upload-artifact@v4
+      with:
+        name: whyse-pdf
+        path: build/whyse.pdf
+
+    - name: Upload Emacs package tarball
+      uses: actions/upload-artifact@v4
+      with:
+        name: whyse-package
+        path: build/whyse-*.tar

@@ -1,51 +1,57 @@
 VERSION := 0.1
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-BUILD := ${ROOT_DIR}build
-SRC := ${ROOT_DIR}src
-TEST := ${ROOT_DIR}test
+BUILD ?= ${ROOT_DIR}build
+SRC ?= ${ROOT_DIR}src
+TEST ?= ${ROOT_DIR}test
 
-NOWEB_LIB = /usr/lib64/noweb
-markup = ${NOWEB_LIB}/markup
-finduses = ${NOWEB_LIB}/finduses
-noidx = ${NOWEB_LIB}/noidx
-clean_docs = ${SRC}/clean-docs.awk
+# Allow NOWEB_LIB to be overridden (e.g., via command line or Docker)
+NOWEB_LIB ?= /usr/lib64/noweb
 
-# User serviceable parts
-autodefs_elisp = ${NOWEB_LIB}/autodefs.elisp
+markup ?= ${NOWEB_LIB}/markup
+finduses ?= ${NOWEB_LIB}/finduses
+noidx ?= ${NOWEB_LIB}/noidx
+autodefs_elisp ?= ${NOWEB_LIB}/autodefs.elisp
+clean_docs ?= ${SRC}/clean-docs.awk
 
 readme:
-	notangle -RREADME.md src/README.nw > ${ROOT_DIR}README.md
+	notangle -RREADME.md $(SRC)/README.nw > $(ROOT_DIR)/README.md
 
 weave: clean
-	noweave -delay -autodefs elisp -index ${SRC}/whyse.nw > ${BUILD}/whyse.tex
+	mkdir -p $(BUILD)
+	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
 compile-pdf: tangle weave
-	cd ${BUILD}; latexmk -c --xelatex --interaction=nonstopmode -f ${BUILD}/whyse.tex; xelatex -f ${BUILD}/whyse.tex;
+	cd $(BUILD); \
+	latexmk --xelatex --interaction=nonstopmode -f whyse.tex; \
+	xelatex -f whyse.tex
 pdf: compile-pdf
 
 tangle: clean
-	notangle -Rwhyse.el ${SRC}/whyse.nw > ${BUILD}/whyse.el
-	notangle -Rwhyse-pkg.el ${SRC}/whyse.nw > ${BUILD}/whyse-pkg.el
-	mkdir ${BUILD}/whyse-${VERSION}
-	mv -t ${BUILD}/whyse-${VERSION} ${BUILD}/whyse.el ${BUILD}/whyse-pkg.el
-	cp -t ${BUILD}/whyse-${VERSION} LICENSE
-	tar --create --file ${BUILD}/whyse-${VERSION}.tar ${BUILD}/whyse-${VERSION}
-	tar --list --file ${BUILD}/whyse-${VERSION}.tar
+	mkdir -p $(BUILD)
+	notangle -Rwhyse.el $(SRC)/whyse.nw > $(BUILD)/whyse.el
+	notangle -Rwhyse-pkg.el $(SRC)/whyse.nw > $(BUILD)/whyse-pkg.el
+	mkdir -p $(BUILD)/whyse-$(VERSION)
+	mv -t $(BUILD)/whyse-$(VERSION) $(BUILD)/whyse.el $(BUILD)/whyse-pkg.el
+	cp -t $(BUILD)/whyse-$(VERSION) LICENSE
+	tar --create --file $(BUILD)/whyse-$(VERSION).tar -C $(BUILD) whyse-$(VERSION)
+	tar --list --file $(BUILD)/whyse-$(VERSION).tar
 
 test: clean tangle
-	notangle -Rtest-parser-with-temporary-buffer.el ${SRC}/whyse.nw > ${TEST}/test-parser-with-temporary-buffer.el
+	mkdir -p $(TEST)
+	notangle -Rtest-parser-with-temporary-buffer.el $(SRC)/whyse.nw > $(TEST)/test-parser-with-temporary-buffer.el
 
 clean:
 	$(RM) ~/.config/emacs/.cache/whyse.db
-	cd ${BUILD}; \
-	$(RM) *~ *.aux *.bbl *.bcf *.blg *.brf *.dvi *.fdb_latexmk *.fls *.idx *.lof \
-	$(RM) *.log *.out *.pdf *.run.xml whyse.tex *.toc *.xdy *.xdv \
-	$(RM) -rf whyse-*/
-	$(RM) whyse-*.tar
+	$(RM) -f $(BUILD)/*~ $(BUILD)/*.aux $(BUILD)/*.bbl $(BUILD)/*.bcf $(BUILD)/*.blg $(BUILD)/*.brf \
+		$(BUILD)/*.dvi $(BUILD)/*.fdb_latexmk $(BUILD)/*.fls $(BUILD)/*.idx $(BUILD)/*.lof \
+		$(BUILD)/*.log $(BUILD)/*.out $(BUILD)/*.pdf $(BUILD)/*.run.xml $(BUILD)/whyse.tex \
+		$(BUILD)/*.toc $(BUILD)/*.xdy $(BUILD)/*.xdv
+	$(RM) -rf $(BUILD)/whyse-*/
+	$(RM) -f $(BUILD)/whyse-*.tar
 
 tool-syntax:
-	${markup} ${SRC}/whyse.nw | \
-	${autodefs_elisp} | \
-	${finduses} | \ # TODO: use the new finduses
-	${clean_docs} | \
-	${noidx} -delay
+	$(markup) $(SRC)/whyse.nw | \
+	$(autodefs_elisp) | \
+	$(finduses) | \
+	$(clean_docs) | \
+	$(noidx) -delay
