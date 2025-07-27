@@ -21,9 +21,9 @@ weave: clean
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
 compile-pdf: tangle weave
-	cd $(BUILD); \
-	latexmk --xelatex --interaction=nonstopmode -f whyse.tex; \
-	xelatex -f whyse.tex
+	cd $(BUILD) && \
+	latexmk --xelatex --interaction=nonstopmode -diagnostics whyse.tex && \
+	xelatex whyse.tex
 pdf: compile-pdf
 
 tangle: clean
