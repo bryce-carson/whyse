@@ -42,7 +42,8 @@ RUN ./awkname gawk
 ARG GITHUB_CI_BUILD="false"
 RUN <<ETX
 if [ "$GITHUB_CI_BUILD" = "true" ]; then
-    make -j1 -n -d CC=gcc CFLAGS="-Wall" \
+    cd c && make -j1 -nd markup;
+    make -j1 -n -d CC="gcc" CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
@@ -52,7 +53,7 @@ fi
 ETX
 
 RUN <<ETX
-    make -j1 CC=gcc CFLAGS="-Wall" \
+    make -j1 CC="gcc" CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
