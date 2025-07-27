@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
     make gcc git curl wget build-essential \
     && apt-get clean
 
-# Install latest gawk (from upstream)
-RUN wget https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.gz && \
-    tar -xzf gawk-5.3.0.tar.gz && \
-    cd gawk-5.3.0 && \
-    ./configure && make && make install
+ENV GAWK_VERSION="5.3.0"# build and install this version of gawk (from upstream)
+RUN wget --quiet https://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VERSION}.tar.gz && \
+    tar -xzf gawk-${GAWK_VERSION}.tar.gz && \
+WORKDIR /opt/gawk-${GAWK_VERSION}
+RUN ./configure && make && make install
 
 RUN update-alternatives --remove-all awk || true && \
     update-alternatives --install /usr/bin/awk awk /usr/local/bin/gawk 10
@@ -29,13 +29,13 @@ ENV NOWEB_BIN=/usr/local/bin \
     NOWEB_TEXINPUTS=/usr/local/share/texmf/tex/latex/knoweb \
     KNOWEB_SRC=/opt/knoweb \
     KNOWEB_STYLE_DEST=/usr/local/share/texmf/tex/latex/knoweb \
-    TEXINPUTS=/usr/local/share/texmf/tex/latex//:
+    TEXINPUTS="/usr/local/share/texmf/tex/latex//:"
 
 # Build and install Noweb into /usr/local/bin
 # Build and install Noweb using shell arguments instead of editing Makefile
 WORKDIR /opt/noweb/src
-RUN ./awkname gawk
-RUN make CC=gcc CFLAGS="-Wall" \
+RUN ./awkname gawk && \
+    make CC=gcc CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
