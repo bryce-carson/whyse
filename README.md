@@ -12,7 +12,6 @@ integrating these tools with new system features for editing and reviewing liter
 The IDE is inspired by the system described in Brown and Czejdo's 1991 ICCI
 conference proceeding, and is in early development.
 
-
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
@@ -72,6 +71,7 @@ a reference to Brown & Czejdo's 1991 paper that inspired this package.
 
 The only other source file is `whyse.nw`, the Noweb source for WHYSE itself.
 
+
 ## LaTeX compilation difficulties
 I have not had success compiling a knoweb-styled LaTeX document in any environment apart from a
 Debian 11 OS environment with TeXLive 2020. Only this combination works; other
@@ -100,9 +100,7 @@ I was inactive after the last "return" until late-July 2025. Significant
 progress was made in terms of the Dockerfile.
 
 # Ignored files
-
 If you've received a tarball of this source code you may have received
 additional files which are otherwise ignored. One of these is whs.pdf,
 which is a rendering of the source code from an earlier version of
 whyse retained only to show what a PDF should look like.
-

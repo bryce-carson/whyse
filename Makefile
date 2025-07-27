@@ -14,7 +14,7 @@ autodefs_elisp ?= ${NOWEB_LIB}/autodefs.elisp
 clean_docs ?= ${SRC}/clean-docs.awk
 
 readme:
-	notangle -RREADME.md $(SRC)/README.nw > $(ROOT_DIR)/README.md
+	emacs --batch --eval "(require 'org)" --eval '(org-babel-tangle-file "TODO.org")'
 
 weave: clean
 	mkdir -p $(BUILD)
