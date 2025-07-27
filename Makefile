@@ -44,7 +44,7 @@ clean:
 	$(RM) ~/.config/emacs/.cache/whyse.db
 	$(RM) -f $(BUILD)/*~ $(BUILD)/*.aux $(BUILD)/*.bbl $(BUILD)/*.bcf $(BUILD)/*.blg $(BUILD)/*.brf \
 		$(BUILD)/*.dvi $(BUILD)/*.fdb_latexmk $(BUILD)/*.fls $(BUILD)/*.idx $(BUILD)/*.lof \
-		$(BUILD)/*.log $(BUILD)/*.out $(BUILD)/*.pdf $(BUILD)/*.run.xml $(BUILD)/whyse.tex \
+		$(BUILD)/*.out $(BUILD)/*.pdf $(BUILD)/*.run.xml \
 		$(BUILD)/*.toc $(BUILD)/*.xdy $(BUILD)/*.xdv
 	$(RM) -rf $(BUILD)/whyse-*/
 	$(RM) -f $(BUILD)/whyse-*.tar
