@@ -29,13 +29,13 @@ jobs:
         name: whyse-pdf
         path: build/whyse.pdf
 
-    - name: Upload latex logs whyse.tex
+    - name: Upload LaTeX final sources (whyse.tex)
       uses: actions/upload-artifact@v4
       with:
-        name: whyse-latex-logs
+        name: whyse-latex-srcs
         path: build/whyse.tex
 
-    - name: Upload latex logs whyse.log
+    - name: Upload latexmk or xelatex (whichever is later) logs (whyse.log)
       uses: actions/upload-artifact@v4
       with:
         name: whyse-latex-logs
