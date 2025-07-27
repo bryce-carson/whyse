@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 # Build and install this version of gawk (from upstream)
 ENV GAWK_VERSION="5.3.0"
 RUN wget --quiet https://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VERSION}.tar.gz && \
-    tar -xzf gawk-${GAWK_VERSION}.tar.gz && \
+    tar -xzf gawk-${GAWK_VERSION}.tar.gz
 WORKDIR /opt/gawk-${GAWK_VERSION}
 RUN ./configure && make && make install
 
