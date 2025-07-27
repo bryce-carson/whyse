@@ -1,5 +1,6 @@
 # About
-The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
+The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's
+Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
 
 [^1]: Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
 
@@ -16,30 +17,33 @@ conference proceeding[^2], and is in early development.
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
 
+The easiest way to get started with development on Whyse is to use a container
+created from the Dockerfile. Unfortunately, compiling the PDF for Whyse outside
+of this specific environment is quite difficult, given [the fragile nature of
+the knoweb.sty macros that I have experienced](https://github.com/JoeRiel/knoweb/issues/1).
+
 Firstly, Noweb 2.13 and LaTeX are required for development. Run `make
 compile-pdf` to compile and render the PDF on your system.
 
-The files /I have in my directory/ are as follows.
+The files *I have in my directory* are as follows.
 
 ```
-~/Documents/src/whyse $ tree
+⬢ [bryce@toolbx whyse]$ tree
 .
-├── build
-│   ├── artifacts
-│   └── whyse-0.1.tar
+├── Dockerfile
 ├── LICENSE
 ├── Makefile
+├── noweb-navigation-mode.el
 ├── README.md
 ├── src
-│   ├── clean-docs.awk
-│   ├── offsets.awk
-│   ├── README.nw
-│   ├── whyse.bib
-│   └── whyse.nw
+│   ├── clean-docs.awk
+│   ├── offsets.awk
+│   ├── whyse.bib
+│   └── whyse.nw
 ├── test
-│   ├── makem.sh
-│   ├── test-parser-with-temporary-buffer.el
-│   └── widgetry.el
+│   ├── makem.sh
+│   ├── test-parser-with-temporary-buffer.el
+│   └── widgetry.el
 ├── TODO.org
 └── vendor
     ├── autodefs.elisp
@@ -48,7 +52,7 @@ The files /I have in my directory/ are as follows.
     ├── knoweb.sty
     └── noweb.sty
 
-6 directories, 18 files
+4 directories, 18 files
 ```
 
 `autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which
@@ -61,23 +65,23 @@ within the file; binary files do not contain license notices, and images, fonts,
 sounds, movies, etc. are under their own license, if any works of these mediums
 exist within the project at any time.
 
-The Makefile has commands to `weave` Noweb to LaTeX source, `tangle` files from
-Noweb sources, and `compile-pdf`s from generated LaTeX sources. It also
-contains a command to generate Noweb intermediate tool syntax for developer
+The Makefile has commands to `weave` noweb sources to LaTeX source, `tangle`
+files from noweb sources, and `compile-pdf`s from generated LaTeX sources. It
+also contains a command to generate noweb intermediate tool syntax for developer
 inspection.
 
-`whyse.bib` contains a BibTeX reference for academic works. Of note, it contains
-a reference to Brown & Czejdo's 1991 paper that inspired this package.
+`whyse.bib` contains a BibTeX reference for academic works. It contains a
+reference to Brown & Czejdo's 1991 conference proceeding[^2] that inspired this
+package.
 
-The only other source file is `whyse.nw`, the Noweb source for WHYSE itself.
-
+The only other source file is `whyse.nw`, the noweb source for WHYSE itself.
 
 ## LaTeX compilation difficulties
-I have not had success compiling a knoweb-styled LaTeX document in any environment apart from a
-Debian 11 OS environment with TeXLive 2020. Only this combination works; other
-versions of TexLive or newer versions of Debian, or other Linux distributions
-have not worked with the peculiarities of the style file and the latex
-environment.
+I have not had success compiling a knoweb-styled LaTeX document in any
+environment apart from a Debian 11 OS environment with TeXLive 2020. Only this
+combination works; other versions of TexLive or newer versions of Debian, or
+other Linux distributions have not worked with the peculiarities of the style
+file and the latex environment.
 
 As of Saturday, July 26 2025 there is now a Dockerfile which I successfully use
 with `podman` on my Fedora Silverblue machine to build whyse and all of its
