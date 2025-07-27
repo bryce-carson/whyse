@@ -31,17 +31,19 @@ ENV NOWEB_BIN=/usr/local/bin \
     NOWEB_TEXINPUTS=/usr/local/share/texmf/tex/latex/knoweb \
     KNOWEB_SRC=/opt/knoweb \
     KNOWEB_STYLE_DEST=/usr/local/share/texmf/tex/latex/knoweb \
-    TEXINPUTS="/usr/local/share/texmf/tex/latex//:"
+    TEXINPUTS="/usr/local/share/texmf/tex/latex//:" \
+    NOWEB_SRC=/opt/noweb/src
 
 # Build and install Noweb into /usr/local/bin
 # Build and install Noweb using shell arguments instead of editing Makefile
-WORKDIR /opt/noweb/src
+WORKDIR ${NOWEB_SRC}
 RUN ./awkname gawk
 
 ## Dry run, with detail, to help debugging.
 ARG GITHUB_CI_BUILD="false"
 RUN <<ETX
 if [ "$GITHUB_CI_BUILD" = "true" ]; then
+    RUN touch ${NOWEB_SRC}/c/*.c ${NOWEB_SRC}/c/*.h
     cd c && make -j1 -nd markup;
     make -j1 -n -d CC="gcc" CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
