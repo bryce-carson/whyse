@@ -18,6 +18,8 @@ regardless.
 As an Emacs mode it doesn't require LaTeX or make on the user's system. As a
 literate document this is required.
 
+FIXME: the file tree in the following chunk is out of date.
+
 <<development>>=
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
