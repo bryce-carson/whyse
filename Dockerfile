@@ -37,7 +37,7 @@ ENV NOWEB_BIN=/usr/local/bin \
 # Build and install Noweb using shell arguments instead of editing Makefile
 WORKDIR /opt/noweb/src
 RUN ./awkname gawk && \
-    make -j1 -s CC=gcc CFLAGS="-Wall" \
+    make -j1 CC=gcc CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
