@@ -61,11 +61,10 @@ RUN <<ETX
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
     TEXINPUTS=$NOWEB_TEXINPUTS \
-    all
+    all install
 ETX
-RUN make -j1 install
 
-# --- Step 2: Clone and build JoeRiel/knoweb ---
+# --- Step 2: Clone JoeRiel/knoweb ---
 WORKDIR /opt
 RUN git clone https://github.com/JoeRiel/knoweb.git
 
