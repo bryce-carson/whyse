@@ -36,13 +36,30 @@ ENV NOWEB_BIN=/usr/local/bin \
 # Build and install Noweb into /usr/local/bin
 # Build and install Noweb using shell arguments instead of editing Makefile
 WORKDIR /opt/noweb/src
-RUN ./awkname gawk && \
+RUN ./awkname gawk
+
+## Dry run, with detail, to help debugging.
+ARG GITHUB_CI_BUILD="false"
+RUN <<ETX
+if [ "$GITHUB_CI_BUILD" = "true" ]; then
+    make -j1 -n -d CC=gcc CFLAGS="-Wall" \
+    BIN=$NOWEB_BIN \
+    LIB=$NOWEB_LIB \
+    MAN=$NOWEB_MAN \
+    TEXINPUTS=$NOWEB_TEXINPUTS \
+    all;
+fi
+ETX
+
+RUN <<ETX
     make -j1 CC=gcc CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
     LIB=$NOWEB_LIB \
     MAN=$NOWEB_MAN \
     TEXINPUTS=$NOWEB_TEXINPUTS \
-    all install
+    all
+ETX
+RUN make -j1 install
 
 # --- Step 2: Clone and build JoeRiel/knoweb ---
 WORKDIR /opt
