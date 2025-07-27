@@ -43,7 +43,7 @@ RUN ./awkname gawk
 ARG GITHUB_CI_BUILD="false"
 RUN <<ETX
 if [ "$GITHUB_CI_BUILD" = "true" ]; then
-    RUN touch ${NOWEB_SRC}/c/*.c ${NOWEB_SRC}/c/*.h
+    touch ${NOWEB_SRC}/c/*.c ${NOWEB_SRC}/c/*.h;
     cd c && make -j1 -nd markup;
     make -j1 -n -d CC="gcc" CFLAGS="-Wall" \
     BIN=$NOWEB_BIN \
