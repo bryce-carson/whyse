@@ -22,8 +22,8 @@ weave: clean
 
 compile-pdf: tangle weave
 	cd $(BUILD) && \
-	latexmk --xelatex --interaction=nonstopmode -diagnostics whyse.tex && \
-	xelatex whyse.tex
+	(latexmk --xelatex --interaction=nonstopmode -diagnostics whyse.tex || cat whyse.log) && \
+	(xelatex whyse.tex || cat whyse.log)
 pdf: compile-pdf
 
 tangle: clean
