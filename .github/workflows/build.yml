@@ -20,7 +20,7 @@ jobs:
     - name: Run container to copy build artifacts
       run: |
         container_id=$(docker create whyse)
-        docker cp $container_id:/workspace/build ./build
+        docker cp $container_id:/build ./build
         docker rm $container_id
 
     - name: Upload PDF
@@ -28,6 +28,18 @@ jobs:
       with:
         name: whyse-pdf
         path: build/whyse.pdf
+
+    - name: Upload latex logs whyse.tex
+      uses: actions/upload-artifact@v4
+      with:
+        name: whyse-latex-logs
+        path: build/whyse.tex
+
+    - name: Upload latex logs whyse.log
+      uses: actions/upload-artifact@v4
+      with:
+        name: whyse-latex-logs
+        path: build/whyse.log
 
     - name: Upload Emacs package tarball
       uses: actions/upload-artifact@v4
