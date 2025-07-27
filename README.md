@@ -10,7 +10,7 @@ WHYSE is an integrated development environment for Noweb and LaTeX,
 integrating these tools with new system features for editing and reviewing literate programs.
 
 The IDE is inspired by the system described in Brown and Czejdo's 1991 ICCI
-conference proceeding, and is in early development.
+conference proceeding[^2], and is in early development.
 
 # Development overview
 To orient new contributors and help adventurous hackers use the software, this
