@@ -3,41 +3,25 @@
 - [[help:reftex-section-regexp][reftex-section-regexp]]
 - navigate to the ~setq~ for that symbol.
 
-* TODO Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests
-- DONE when the .workflow is tested and adopted
-- Primarily useful for the PDF
-  - Using a container increases reproducibility; [[https://github.com/xu-cheng/texlive-action][this existing latex workflow on GitHub actions]] is sufficient
+* DONE Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests :ARCHIVE:
+CLOSED: [2025-07-27 Sun 18:39]
+The workflow file in the repository is here: [[file:.github/workflows/build.yml][Build WHYSE PDF and Emacs package workflow]].
 
-#+begin_src yaml
-  on: [release]
-  jobs:
-    build_latex:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: xu-cheng/texlive-action@v3
-          with:
-            texlive_version: 2020
-            os: debian
-            run: |
-              - "markup -Rwhyse.el | autodefs.elisp | finduses.elisp | clean-docs | noidx -delay > whyse.tex"
-              - "latexmk -pdf -file-line-error -halt-on-error -interaction=nonstopmode whyse.tex"
-#+end_src
-
-* DONE Hack on the recognizer.nw and finduses.nw to better support (Emacs) LISP
+* TODO Debug failure to properly compile PDF
+* DONE Hack on the recognizer.nw and finduses.nw to better support (Emacs) LISP :ARCHIVE:
 CLOSED: [2025-07-25 Fri 01:17]
 Find Uses and the Recognizer (respectively in =finduses.nw= and =recognizer.nw=)
 need some tweaking to better support LISP identifiers. It may be as simple as
 moving =-= from ~SYMBOLS~ to ~ALPHANUMERIC~.
 
-* TODO Improve the parse tree, per the FIXME in =test/test-parser-with-temporary-buffer.el=
+* TODO Improve the parse tree, per the FIXME in [[file:test/test-parser-with-temporary-buffer.el][test/test-parser-with-temporary-buffer.el]]
 The current parse tree contains a ~nil~ after the chunk type and number assoc,
 and that needs to be analyzed. Why is this ~nil~ in the stack? I assume and
 believe it is because of the collapsing of stringy tokens; when a token should
 be put back onto the stack it may also be putting a ~nil~ onto the stack in the
 first call to the function.
 
-* TODO Improve documentation of the default hook
+* TODO Improve documentation of the [[file:src/whyse.nw::<<default hook functions>>=][<<default hook function>>]]
 Better document the functionality of the default hook function
 ~w--prepare-sexp-sql-from-file-tokens~. The current explanation is a copy of the
 brief explanation in the hook documentation string.
@@ -130,9 +114,9 @@ preferrably a transient map or hydra like Info mode.
        map)))
 #+end_src
 
-* DONE Convert README.nw into a subtree within this file
+* DONE Convert README.nw into a subtree within this file            :ARCHIVE:
 CLOSED: [2025-07-26 Sat 20:33]
-* TODO Tangle the README from this org file
+* Tangle the README from this org file
 The README file is tangled with the following chunks in the order given.
 
 #+begin_src markdown :noweb yes :tangle README.md

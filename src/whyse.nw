@@ -182,7 +182,8 @@ Noweb tool syntax for this project. Each Noweb project has a different
 command-line, and some are complex enough to have a makefile, or
 multiple makefiles! Noweb itself is an example of that level of
 complexity. The shell command is executed by WHYSE upon loading the
-project, and the standard output captured for parsing by a PEG parser.
+project, and the standard output captured for parsing by a PEG parser
+defined in [[@<<PEG rules>>]].
 
 The widget itself is explained in \ref{widgetry}.
 
@@ -309,8 +310,9 @@ whyse group."
       (progn
         <<setup project database>>
         (run-hooks 'w-open-project-hook)
-        ;; TODO: connection closure should be on a timer that is reset
-        ;; everytime a `w-'prefixed function is called, or something.
+        ;; TODO: the connection closure should be on a timer that,
+        ;; perphas, should be reset everytime a `w'-prefixed function is
+        ;; called.
         (emacsql-close (w-project-database-connection project)))
     (unless (not w-open-customize-when-no-projects-defined?)
       (customize-group 'whyse))))
@@ -333,6 +335,35 @@ defined."
   :type 'boolean
   :group 'whyse
   :tag "Open Customize to the whyse group when `whyse' is invoked and no projects are defined?")
+
+(defcustom w-sql-commands-history? t
+  "nil disables the SQL command history list.
+
+This is also the default for new projets.
+
+`w-sql-commands-history-maximum-conses' limits the list length."
+  :type 'boolean
+  :group 'whyse
+  :tag "Enable the SQL command history")
+
+(defcustom w-sql-commands-history-maximum-conses 0
+  "Limit the number of conses in the `w-sql-commands-history' list.
+
+This is also the default for new projects.
+
+The default of `0' allows a list of infinite size. To disable history
+set the customization variable `w-sql-commands-history?'"
+  :type 'natnum
+  :group 'whyse
+  :tag "Limit of conses in the `w-sql-commands-history' list.")
+
+(defcustom w-latex-sectioning-command-regexes nil
+  "A list of regular expressions matching LaTeX sectioning commands.
+
+This is the default for new projects."
+  :type (list :regex)
+  :group 'whyse
+  :tag "Regular Expressions matching LaTeX sectioning commands.")
 @
 
 The structure accessed in the namesake command of the package is rather
@@ -345,6 +376,9 @@ simple. It is defined quickly, then explained briefly.
   name
   noweb
   script
+  ;; TODO: document the interaction between this and the default
+  ;; `w-latex-sectioning-command-regexes'. Override? Merge &rest and use
+  ;; :disabled to disable specific regexes?
   sectioning-commands-regexs
   database-file
   database-connection
@@ -357,8 +391,8 @@ simple. It is defined quickly, then explained briefly.
   date-last-edited
   date-last-exported
 
-  ;; TODO: limit with a customization variable so that it does not grow too large.
-  history-sql-commands)
+  ;; TODO: document that this overrides the default.
+  w-sql-commands-history-maximum-conses)
 @
 
 Instances of this struct are only initialized with a few values:
@@ -947,12 +981,13 @@ WHYSE (contributions for improved support are welcomed).
        `(substr --  (cons 'ref (cadr (split-string substr)))))
 
 ;; FIXME: improve the error handling at this point. It is not fragile
-;; any longer, becasue most things are ignored and this is hackish;
+;; any longer, because most things are ignored and this is hackish;
 ;; however, the message reporting is not too helpful. It would be nice
 ;; to have _only_ the chunk name reported, and formatted with @<< and >>.
-;;; Reproduction steps: make a reference to an undefined code chunk
-;;; within another code chunk. For fixing this issue, undefined code
-;;; chunks should also be referenced within quotations in documentation.
+;;
+;; TODO: Reproduction steps: make a reference to an undefined code chunk
+;; within another code chunk. For fixing this issue, undefined code
+;; chunks should also be referenced within quotations in documentation.
 (x-undefined
  xr (or "ref" "chunkbegin") spc
  (guard
@@ -1173,7 +1208,7 @@ using the current [[lesskeys]].
 
 \section{Algorithm}
 \begin{enumerate}
-  \item{parse tool syntax}
+  \item{parse project noweb into tool syntax}
   \item{autoidentify definitions to produce etags file}
   \item{create hyperlinks between files and chunks}
   \item{re-emit files}
@@ -1422,6 +1457,7 @@ accompanied with changes in the documentation.)"
        (mapcar (lambda (seql) (emacsql connection seql))
                (list modules
                      parent-child
+                     ;; TODO:
                      ;; identifier-used-in-module
                      ;; topic-referenced-in-module
                      ))))
