@@ -37,6 +37,7 @@ The files *I have in my directory* are as follows.
 ├── README.md
 ├── src
 │   ├── clean-docs.awk
+│   ├── gpl-3.0.tex
 │   ├── offsets.awk
 │   ├── whyse.bib
 │   └── whyse.nw
@@ -44,15 +45,9 @@ The files *I have in my directory* are as follows.
 │   ├── makem.sh
 │   ├── test-parser-with-temporary-buffer.el
 │   └── widgetry.el
-├── TODO.org
-└── vendor
-    ├── autodefs.elisp
-    ├── gpl-3.0.tex
-    ├── knoweb.el
-    ├── knoweb.sty
-    └── noweb.sty
+└── TODO.org
 
-4 directories, 18 files
+3 directories, 14 files
 ```
 
 `autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which

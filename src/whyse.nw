@@ -2100,7 +2100,7 @@ chunk)."
 %% \printbibliography
 
 \chapter{License}
-\input{../vendor/gpl-3.0.tex}
+\input{gpl-3.0.tex}
 
 \end{document}
 
