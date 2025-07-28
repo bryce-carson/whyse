@@ -3,8 +3,18 @@ name: Build Whyse PDF & Emacs package
 on:
   push:
     branches: [main]
+    paths:
+      - Dockerfile
+      - .github/workflows/build.yml
+      - src/**
+      - test/**
   pull_request:
     branches: [main]
+    paths:
+      - Dockerfile
+      - .github/workflows/build.yml
+      - src/**
+      - test/**
 
 jobs:
   build:
