@@ -2,7 +2,14 @@
 % Copyright © 2023 Bryce Carson
 \documentclass[draft,enabledeprecatedfontcommands]{report}
 
-\title{The Implementation of WHYSE} % Codename "Wise Eel"
+%%% ---- MACROS ---- %%%
+\newcommand{\whyse}{\textsc{WHYSE}}
+\newcommand{\whyseel}{\texttt{whyse.el}}
+\newcommand{\whysenw}{\texttt{whyse.nw}}
+
+
+
+\title{The Implementation of \whyse} % Codename "Wise Eel"
 \author{Bryce Carson}
 
 %%% ---- PREAMBLE ---- %%%
@@ -17,18 +24,19 @@
 %% MARGIN
 \usepackage{geometry}
 \geometry{
-%% top=0.625in,
-%% left=0.625in,
-%% right=0.625in,
-%% bottom=0.625in,
-top=1.0in,
-right=1.0in,
-bottom=1.0in,
-left=1.0in,
-%% "Octavo" size: https://papersizes.io/books/octavo
-%% papersize={6in, 9in}
-papersize={9in, 12in}
-%% papersize={8.5in, 11in}
+  %% "Letter" size
+  %% top=1.0in,
+  %% right=1.0in,
+  %% bottom=1.0in,
+  %% left=1.0in,
+  %% papersize={8.5in, 11in}
+
+  %% "Octavo" size: https://papersizes.io/books/octavo
+  top=0.625in,
+  left=0.625in,
+  right=0.625in,
+  bottom=0.625in,
+  papersize={6in, 9in}
 }
 \usepackage{mparhack}
 \usepackage{mathptmx}
@@ -73,24 +81,20 @@ papersize={9in, 12in}
 
 
 
-
-
 \pagestyle{noweb}
-
-
 
 
 
 %%% ---- BEGINNING OF DOCUMENT ---- %%%
 \begin{document}
 
-%% \frontmatter
+%% \frontmatter%% FIXME: what did this do and why did I disable it?
 
 \maketitle
 
 %% \tableofcontents
 
-%% \mainmatter
+%% \mainmatter%% FIXME: what did this do and why did I disable it?
 
 %% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
 %% quotations should be guarded with at-signs, like [[@<<name>>]]. The
@@ -102,49 +106,59 @@ papersize={9in, 12in}
 %% than pure white like body text).
 
 \begin{abstract}
-\textsc{WHYSE ((no)Web HYpertext System in Emacs)} is an integrated
-development environment for Noweb-based hypertexts within Emacs,
-similar to EDE but not sharing development principles. It is based off
-of an academic paper written in
-\cite[1991 by Brown and Czejdo]{brown1991}.
-A paper describing this implementation---written in Noweb and
-browsable, editable, and auditable with WHYSE, or readable in the
-printed form---is hoped to be submitted to
-\em{The Journal of Open Source Software (JOSS)}\
-before the year 2024. N.B.: the paper will include historical
-information about literate programming, and citations (especially of
-those given credit in the [[@<<Commentary>>]] for ideating WHYSE
-itself).
+\whyse~\textsc{((no)Web~HYpertext~System~in~Emacs)} is an integrated
+development environment for Noweb-based hypertexts within Emacs, similar
+to EDE but not sharing development principles. It is based off of an
+academic paper written in \cite[1991 by Brown and Czejdo]{brown1991}. A
+paper describing this implementation---written in Noweb and browsable,
+editable, and auditable with \whyse, or readable in the printed
+form---is hoped to be submitted to \textit{The Journal of
+Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper will
+include historical information about literate programming, and citations
+(especially of those given credit in the [[@<<Commentary>>]] for
+ideating \whyse itself).
 
-Users of WHYSE in Emacs are expected to be familiar with Noweb; this does not
+Users of \whyse in Emacs are expected to be familiar with Noweb; this does not
 include how Noweb is built from source (that is arcane, supposedly). It may,
 however, include the writing of filters implemented with Sed, AWK, or other
 languages. Users must know how to write a custom command-line for noweave
 (read the manual section regarding the \texttt{-v} option). If you only know
 how to call the noweave command you're reading the wrong document. Read the
-Noweb manual first, please. Developers of WHYSE extensions should read the
+Noweb manual first, please. Developers of \whyse extensions should read the
 Noweb Hacker's Guide until they understand it, afterwards reading this
 documentation several times until the full implementation is understood. I
 recommend modifying the system using itself to keep organized, and writing
 literately; you'll thank yourself later for doing so.
 \end{abstract}
 
-\chapter{WHYSE Projects}\label{Projects}
-The organization of this literate program is linear, with aspects of the
-program explained as the user would encounter them in the user
-documenation, more or less. A user will read from the package
-description that they should call an interactive command to create a
-project. The \textsc{WHYSE} application is started with the interactive
-command: [[whyse]]. The command loads the first element of the
-customization variable [[w-registered-projects]], considering that the
-default project, or it opens the ``Easy Customization Interface'' for
-the application's customization group ([[M-x customize-group whyse]]):
-an effective prompt for the user to enter the necessary information. If
-user's dislike this, they can disable it.
 
-A customization group for WHYSE is defined to organize its customization
-variables, and these details are explained before moving on to explain the
-struct used during runtime.
+
+
+
+\chapter{Preface}\label{Preface}
+The organization of this literate program is (more or less) linear:
+implementation of the components of the program are explained as they
+enter scope while discussing how a user would encounter various \whyse
+features as in the \textit{user documenation}.
+
+
+
+
+
+\chapter{\whyse Projects}\label{Projects}
+A user will read from \textit{the package description} that they should
+call an interactive command to create a project. The \whyse application
+is started with the interactive command: [[whyse]]. The command loads
+the first element of the customization variable
+[[w-registered-projects]], considering that the default project, or it
+opens the ``Easy Customization Interface'' for the application's
+customization group ([[M-x~customize-group~whyse]]): an effective prompt
+for the user to enter the necessary information. If user's dislike this,
+they can disable it.
+
+A customization group for \whyse is defined to organize its
+customization variables, and these details are explained before moving
+on to explain the struct used during runtime.
 
 <<Customization and global variables>>=
 (defgroup whyse nil
@@ -181,7 +195,7 @@ its Noweb source file, along with a shell command which generates the
 Noweb tool syntax for this project. Each Noweb project has a different
 command-line, and some are complex enough to have a makefile, or
 multiple makefiles! Noweb itself is an example of that level of
-complexity. The shell command is executed by WHYSE upon loading the
+complexity. The shell command is executed by \whyse upon loading the
 project, and the standard output captured for parsing by a PEG parser
 defined in [[@<<PEG rules>>]].
 
@@ -283,7 +297,7 @@ exist in a [[custom-set-variables]] form).
 The function documentation string should be expalnatory enough for the
 behaviour of the [[whyse]] command.
 
-<<WHYSE>>=
+<<\whyse>>=
 (defun whyse ()
   "Opens the default whyse project, conditionally running hooks.
 
@@ -369,7 +383,7 @@ This is the default for new projects."
 The structure accessed in the namesake command of the package is rather
 simple. It is defined quickly, then explained briefly.
 
-<<WHYSE project structure>>=
+<<\whyse project structure>>=
 (cl-defstruct w-project
   "A WHYSE project"
   ;; Fundamental
@@ -510,8 +524,8 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
 
 
-\section{Customizing the behaviour of WHYSE with hooks}
-WHYSE is meant to be customizable, defining as little as necessary to
+\section{Customizing the behaviour of \whyse with hooks}
+\whyse is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by
 \cite[Brown and Czejdo]{brown1991}.
 
@@ -520,10 +534,10 @@ implement a development environment for Noweb as described by
   "Hooks to run when `whyse' has opened a project.")
 @
 
-The default behaviour of WHYSE is to insert all the chunks of the parsed
+The default behaviour of \whyse is to insert all the chunks of the parsed
 document into a database. Before it does that it works upon the parse
 tree, preparing it into a suitable format usable with EmacSQL (which the
-                                                                     author is aware he's stated elsewhere).
+author is aware he's stated elsewhere).
 
 <<default hook functions>>=
 (add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
@@ -590,7 +604,7 @@ defined.
 (noweb (bob) (not header) (+ file) (not trailer) (eob))
 @
 
-It is a fatal error for WHYSE if the header or trailer wrapper keywords
+It is a fatal error for \whyse if the header or trailer wrapper keywords
 appear in the text it is to parse. They are totally irrelevant, and only
 matter for the final back-ends (\TeX, \LaTeX, or HTML) that produce
 human-readable documenation.
@@ -598,7 +612,7 @@ human-readable documenation.
 The grammar needs to address the fact that the syntax of the Noweb tool
 format is highly line-oriented, given the influence of AWK on the design
 and usage of Noweb (a historical version was entirely implemented in
-                      AWK). The following [[<<meta rules>>]] define rules which organize the
+AWK). The following [[<<meta rules>>]] define rules which organize the
 constructs of a line-oriented, or data-oriented, syntax.
 
 <<meta rules>>=
@@ -623,8 +637,8 @@ specific root chunk is given on the command line.
 
 TODO: Write about the need for the overall document to be separate from
 the one-or-more files specified in the document. Exempli gratia: the
-current document, contained in \texttt{whyse.nw} contains two files,
-though they are separately tangled: \texttt{whyse.el} and
+current document, contained in \whysenw contains two files,
+though they are separately tangled: \whyseel and
 \texttt{test-parser-with-temporary-buffer.el}. If these two files were
 tangled at the same time, such that the output file discovery ability of
 Noweb was used, then the there would be more than one file in the
@@ -717,7 +731,7 @@ invalid keyword is anything related to quotations! \textit{This
 restriction only applies to code blocks, however, and documentation
 chunks may contain quotations, of course.} As an exception, the
 keywords were originally banned inside code chunks, but to parse the
-noweb document in which WHYSE itself was written it needed to be
+noweb document in which \whyse itself was written it needed to be
 adjusted. The grammar should be studied again to ensure that textual
 description and reality are in step.
 
@@ -725,7 +739,7 @@ description and reality are in step.
 %% were modified quite significantly from the initial definition so that it
 %% would ``work'', and so that \textit{whyse.nw} would be successfully
 %% parsed. ``Further, the implementation was modified to accommodate the
-%% parsing of the Noweb \texttt{whyse.nw} firstly.''
+%% parsing of the Noweb \whysenw firstly.''
 
 <<chunks and their boundaries>>=
 (chunk-contents
@@ -958,11 +972,11 @@ those recognized by the autodefinitions filter).
 @
 
 The following chunk's name is documentation enough for the purposes of
-WHYSE. See the Noweb Hacker's Guide for more information.
+\whyse. See the Noweb Hacker's Guide for more information.
 
 [[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
 not widely used (assumedly) nor well-documented, so it is unsupported by
-WHYSE (contributions for improved support are welcomed).
+\whyse (contributions for improved support are welcomed).
 
 <<unsupported indexing keywords>>=
 ;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
@@ -1248,11 +1262,11 @@ it could be thought of as code generation, since the data is used to
 generate DML which is partly code and partly data.
 
 %% FIXME 2024-08-10 what the fuck am I saying here?
-Some associations are reductions from the initial parse tree---which
-thanks to the \textsc{peg} package and \em{PEG parsing in general}---are
-not reduced in a second step. Modifications to the parsing procedure can
-occur directly without losing information, and thanks to literate
-programming should be easy for advanced users.
+Some associations are reductions from the initial parse tree,
+which---thanks to the \textsc{peg} package and \textit{PEG parsing in
+  general}---are not reduced in a second step. Modifications to the
+parsing procedure can occur directly without losing information, and
+thanks to literate programming should be easy for advanced users.
 
 The initial parse tree begins like the one below.
 
@@ -1280,9 +1294,8 @@ noweb document look like this in the final result.
 
 \begin{verbatim}
 ((code . 0)
- (text .
-       "asdf is a system definition format in Common LISP,
-  and I like to use it."))
+ (text . "asdf is a system definition format in Common LISP,
+and I like to use it."))
 \end{verbatim}
 
 The new result is much easier to use as data for other programs (SQL in
@@ -1300,10 +1313,10 @@ text lines and form feed characters. These tokens exist because the
 cross-referencing tokens fragment the text lines, and new lines in the
 noweb document are treated specially to facilitate this fragmentation.
 
-A small quote from the tool syntax of a development version of
-\textsc{WHYSE} is shown in this example in its parsed form. However,
-during actual parsing these adjacent tokens are \em{immediately
-collapsed} into singular tokens.
+A small quote from the tool syntax of a development version of \whyse is
+shown in this example in its parsed form. However, during actual parsing
+these adjacent tokens are \textit{immediately collapsed} into singular
+tokens.
 
 \begin{verbatim}
 (text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
@@ -1314,14 +1327,14 @@ collapsed} into singular tokens.
 (nwnl . "@nl")
 \end{verbatim}
 
-To collapse these tokens into a single text token the
-\texttt{peg--stack} must be manipulated carefully. It isn't advisable to
-manipulate this variable in the course of a PEG grammar's actions. There
-is a use case for it when the previous rules and actions won't
-accommodate the necessary action without refactoring a larger part of the
-grammar. In this development version that is not a goal; basic
-functionality is sought after, not robustness or beauty, so hacking the
-desired behaviour together quickly is better.
+To collapse these tokens into a single text token the [[peg--stack]]
+must be manipulated carefully. It isn't advisable to manipulate this
+variable in the course of a PEG grammar's actions. There is a use case
+for it when the previous rules and actions won't accommodate the
+necessary action without refactoring a larger part of the grammar. In
+this development version that is not a goal; basic functionality is
+sought after, not robustness or beauty, so hacking the desired behaviour
+together quickly is better.
 
 [[w--nth-chunk-of-nth-noweb-document]] retrieves the parse tree for the nth
 noweb document, which in the case of [[whyse.nw]] is the parse tree of
@@ -1329,7 +1342,7 @@ the zeroth-indexed document. It's quite a simple function. To obtain a
 given chunk of this document from the parse tree the result of the
 function is called with [[nth]] and the index of the chunk.
 
-<<functions for navigating WHYSE parse trees>>=
+<<functions for navigating \whyse parse trees>>=
 (defun w--nth-document-file-name (nth-document parse-tree)
   "Return the file name of the nth-indexed document in the parse tree.
 
@@ -1374,7 +1387,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 
 <<Code>>=
-<<functions for navigating WHYSE parse trees>>
+<<functions for navigating \whyse parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
 
@@ -1419,9 +1432,14 @@ If the two associations shouldn't be joined, return them to the stack."
 @
 
 The `parse-tree' from the lexical environment (or scope, given that
-WHYSE is not implemented with lexical binding) is mapped over until
+\whyse is not implemented with lexical binding) is mapped over until
 every file token has been processed and records have been inserted into
 all four tables of the database.
+
+All files represented in the [[parse-tree]] (actually an association
+list) are processed into SQL database records while mapping over the
+[[parse-tree]] (whichever is in scope at the time because \whyse is
+implemented without lexical binding).
 
 <<default hook functions>>=
 (defun w--prepare-sexp-sql-from-file-tokens ()
@@ -1581,10 +1599,10 @@ finding them and collecting their output.
 
 The following association list gives the keyword and the value
 corresponding to that which were seen in the intermediate representation
-used by noweb itself. To implement WHYSE we utilize the intermediate
+used by noweb itself. To implement \whyse we utilize the intermediate
 representation for both editing and document compilation. Features
-unique to WHYSE would add in new keywords, and these would only be
-processed by WHYSE (hopefully without impacting other applications,
+unique to \whyse would add in new keywords, and these would only be
+processed by \whyse (hopefully without impacting other applications,
 though the only other application that uses the noweb intermediate
 representation is noweb itsefl).
 
@@ -1636,27 +1654,29 @@ representation is noweb itsefl).
 
 
 
-\chapter{Packaging whyse}
-Installing an Emacs Lisp package is quite easy if the system is
-distributed through the GNU Emacs Lisp Package Archive (GNU ELPA), and
-only slightly less easy if it is distributed through MELPA
-(Milkypostman's Emacs Lisp Package Archive). Other package archives have
-existed, but they are all ephemeral. The most popular alternative to GNU
-ELPA, Non-GNU ELPA, and MELPA is direct distribution of files through
-Git servers and the use of a package by the end user to install directly
+\chapter{Packaging \whyse}
+Installing an \textsc{Emacs~LISP} package is quite easy if the system is
+distributed through the \textsc{GNU~Emacs~LISP~Package~Archive}
+(\textsc{GNU~ELPA}), and only slightly less easy if it is distributed
+through \textsc{MELPA}
+(\textsc{Milkypostman's~Emacs~Lisp~Package~Archive}). Other package
+archives have existed, but they are all ephemeral. The most popular
+alternative to \textsc{GNU~ELPA}, \textsc{Non-GNU~ELPA}, and
+\textsc{MELPA} is direct distribution of files through \textsc{Git}
+servers and the use of a package by the end user to install directly
 from such.
 
 This software is in-development, so it will only be distributed directly
-through Git.
+through \textsc{Git}.
 
-WHYSE follows the form of ``simple'', single-file packages documented in
-the Emacs Lisp Reference Manual. The package file, \texttt{whyse.el}, is
+\whyse follows the form of ``simple'', single-file packages documented in
+the Emacs Lisp Reference Manual. The package file, \whyseel, is
 emitted by \texttt{notangle} which is called by the Makefile in every
-target but [[clean]]. All source development occurs in \texttt{whyse.nw}
+target but [[clean]]. All source development occurs in \whysenw
 using \textsc{Polymode}.
 
 The makefile distributed alongside whyse.nw in the tarball contains the
-command-line used to tangle and weave WHYSE.
+command-line used to tangle and weave \whyse.
 
 <<whyse.el>>=
 <<Emacs Lisp package headers>>
@@ -1739,7 +1759,7 @@ in the License section at the end of this document.
 ;;;; Internals
 <<Customization and global variables>>
 <<Widgets>>
-<<WHYSE project structure>>
+<<\whyse project structure>>
 <<with-project>>
 <<buffer parsing function>>
 <<open-project-hook>>
@@ -1747,7 +1767,7 @@ in the License section at the end of this document.
 
 ;;;; Commands
 ;;;###autoload
-<<WHYSE>>
+<<\whyse>>
 
 <<provide the whyse feature and list the file local variables>>=
 (provide 'whyse)
@@ -1898,7 +1918,7 @@ intended for Human readers.
 ``Emacs provides commands to move over pages and to operate on them.''
 \end{quote}
 
-Such is the primary purpose of WHYSE, to extend this page-handling to
+Such is the primary purpose of \whyse, to extend this page-handling to
 noweb ``chunks'', which may be delimited by adding the following to
 the regular expression which normally matches only form-feed
 characters.
