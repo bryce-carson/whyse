@@ -23,10 +23,12 @@ weave: clean
 compile-pdf: tangle weave
 	latexmk -cd --xelatex --interaction=nonstopmode -diagnostics $(BUILD)/whyse.tex \
 	&& xelatex --output-directory $(BUILD) $(BUILD)/whyse.tex \
-	|| { if test -f whyse.log; \
+	|| { STATUS=$?; \
+	if test -f whyse.log; \
 	then cat whyse.log; \
 	else echo "whyse.log does not exist, and the latexmk && xelatex pipeline failed for _some unlogged reason_."; \
-	fi }
+	fi; \
+	exit ${STATUS}; }
 pdf: compile-pdf
 
 tangle: clean
