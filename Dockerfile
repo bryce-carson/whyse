@@ -89,12 +89,7 @@ FROM noweb-builder AS whyse-builder
 # --- Step 5: Copy the whyse sources into the container and build the PDF, Emacs package, and other artifacts. ---
 COPY . /workspace
 WORKDIR /workspace
-RUN make \
-    NOWEB_LIB=$NOWEB_LIB \
-    SRC=/workspace/src \
-    BUILD=/workspace/build \
-    TEST=/workspace/test \
-    pdf
+RUN make NOWEB_LIB=$NOWEB_LIB SRC=/workspace/src BUILD=/workspace/build TEST=/workspace/test pdf
 # --- Final output stage (optional): expose only artifacts ---
 FROM debian:stable-slim AS output
 COPY --from=whyse-builder /workspace/build /build

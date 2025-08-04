@@ -259,3 +259,20 @@ literate document this is required.
   The only other source file is `whyse.nw`, the noweb source for WHYSE itself.
 #+end_src
 
+* Filters
+** Carbon copies of the tool syntax
+When conducting business on paper using a (carbon) copy pad is commonplace to
+produce a copy of a document---such as a form or a receipt---for both customer
+and business records. =carboncopy= is such a filter, which copies the tool
+syntax it receives to a file named in the shell variable =CARBONCOPY= and then
+passes its input to its output.
+
+It is a wrapper around the command =tee=, ensuring =CARBONCOPY= is set and
+non-null and that noclobber is not set.
+
+#+begin_src bash :tangle carboncopy :shebang #!/usr/bin/env bash
+  if [[ -n ${CARBONCOPY:?"shell variable is unset or null!"} && !$(echo $SHELLOPTS | grep noclobber) ]]; then {
+      tee </dev/stdin $CARBONCOPY
+  }
+  fi;
+#+end_src
