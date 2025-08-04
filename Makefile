@@ -26,9 +26,9 @@ weave: builddir
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
 latexmk: weave
-	cd $(BUILD) && latexmk --lualatex --interaction=nonstopmode whyse.tex
+	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode whyse.tex
 xelatex: latexmk
-	cd $(BUILD) && lualatex --interaction=nonstopmode whyse.tex
+	cd $(BUILD) && xelatex --interaction=nonstopmode whyse.tex
 compile-pdf: tangle xelatex whyse.log
 	cat $(BUILD)/whyse.log
 pdf: tangle xelatex whyse.log

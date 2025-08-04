@@ -2923,8 +2923,8 @@ much.
 (n-random-names 4)
 @ 
 
-\chapter{Bibliography}
-\printbibliography
+% \chapter{Bibliography}
+% \printbibliography
 
 \chapter{License}
 \input{../src/gpl-3.0.tex}

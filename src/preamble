@@ -34,12 +34,12 @@ use package:
   }};
   mparhack;
   mathptmx;
-  biblatex[style=ieee]{\addbibresource{whyse.bib}};
+# biblatex[style=ieee]{\addbibresource{whyse.bib}};
   knoweb[break code, footnote size code];
-  hyperref[color links, backref=true];
+  hyperref[color links, backref=page];
   verbatim;
   syntax;
-  xpsace;
+  xspace;
   paralist;
   color;
   fancyvrb.

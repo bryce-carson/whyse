@@ -26,6 +26,9 @@ $1 ~ /new command/{
 
 $1 ~ /use package/{
     for (i = 2; i <= NF; i++) {
+        if (match($i, /^#/))
+            continue
+
         if (!match($i, /(\w+)(\[[^\]]+\])?(?:{(\n+|.+)})?/, package)) {
             print("%% Attempted to match a usepackage delcaration, but could not match!")
             continue
