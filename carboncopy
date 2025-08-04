@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+if [[ -n ${CARBONCOPY:?"shell variable is unset or null!"} && !$(echo $SHELLOPTS | grep noclobber) ]]; then {
+    tee </dev/stdin $CARBONCOPY
+}
+fi;

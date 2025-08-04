@@ -1,99 +1,12 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
-\documentclass[draft,enabledeprecatedfontcommands]{report}
+% Codename "Wise Eel"
+\input{premable-processed-with.awk}%by Makefile before it builds whyse.tex.
 
-%%% ---- MACROS ---- %%%
-\newcommand{\whyse}{\textsc{WHYSE}}
-\newcommand{\whyseel}{\texttt{whyse.el}}
-\newcommand{\whysenw}{\texttt{whyse.nw}}
-
-
-
-\title{The Implementation of \whyse} % Codename "Wise Eel"
-\author{Bryce Carson}
-
-%%% ---- PREAMBLE ---- %%%
-\usepackage{standalone}
-
-%% FONT
-\usepackage[rm]{roboto}
-\usepackage[T1]{fontenc}
-\usepackage{fontspec}
-\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]
-
-%% MARGIN
-\usepackage{geometry}
-\geometry{
-  %% "Letter" size
-  %% top=1.0in,
-  %% right=1.0in,
-  %% bottom=1.0in,
-  %% left=1.0in,
-  %% papersize={8.5in, 11in}
-
-  %% "Octavo" size: https://papersizes.io/books/octavo
-  top=0.625in,
-  left=0.625in,
-  right=0.625in,
-  bottom=0.625in,
-  papersize={6in, 9in}
-}
-\usepackage{mparhack}
-\usepackage{mathptmx}
-
-%% FIXME: biblatex causes knoweb to be unable to compile.
-%% \usepackage[style=ieee]{biblatex}
-%% \addbibresource{whyse.bib}
-
-%%%% NOTE: choose only one of the following
-%%% --- K NOWEB LaTeX PACKAGE --- %%%
-\usepackage[breakcode,footnotesizecode]{knoweb}
-\setlength{\nwbreakcodespace}{0.2in}
-%%% --- NOWEB LaTeX PACKAGE --- %%%
-%% \usepackage{noweb}
-%% \noweboptions{smallcode,longchunks}
-
-%% MAYBE TODO: Modify knoweb to use the typographic conventions
-%% of Bert Burgemeister's ``Common Lisp Quick Reference''
-%% (http://clqr.boundp.org/clqr-letter-consec.pdf). TODO:
-%% Motivating the previous todo, modify autodefs.elisp and
-%% finduses.nw to work better for LISPs with multiple slots (like
-%% Maclisp or Emacs Lisp). There should be no problem
-%% differentiating between whyse the customization group, and
-%% whyse the function, and whyse the variable. This is a
-%% difficult one and probably requires manual annotation,
-%% something filters should be used for after hacking on Joseph
-%% S. Riel's autodefs.elisp and Noweb's finduses.nw!
-
-%% TODO: investigate the use of the varioref, prettyref, and
-%% cleveref macro packages. These packages are useful for
-%% references internal to the document (cross-references), not
-%% references external to the document (references). See:
-%% https://texblog.org/2017/12/17/fancy-labels-and-references-in-latex/.
-\usepackage[colorlinks,backref=true]{hyperref}
-
-\usepackage{verbatim}
-\usepackage{syntax}
-\usepackage{xspace}
-\usepackage{paralist}
-\usepackage{color}
-\usepackage{fancyvrb} % NOTE: used in the figure of the WHYSE frame layout.
-
-
-
-\pagestyle{noweb}
-
-
-
-%%% ---- BEGINNING OF DOCUMENT ---- %%%
 \begin{document}
-
 %% \frontmatter%% FIXME: what did this do and why did I disable it?
-
 \maketitle
-
 %% \tableofcontents
-
 %% \mainmatter%% FIXME: what did this do and why did I disable it?
 
 %% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
@@ -130,6 +43,13 @@ documentation several times until the full implementation is understood. I
 recommend modifying the system using itself to keep organized, and writing
 literately; you'll thank yourself later for doing so.
 \end{abstract}
+
+
+
+
+
+\part{What is \whyse?}
+\label{part:what-is-whyse}
 
 
 
@@ -548,14 +468,15 @@ author is aware he's stated elsewhere).
 
 
 
-\chapter{Parsing project nowebs}
+\chapter{Parsing project nowebs}\label{parsing}
 This section covers the parsing of the noweb tool syntax produced when
 [[whyse]] executes the project's defined shell script to generate the
 tool syntax.
 
-The \textsc{peg} package provides automatic parser generation from a
-formal PEG grammar. The grammar is based off of the description of the
-tool syntax given in the \cite[Noweb Hacker's Guide]{ramsey1992}.
+The \textsc{peg} package for \textsc{Emacs} provides automatic parser
+generation from a formal PEG grammar. The grammar is based off of the
+description of the tool syntax given in the \cite[Noweb Hacker's
+  Guide]{ramsey1992}.
 
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
@@ -1171,18 +1092,178 @@ may or may not work as expected."
 
 
 
+\part{Discovering the mystery of the meat}
+\label{part:mystery-meat}
 
-\chapter{Event-hook Loop}\label{event hook loop}
-There has always been some confusion in my mind as to how the REPL will
-work. Reading a noweb file for a first time is no issue, nor is parsing
-the tool syntax at any time.
+What are the steps to follow to implement \whyse? What is the meat of
+the application?
 
-Implementing the WHS using the UNIX philosophy---many small tools
-chained together to create solutions and systems---would make nineties
-noweb users happy. It's also how I thought of a solution to my
-confusion, which is one of the reasons why I stopped working on this
-project for almost two years (apart from normal life stresses and other
-projects taking up my time).
+The application has been in development for a little over two years and
+I haven't made progress in nearly that much time. I know that I need
+{an~event~loop~\ref{event-hook-loop}}.
+
+What are the individual events that take place in a system such as
+\whyse? What takes place between the input of a file in \noweb format
+into an application that either extends the mode(s) suitable for that
+format or extends the mode(s) suitable for the resulting \LaTeX{}-format
+file?
+
+{\paragraph{noweb-usage}
+  The standard steps in the usage of \noweb are as follows:
+
+  \begin{itemize}[noweb-to-latex]
+  \item Write a \noweb-formatted file, and
+  \item Call \notangle on the file, with various options, OR
+  \item Call \noweave on the file, with various options.
+  \end{itemize}
+
+  with not much else to it (except in expert cases, like the writing of a
+  large book or the development of an application like \whyse).
+}
+
+Developing an application like this, even when a rudimentary design is
+available in \textsc{WHS} described in \cite[1991 by Brown and
+Czejdo]{brown1991}, is not easy. I haven't fully designed the program,
+or completed an analysis: I suppose I'm taking an ``agile'' approach to
+development. It's certainly not ``test-driven'' or following a
+traditional software development lifecycle (SDLC).
+
+The following quotation examples the output of \noweave. The in-line
+forms [[@<<chunk-name>>]] and [[some prose with a [[quotation]]]] are
+not exampled below, only a code chunk. Documentation chunks are literal
+\LaTeX{}, with minimal embracement by \noweb macros (just
+\texttt{\\nwbegindocs{*}}).
+
+\begin{Verbatim}
+\nwbegincode{97}
+  \sublabel{NW43JrUv-3RJbFb-1}
+  \nwmargintag{{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}
+  \moddef{Commentary~{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}\endmoddef
+  \nwstartdeflinemarkup
+    \nwusesondefline{\\{NW43JrUv-1gS5zu-1}}
+  \nwenddeflinemarkup
+;;; Commentary:
+;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
+;; Programming_ (1991).
+;;
+;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,
+;;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and
+;;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol
+;;    468. Springer, Berlin, Heidelberg.
+;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
+;;
+;; A paper describing this implementation---written in Noweb and browsable,
+;; editable, and auditable with WHYSE, or readable in the printed form---is
+;; hoped to be submitted to The Journal of Open Source Software (JOSS) before
+;; the year 2024. N.B.: the paper will include historical information about
+;; literate programming, and citations (especially of those given credit here
+;; for ideating WHYSE itself).
+
+\nwused{\\{NW43JrUv-1gS5zu-1}}
+\nwendcode{}
+\end{Verbatim}
+
+The fact that \noweb users usually author documents LaTeX documentation,
+rather than nroff or HTML, gives quarter to the existing \LaTeX{}
+support in \emacs. \reftex and \auctex support extensions as a matter of
+course because they're written in \elisp; it's part of what they are.
+Could I be rid of the \whyse project (at least a first implementation)
+by beginning with adding support for the \noweb cross-reference, label,
+and index macros? It's very likely. It's what I'm doing.
+
+My development plan is to add support for \noweb's macros to \reftex and
+\auctex then use the information gleaned from these packages to
+buttonize and markup (with overlays) the chunk headers and
+cross-references in poly-noweb buffers. \texttt{diff}s of the
+continually watched product of the \noweb-formatted source file and the
+user-modified \LaTeX{}-formatted document (which is a derivation of the
+former), and suggestions for filters could conceivably allow two-way
+communication between \noweb and \auctex. Would that be \whyse? I don't
+think it would be wise to call it \whyse---the \textsc{WHS} implemented
+in \emacs---but it would still be \whyse: \emph{a particular}
+\textsc{((no)Web~HYpertext~System~in~Emacs)}. It may still be a stepping
+stone to the original notion, which would be interesting to explore, but
+I think it would be better than that original goal as well; it wouldn't
+be as flexible as the \noweb system is, however, as it would only
+support \LaTeX{} documentation, whereas \noweb supports other backends.
+
+\begin{quote}
+  \reftex has been bundled and pre-installed with \emacs since version
+  20.2.
+
+  --- the \reftex \texinfo manual, ``with typographic editions''.
+\end{quote}
+
+Given \reftex has been a part of \emacs for so long it makes sense to
+simply defer to its featureset where it provides something useful,
+rather than replacing it with new functionality in Emacs; I haven't
+surpassed the featureset or implementation of \reftex, certainly not, so
+rather than replacing that I'll add to it.
+
+\chapter{Configuring \reftex to recognize the \noweb labelled
+  environment environments} \label{cha:conf-reft-recogn}
+
+The manual states that [[reftex-label-alist]] contains is bound to an
+association list with infromation about the label and reference commands
+used to refer to sections (and environments). Seeing the
+[[reftex-label-alist-builtin]] below, I can understand that there is
+support for implicit and explicit environments: with an implicit
+environment being a section (\grave{a} la \html; ``implicit
+environments'' may not be a concept in \latex, but such nesting is how I
+conceive of hierarchical structuring in \latex as it actually is in
+\html).
+
+\begin{Verbatim}
+(minted "The minted package"
+         (("listing" 108 "lst:" "~\\ref{%s}" nil (regexp "[Ll]isting"))))
+ (LaTeX "LaTeX default environments"
+        (("section" 115 "%S" "~\\ref{%s}" (nil . t)
+          (regexp "parts?" "chapters?" "chap\\." "sections?" "sect?\\."
+                  "paragraphs?" "par\\." "\\\\S" "\247" "Teile?" "Kapitel"
+                  "Kap\\." "Abschnitte?" "appendi\\(x\\|ces\\)" "App\\."
+                  "Anh\"?ange?" "Anh\\."))
+         ("enumerate" 105 "item:" "~\\ref{%s}" item (regexp "items?" "Punkte?"))
+         ("equation" 101 "eq:" "~(\\ref{%s})" t
+          (regexp "equations?" "eqs?\\." "eqn\\." "Gleichung\\(en\\)?" "Gl\\."))
+         ("eqnarray" 101 "eq:" nil eqnarray-like)
+         ("figure" 102 "fig:" "~\\ref{%s}" caption
+          (regexp "figure?[sn]?" "figs?\\." "Abbildung\\(en\\)?" "Abb\\."))
+         ("figure*" 102 nil nil caption)
+         ("table" 116 "tab:" "~\\ref{%s}" caption
+          (regexp "tables?" "tab\\." "Tabellen?"))
+         ("table*" 116 nil nil caption)
+         ("\\footnote[]{}" 110 "fn:" "~\\footref{%s}" 2
+          (regexp "footnotes?" "Fussnoten?"))
+         ("any" 32 " " "~\\ref{%s}" nil)))
+\end{Verbatim}
+
+\reftex can also be configured to recognize index macros from packages
+(i.e. it can work with index entries apart from those defined with the
+built-in index commands).
+
+\begin{Verbatim}
+  To make your own LaTeX macro definitions known to RefTeX, customize
+  the variables
+       reftex-label-alist          (for label macros/environments)
+       reftex-section-levels       (for sectioning commands)
+       reftex-cite-format          (for ‘\cite’-like macros)
+       reftex-index-macros         (for ‘\index’-like macros)
+       reftex-index-default-macro  (to set the default macro)
+  If you have a large number of macros defined, you may want to write
+  an AUCTeX style file to support them with both AUCTeX and RefTeX.
+\end{Verbatim}
+
+\chapter{Event-hook Loop}\label{event-hook-loop}
+There has always been some confusion in my mind as to how the system
+will work. Reading a noweb file for a first time is no issue, nor is
+parsing the tool syntax at any time.
+
+Implementing the \textsc{WHS}% WEB Hypertext System
+using the UNIX philosophy---many small tools chained together to create
+solutions and systems---would make nineties noweb users happy. It's also
+how I thought of a solution to my confusion, which is one of the reasons
+why I stopped working on this project for almost two years (apart from
+normal life stresses and other projects taking up my time).
 
 \begin{verbatim}
   example.nw | less# with options for noweb syntax highlighting
@@ -1233,9 +1314,10 @@ using the current [[lesskeys]].
 
 
 \chapter{Processing parsed nowebs into SQL}\label{processing lists}
-This section covers how the parsed text generated in the last section is
-processed, creating a series of SQL statements that will be executed by
-SQLite using the interface provided by the EmacSQL package.
+This chapter covers how the parsed text generated in the \ref{parsing}
+chapter is processed, either creating a series of \sql statements that
+will be executed by SQLite using the interface provided by the
+\textsc{EmacSQL} package, or used in some other way through \elisp.
 
 First, the overall structure of the parsed text should be diagrammed.
 The parse tree is a list of noweb documents, each being a list
@@ -1249,7 +1331,7 @@ alist is bewteen the symbol relating to the rule that generated the cons
 cell, and the contents appropriate to the symbol.
 
 \section{Processing}
-There are many steps to compiling the parse tree into SQL. The first
+There are many steps to compiling the parse tree into \sequel. The first
 step is to ensure the association lists in the parse tree are in a
 format that is acceptable to built-in Emacs Lisp functions; this will
 make it easier to navigate the tree and transform it.
@@ -1569,10 +1651,12 @@ next.
 (defun w--chunk-section (chunk-name)
   (with-temp-buffer
     (insert-file-contents (w-project-noweb project))
+    (goto-char 0)
     (re-search-forward
      ;; It is an error if no chunks are found.
      (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
     (re-search-backward
+     ;; TODO: support a fallback list from RefTeX.
      (regexp-opt (w-project-sectioning-commands-regexs project))
      ;; It is not an error if no section is found because sectioning is
      ;; entirely optional in a literate document with LaTeX.
@@ -1594,26 +1678,25 @@ accommodate the LaTeX command while the calling function will handle
 finding them and collecting their output.
 
 %% NOTE: There may be some semantic or logical connection between the
-%% parent-child chunk relationship and the latex sections which ocntain
+%% parent-child chunk relationship and the latex sections which contain
 %% parent chunks, or even child chunks! What is that?
 
 The following association list gives the keyword and the value
 corresponding to that which were seen in the intermediate representation
 used by noweb itself. To implement \whyse we utilize the intermediate
-representation for both editing and document compilation. Features
+representation (IR) for both editing and document compilation. Features
 unique to \whyse would add in new keywords, and these would only be
-processed by \whyse (hopefully without impacting other applications,
-though the only other application that uses the noweb intermediate
-representation is noweb itsefl).
+processed by \whyse; filters should always ignore IR content that
+doesn't concern them.
 
 \begin{verbatim}
 ((code . 32)
  (x-label . "NW2ucZJx-3LzQog-2")
  (ref . "NW2ucZJx-3LzQog-1")
- (chunk . "chunks and their bou...")
+ (chunk . "chunks and their")% ELIDED
  (prevdef . "NW2ucZJx-3LzQog-1")
  (nextdef . "NW2ucZJx-3LzQog-3")
- (text . "\n(chunk-contents\n (o...")
+ (text . "\n(chunk-contents\n...")% ELIDED
  (x-label . "NW2ucZJx-3LzQog-2-u1")
  (ref . "NW2ucZJx-2ZphFz-1")
  (chunk-child-usage . "structural keywords")
@@ -1647,7 +1730,8 @@ representation is noweb itsefl).
 
 
 
-
+\part{Appendices}
+\label{part:appendices}
 \appendix
 
 
@@ -1826,7 +1910,7 @@ in the License section at the end of this document.
 \section{Identifiers}
 \nowebindex
 
-\section{Miscellaneous code and functions useful for development and debugging}\label{misc}
+\chapter{Miscellaneous code and functions useful for development and debugging}\label{misc}
 <<Code>>=
 (defun w--log-in-buffer (buffer-name &rest body)
   "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
@@ -1906,8 +1990,7 @@ module."
 
 @
 
-\chapter{Commands for Human Languages}
-
+\chapter{Commands for Human Languages}\label{noweb-narrowing}
 The Emacs Manual has a chapter dedicated to /Commands for Human
 Languages/. This software documentation shall have a chapter dedicated
 to that too, since literate programming (per Knuth) is primarily
@@ -1932,17 +2015,16 @@ built-in page navigation features are useful in noweb buffers.")
 @
 
 Navigating between chunks in a noweb source document is so fundamental
-to literate programming that you may want to bind
-\texttt{backward-page} and \texttt{forward-page} to the specially
-labelled "Page Up" and "Page Down" keys on your keyboard (represented
-                                                          in elisp with the special strings "<prior>" and "<next>" when you use
-                                                          \texttt{describe-key} on these keyboard buttons).
+to literate programming that you may want to bind \texttt{backward-page}
+and \texttt{forward-page} to the specially labelled "Page Up" and "Page
+Down" keys on your keyboard (represented in elisp with the special
+strings "<prior>" and "<next>" when you use \texttt{describe-key} on
+these keyboard buttons).
 
 \section{Advising the forward- and backward-page functions}
-
-Using the Emacs advise interface is probably the most straightforward
-way to implement widening and re-narrowing the buffer to when calling
-\texttt{forward-page} and \texttt{backward-page}, and to further echo
+Using the Emacs advice interface is probably the most straightforward
+way to implement widening and re-narrowing of the buffer when calling
+\texttt{forward-page} and \texttt{backward-page}, and further to echo
 the result of \texttt{what-page}.
 
 It would be simplest to not handle the page delimiter specially unless
@@ -1950,9 +2032,11 @@ necessary, so leaving this delimiter in-place is most flexible.
 
 <<nwn.el>>=
 ;;; Noweb Narrowing -*- mode: emacs-lisp -*-
-;;  Advise the `forward-page` and `backward-page` functions to widen
-;;  and then restore chunk-based narrowing when it is in effect (if
-;;  and only if the current buffer is editing a .nw file).
+
+;;; Commentary:
+;;  Advise the `forward-page` and `backward-page` functions to widen and
+;;  then restore chunk-based narrowing when it is in effect (if and only
+;;  if the current buffer is editing a .nw file).
 
 <<current buffer is a noweb file>>=
 (string= "nw" (file-name-extension (buffer-file-name)))
@@ -2116,11 +2200,734 @@ chunk)."
             :after #'nwn--forward-page-advice)
 @
 
-%% \chapter{Bibliography}
-%% \printbibliography
+\chapter{List of Computer Scientists}
+Inspired by the random names that Docker uses to name containers, I
+derived a list of names of computer scientists or industry professionals
+(less some names) from a ``dynamic list'' on Wikipedia.
+
+$$
+10^{10}=10000000000
+$$
+
+With just ten lists of ten words each there can be ten billion possible
+combinations, but this would be ten names for an identifier. That's too
+much.
+
+<<computer-scientists.el>>=
+(defun n-random-names (l)
+  (let ((names (list "Wil van der Aalst"
+                      "Scott Aaronson"
+                      "Rediet Abebe"
+                      "Hal Abelson"
+                      "Serge Abiteboul"
+                      "Samson Abramsky"
+                      "Leonard Adleman"
+                      "Manindra Agrawal"
+                      "Luis von Ahn"
+                      "Alfred Aho"
+                      "Frances E. Allen"
+                      "Gene Amdahl"
+                      "David P. Anderson"
+                      "Lisa Anthony"
+                      "Andrew Appel"
+                      "Cecilia R. Aragon"
+                      "Bruce Arden"
+                      "Kevin Ashton"
+                      "Sanjeev Arora"
+                      "Winifred 'Tim' Alice Asprey"
+                      "John Vincent Atanasoff"
+                      "Shakuntala Atre"
+                      "Lennart Augustsson"
+                      "Charles Babbage"
+                      "Charles Bachman"
+                      "Roland Carl Backhouse"
+                      "John Backus"
+                      "David F. Bacon"
+                      "David Bader"
+                      "Victor Bahl"
+                      "Fatmah Baothman"
+                      "Anthony James Barr"
+                      "Jean Bartik"
+                      "Andrew Barto"
+                      "Friedrich L. Bauer"
+                      "Rudolf Bayer"
+                      "Gordon Bell"
+                      "Steven M. Bellovin"
+                      "Cecilia Berdichevsky"
+                      "Tim Berners-Lee"
+                      "Daniel J. Bernstein"
+                      "Peter Bernus"
+                      "Abhay Bhushan"
+                      "Dines Bjørner"
+                      "Gerrit Blaauw"
+                      "Sue Black"
+                      "David Blei"
+                      "Dorothy Blum"
+                      "Lenore Blum"
+                      "Manuel Blum"
+                      "Barry Boehm"
+                      "Corrado Böhm"
+                      "Kurt Bollacker"
+                      "Jeff Bonwick"
+                      "Grady Booch"
+                      "George Boole"
+                      "Andrew Booth"
+                      "Kathleen Booth"
+                      "Anita Borg"
+                      "Alan H. Borning"
+                      "Bert Bos"
+                      "Mikhail Botvinnik"
+                      "Jonathan Bowen"
+                      "Stephen R. Bourne"
+                      "Harry Bouwman"
+                      "Robert S. Boyer"
+                      "Karlheinz Brandenburg"
+                      "Gilles Brassard"
+                      "Lawrence M. Breed"
+                      "Jack E. Bresenham"
+                      "David J. Brown"
+                      "Per Brinch Hansen"
+                      "Sjaak Brinkkemper"
+                      "Fred Brooks"
+                      "Rod Brooks"
+                      "Margaret Burnett"
+                      "Rod Burstall"
+                      "Michael Butler"
+                      "Pino Caballero Gil"
+                      "Tracy Camp"
+                      "Martin Campbell-Kelly"
+                      "Rosemary Candlin"
+                      "Rod Canion"
+                      "Bryan Cantrill"
+                      "Luca Cardelli"
+                      "John Carmack"
+                      "Michael Caspersen"
+                      "Edwin Catmull"
+                      "Vint Cerf"
+                      "Gregory Chaitin"
+                      "Robert Cailliau"
+                      "Zhou Chaochen"
+                      "Peter Chen"
+                      "Leonardo Chiariglione"
+                      "Tracy Chou"
+                      "Alonzo Church"
+                      "Alberto Ciaramella"
+                      "Edmund M. Clarke"
+                      "John Cocke"
+                      "Edgar F. Codd"
+                      "Jacques Cohen"
+                      "Ian Coldwater"
+                      "Simon Colton"
+                      "Alain Colmerauer"
+                      "Douglas Comer"
+                      "Paul Justin Compton"
+                      "Richard W. Conway"
+                      "Stephen Cook"
+                      "James Cooley"
+                      "Steven Anson Coons"
+                      "Danese Cooper"
+                      "Fernando J. Corbató"
+                      "Gordon Cormack"
+                      "Kit Cosper"
+                      "Patrick Cousot"
+                      "Ingemar Cox"
+                      "Damien Coyle"
+                      "Seymour Cray"
+                      "Nello Cristianini"
+                      "Jon Crowcroft"
+                      "W. Bruce Croft"
+                      "Glen Culler"
+                      "Haskell Curry"
+                      "Luigi Dadda"
+                      "Ole-Johan Dahl"
+                      "Ryan Dahl"
+                      "Andries van Dam"
+                      "Samir Das"
+                      "Neil Daswani"
+                      "Christopher J. Date"
+                      "Terry A. Davis"
+                      "Erik Demaine"
+                      "Tom DeMarco"
+                      "Richard DeMillo"
+                      "Dorothy E. Denning"
+                      "Peter J. Denning"
+                      "Michael Dertouzos"
+                      "Alexander Dewdney"
+                      "Robert Dewar"
+                      "Vinod Dham"
+                      "Jan Dietz"
+                      "Whitfield Diffie"
+                      "Edsger W. Dijkstra"
+                      "Matthew Dillon"
+                      "Alan Dix"
+                      "Jack Dongarra"
+                      "Marco Dorigo"
+                      "Paul Dourish"
+                      "Charles Stark Draper"
+                      "Susan Dumais"
+                      "Adam Dunkels"
+                      "Jon Michael Dunn"
+                      "Schahram Dustdar"
+                      "Peter Eades"
+                      "Annie Easley"
+                      "Wim Ebbinkhuijsen"
+                      "John Presper Eckert"
+                      "Alan Edelman"
+                      "Brendan Eich"
+                      "Philip Emeagwali"
+                      "E. Allen Emerson"
+                      "Douglas Engelbart"
+                      "Barbara Engelhardt"
+                      "David Eppstein"
+                      "Andrey Ershov"
+                      "Don Estridge"
+                      "Oren Etzioni"
+                      "Christopher Riche Evans"
+                      "David C. Evans"
+                      "Shimon Even"
+                      "Scott Fahlman"
+                      "Edward Feigenbaum"
+                      "Edward Felten"
+                      "Tim Finin"
+                      "Raphael Finkel"
+                      "Donald Firesmith"
+                      "Gary William Flake"
+                      "Tommy Flowers"
+                      "Robert Floyd"
+                      "Sally Floyd"
+                      "Lawrence J. Fogel"
+                      "James D. Foley"
+                      "Ken Forbus"
+                      "L. R. Ford, Jr."
+                      "Lance Fortnow"
+                      "Mahmoud Samir Fayed"
+                      "Martin Fowler"
+                      "Robert France"
+                      "Herbert W. Franke"
+                      "Edward Fredkin"
+                      "Yoav Freund"
+                      "Daniel P. Friedman"
+                      "Charlotte Froese Fischer"
+                      "Ping Fu"
+                      "Xiaoming Fu"
+                      "Kunihiko Fukushima"
+                      "D. R. Fulkerson"
+                      "Richard P. Gabriel"
+                      "Zvi Galil"
+                      "Bernard Galler"
+                      "Hector Garcia-Molina"
+                      "Michael Garey"
+                      "Hugo de Garis"
+                      "David Gelernter"
+                      "Lisa Gelobter"
+                      "Charles Geschke"
+                      "Zoubin Ghahramani"
+                      "Sanjay Ghemawat"
+                      "Jeremy Gibbons"
+                      "Juan E. Gilbert"
+                      "Lee Giles"
+                      "Seymour Ginsburg"
+                      "Robert L. Glass"
+                      "Kurt Gödel"
+                      "Ashok Goel"
+                      "Joseph Goguen"
+                      "E. Mark Gold"
+                      "Adele Goldberg"
+                      "Andrew V. Goldberg"
+                      "Ian Goldberg"
+                      "Judy Goldsmith"
+                      "Oded Goldreich"
+                      "Shafi Goldwasser"
+                      "Gene Golub"
+                      "Martin Charles Golumbic"
+                      "Gastón Gonnet"
+                      "Ian Goodfellow"
+                      "James Gosling"
+                      "Robert M. Graham"
+                      "Susan L. Graham"
+                      "Jim Gray"
+                      "Michael Gregg"
+                      "Sheila Greibach"
+                      "David Gries"
+                      "Robert Griesemer"
+                      "Ralph Griswold"
+                      "Bill Gropp"
+                      "Tom Gruber"
+                      "Shelia Guberman"
+                      "Ramanathan V. Guha"
+                      "Neil J. Gunther"
+                      "Jürg Gutknecht"
+                      "Michael Guy"
+                      "Giri Topper"
+                      "Nico Habermann"
+                      "Philipp Matthäus Hahn"
+                      "Eldon C. Hall"
+                      "Wendy Hall"
+                      "Joseph Halpern"
+                      "Margaret Hamilton"
+                      "Richard Hamming"
+                      "Jiawei Han"
+                      "Frank Harary"
+                      "Brian Harris"
+                      "Juris Hartmanis"
+                      "Johan Håstad"
+                      "Les Hatton"
+                      "Igor Hawryszkiewycz"
+                      "He Jifeng"
+                      "Eric Hehner"
+                      "Martin Hellman"
+                      "Gernot Heiser"
+                      "James Hendler"
+                      "John L. Hennessy"
+                      "Andrew Herbert"
+                      "Carl Hewitt"
+                      "Kelsey Hightower"
+                      "Danny Hillis"
+                      "Geoffrey Hinton"
+                      "Julia Hirschberg"
+                      "Tin Kam Ho"
+                      "C. A. R. Hoare"
+                      "Louis Hodes"
+                      "Betty Holberton"
+                      "John Henry Holland"
+                      "Herman Hollerith"
+                      "Bri Holt"
+                      "Gerard Holzmann"
+                      "John Hopcroft"
+                      "Admiral Grace Hopper"
+                      "Eric Horvitz"
+                      "Alston Householder"
+                      "Paul Hudak"
+                      "David A. Huffman"
+                      "John Hughes"
+                      "Roger Hui"
+                      "Watts Humphrey"
+                      "Sandra Hutchins"
+                      "Jean Ichbiah"
+                      "Roberto Ierusalimschy"
+                      "Dan Ingalls"
+                      "Mary Jane Irwin"
+                      "Kenneth E. Iverson"
+                      "Ivar Jacobson"
+                      "Anil K. Jain"
+                      "Ramesh Jain"
+                      "Jonathan James"
+                      "Jordi Ustrell Aguilà"
+                      "David S. Johnson"
+                      "Stephen C. Johnson"
+                      "Angie Jones"
+                      "Cliff Jones"
+                      "Michael I. Jordan"
+                      "Mathai Joseph"
+                      "Aravind K. Joshi"
+                      "Bill Joy"
+                      "Dan Jurafsky"
+                      "William Kahan"
+                      "Robert E. Kahn"
+                      "Avinash Kak"
+                      "Poul-Henning Kamp"
+                      "David Karger"
+                      "Richard Karp"
+                      "Narendra Karmarkar"
+                      "Marek Karpinski"
+                      "Ted Kaehler"
+                      "Alan Kay"
+                      "Neeraj Kayal"
+                      "Manolis Kellis"
+                      "John George Kemeny"
+                      "Ken Kennedy"
+                      "Brian Kernighan"
+                      "Carl Kesselman"
+                      "Gregor Kiczales"
+                      "Logan Kilpatrick"
+                      "Peter T. Kirstein"
+                      "Stephen Cole Kleene"
+                      "Dan Klein"
+                      "Leonard Kleinrock"
+                      "Donald Knuth"
+                      "Andrew Koenig"
+                      "Daphne Koller"
+                      "Michael Kölling"
+                      "Andrey Nikolaevich Kolmogorov"
+                      "Janet L. Kolodner"
+                      "David Korn"
+                      "Kees Koster"
+                      "Robert Kowalski"
+                      "John Koza"
+                      "John Krogstie"
+                      "Joseph Kruskal"
+                      "Maarja Kruusmaa"
+                      "D. Richard Kuhn"
+                      "Thomas E. Kurtz"
+                      "Richard E. Ladner"
+                      "Monica S. Lam"
+                      "Leslie Lamport"
+                      "Butler Lampson"
+                      "Peter Landin"
+                      "Tom Lane"
+                      "Börje Langefors"
+                      "Hans Langmaack"
+                      "Chris Lattner"
+                      "Steve Lawrence"
+                      "Edward D. Lazowska"
+                      "Joshua Lederberg"
+                      "Manny M Lehman"
+                      "Charles E. Leiserson"
+                      "Douglas Lenat"
+                      "Yann LeCun"
+                      "Rasmus Lerdorf"
+                      "Leonid Levin"
+                      "Kevin Leyton-Brown"
+                      "J.C.R. Licklider"
+                      "David Liddle"
+                      "Jochen Liedtke"
+                      "John Lions"
+                      "Charles H. Lindsey"
+                      "Richard J. Lipton"
+                      "Barbara Liskov"
+                      "Yanhong Annie Liu"
+                      "Darrell Long"
+                      "Patricia D. Lopez"
+                      "Gillian Lovegrove"
+                      "Ada Lovelace"
+                      "David Luckham"
+                      "Eugene Luks"
+                      "Nancy Lynch"
+                      "Nadia Magnenat Thalmann"
+                      "Tom Maibaum"
+                      "George Mallen"
+                      "Simon Marlow"
+                      "Zohar Manna"
+                      "James Martin"
+                      "Robert C. Martin"
+                      "John Mashey"
+                      "Yuri Matiyasevich"
+                      "Yukihiro Matsumoto"
+                      "John Mauchly"
+                      "Ujjwal Maulik"
+                      "Derek McAuley"
+                      "Conor McBride"
+                      "John McCarthy"
+                      "Andrew McCallum"
+                      "Douglas McIlroy"
+                      "Chris McKinstry"
+                      "Marshall Kirk McKusick"
+                      "Lambert Meertens"
+                      "Kurt Mehlhorn"
+                      "Dora Metcalf"
+                      "Bertrand Meyer"
+                      "Silvio Micali"
+                      "Robin Milner"
+                      "Jack Minker"
+                      "Marvin Minsky"
+                      "James G. Mitchell"
+                      "Tom M. Mitchell"
+                      "Arvind Mithal"
+                      "Paul Mockapetris"
+                      "Cleve Moler"
+                      "Faron Moller"
+                      "John P. Moon"
+                      "Charles H. Moore"
+                      "Edward F. Moore"
+                      "Gordon Moore"
+                      "J Strother Moore"
+                      "Roger Moore"
+                      "Hans Moravec"
+                      "Carroll Morgan"
+                      "Robert Tappan Morris"
+                      "Joel Moses"
+                      "Rajeev Motwani"
+                      "Oleg A. Mukhanov"
+                      "Stephen Muggleton"
+                      "Klaus-Robert Müller"
+                      "Alan Mycroft"
+                      "Brad A. Myers"
+                      "Mihai Nadin"
+                      "Makoto Nagao"
+                      "Frieder Nake"
+                      "Bonnie Nardi"
+                      "Peter Naur"
+                      "Roger Needham"
+                      "James G. Nell"
+                      "Greg Nelson"
+                      "Bernard de Neumann"
+                      "Klara Dan von Neumann"
+                      "John von Neumann"
+                      "Allen Newell"
+                      "Max Newman"
+                      "Andrew Ng"
+                      "Nils John Nilsson"
+                      "G.M. Nijssen"
+                      "Tobias Nipkow"
+                      "Maurice Nivat"
+                      "Jerre Noe"
+                      "Peter Nordin"
+                      "Donald Norman"
+                      "Peter Norvig"
+                      "George Novacky"
+                      "Kristen Nygaard"
+                      "Martin Odersky"
+                      "Peter O'Hearn"
+                      "T. William Olle"
+                      "Steve Omohundro"
+                      "Severo Ornstein"
+                      "John O'Sullivan"
+                      "John Ousterhout"
+                      "Mark Overmars"
+                      "Susan Owicki"
+                      "Sankar Pal"
+                      "Paritosh Pandya"
+                      "Christos Papadimitriou"
+                      "Keshab K. Parhi"
+                      "David Park"
+                      "David Parnas"
+                      "DJ Patil"
+                      "Yale Patt"
+                      "David Patterson"
+                      "Mike Paterson"
+                      "Mihai Pătraşcu"
+                      "Lawrence Paulson"
+                      "Randy Pausch"
+                      "Juan Pavón"
+                      "Judea Pearl"
+                      "Alan Perlis"
+                      "Radia Perlman"
+                      "Pier Giorgio Perotto"
+                      "Rózsa Péter"
+                      "Simon Peyton Jones"
+                      "Kathy Pham"
+                      "Roberto Pieraccini"
+                      "Keshav Pingali"
+                      "Gordon Plotkin"
+                      "Amir Pnueli"
+                      "Willem van der Poel"
+                      "Robin Popplestone"
+                      "Cicely Popplewell"
+                      "Emil Post"
+                      "Jon Postel"
+                      "Franco Preparata"
+                      "William H. Press"
+                      "Rapelang Rabana"
+                      "Grzegorz Rozenberg"
+                      "Michael O. Rabin"
+                      "Dragomir R. Radev"
+                      "T. V. Raman"
+                      "Brian Randell"
+                      "Anders P. Ravn"
+                      "Raj Reddy"
+                      "David P. Reed"
+                      "Trygve Reenskaug"
+                      "John C. Reynolds"
+                      "Joyce K. Reynolds"
+                      "Reinder van de Riet"
+                      "Bernard Richards"
+                      "Martin Richards"
+                      "Adam Ries"
+                      "C. J. van Rijsbergen"
+                      "Dennis Ritchie"
+                      "Ron Rivest"
+                      "Lawrence Roberts"
+                      "Paul Robertson"
+                      "Ken Robinson"
+                      "Colette Rolland"
+                      "John Romero"
+                      "Azriel Rosenfeld"
+                      "Douglas T. Ross"
+                      "Ronald S. Ross"
+                      "Guido van Rossum"
+                      "M. A. Rothman"
+                      "Winston W. Royce"
+                      "Rudy Rucker"
+                      "Steven Rudich"
+                      "Jeff Rulifson"
+                      "James Rumbaugh"
+                      "Peter Ružička"
+                      "George Sadowsky"
+                      "Mehrnoosh Sadrzadeh"
+                      "Umar Saif"
+                      "Gerard Salton"
+                      "Jean E. Sammet"
+                      "Claude Sammut"
+                      "Carl Sassenrath"
+                      "Mahadev Satyanarayanan"
+                      "Walter Savitch"
+                      "Nitin Saxena"
+                      "Jonathan Schaeffer"
+                      "Heidi Schelhowe"
+                      "Wilhelm Schickard"
+                      "Jürgen Schmidhuber"
+                      "Steve Schneider"
+                      "Bruce Schneier"
+                      "Fred B. Schneider"
+                      "Sarita Schoenebeck"
+                      "Glenda Schroeder"
+                      "Bernhard Schölkopf"
+                      "Dana Scott"
+                      "Michael L. Scott"
+                      "Robert Sedgewick"
+                      "Ravi Sethi"
+                      "Nigel Shadbolt"
+                      "Adi Shamir"
+                      "Claude Shannon"
+                      "Cliff Shaw"
+                      "Scott Shenker"
+                      "Shashi Shekhar"
+                      "Ben Shneiderman"
+                      "Edward H. Shortliffe"
+                      "Daniel Siewiorek"
+                      "Joseph Sifakis"
+                      "Herbert A. Simon"
+                      "Munindar P. Singh"
+                      "Ramesh Sitaraman"
+                      "Daniel Sleator"
+                      "Aaron Sloman"
+                      "Arne Sølvberg"
+                      "Brian Cantwell Smith"
+                      "David Canfield Smith"
+                      "Steven Spewak"
+                      "Carol Spradling"
+                      "Robert Sproull"
+                      "Rohini Kesavan Srihari"
+                      "Sargur Srihari"
+                      "Maciej Stachowiak"
+                      "Richard Stallman"
+                      "Ronald Stamper"
+                      "Thad Starner"
+                      "Richard E. Stearns"
+                      "Guy L. Steele, Jr."
+                      "Thomas Sterling"
+                      "Alexander Stepanov"
+                      "W. Richard Stevens"
+                      "Larry Stockmeyer"
+                      "Salvatore Stolfo"
+                      "Michael Stonebraker"
+                      "Olaf Storaasli"
+                      "Christopher Strachey"
+                      "Volker Strassen"
+                      "Bjarne Stroustrup"
+                      "Madhu Sudan"
+                      "Gerald Jay Sussman"
+                      "Bert Sutherland"
+                      "Ivan Sutherland"
+                      "Latanya Sweeney"
+                      "Mario Szegedy"
+                      "Parisa Tabriz"
+                      "Roberto Tamassia"
+                      "Andrew S. Tanenbaum"
+                      "Austin Tate"
+                      "Bernhard Thalheim"
+                      "Éva Tardos"
+                      "Gábor Tardos"
+                      "Robert Tarjan"
+                      "Valerie Taylor"
+                      "Mario Tchou"
+                      "Jaime Teevan"
+                      "Shang-Hua Teng"
+                      "Larry Tesler"
+                      "Avie Tevanian"
+                      "Charles P. Thacker"
+                      "Daniel Thalmann"
+                      "Ken Thompson"
+                      "Simon Thompson"
+                      "Sebastian Thrun"
+                      "Walter F. Tichy"
+                      "Seinosuke Toda"
+                      "Chai Keong Toh"
+                      "Linus Torvalds"
+                      "Leonardo Torres Quevedo"
+                      "Godfried Toussaint"
+                      "Gloria Townsend"
+                      "Edwin E. Tozer"
+                      "Joseph F Traub"
+                      "John V. Tucker"
+                      "John Tukey"
+                      "Alan Turing"
+                      "David Turner"
+                      "Murray Turoff"
+                      "Jeffrey D. Ullman"
+                      "Leslie Valiant"
+                      "Vladimir Vapnik"
+                      "Moshe Vardi"
+                      "Dorothy Vaughan"
+                      "Bernard Vauquois"
+                      "Umesh Vazirani"
+                      "Manuela M. Veloso"
+                      "François Vernadat"
+                      "Richard Veryard"
+                      "Sergiy Vilkomir"
+                      "Paul Vitanyi"
+                      "Andrew Viterbi"
+                      "Jeffrey Scott Vitter"
+                      "Paul Vixie"
+                      "Eiiti Wada"
+                      "David Wagner"
+                      "David Waltz"
+                      "James Z. Wang"
+                      "Steve Ward"
+                      "Manfred K. Warmuth"
+                      "David H. D. Warren"
+                      "Kevin Warwick"
+                      "Jan Weglarz"
+                      "Philip Wadler"
+                      "Peter Wegner"
+                      "Joseph Henry Wegstein"
+                      "Peter J. Weinberger"
+                      "Mark Weiser"
+                      "Joseph Weizenbaum"
+                      "David Wheeler"
+                      "Franklin H. Westervelt"
+                      "Steve Whittaker"
+                      "Jennifer Widom"
+                      "Gio Wiederhold"
+                      "Norbert Wiener"
+                      "Adriaan van Wijngaarden"
+                      "Mary Allen Wilkes"
+                      "Maurice Vincent Wilkes"
+                      "Yorick Wilks"
+                      "James H. Wilkinson"
+                      "Sophie Wilson"
+                      "Shmuel Winograd"
+                      "Terry Winograd"
+                      "Patrick Winston"
+                      "Niklaus Wirth"
+                      "Neil Wiseman"
+                      "Dennis E. Wisnosky"
+                      "Stephen Wolfram"
+                      "Mike Woodger"
+                      "Philip Woodward"
+                      "Beatrice Helen Worsley"
+                      "Steve Wozniak"
+                      "Jie Wu"
+                      "William Wulf"
+                      "Mihalis Yannakakis"
+                      "Andrew Chi-Chih Yao"
+                      "John Yen"
+                      "Nobuo Yoneda"
+                      "Edward Yourdon"
+                      "Moti Yung"
+                      "Lotfi Zadeh"
+                      "Hans Zantema"
+                      "Arif Zaman"
+                      "Stanley Zdonik"
+                      "Hussein Zedan"
+                      "Shlomo Zilberstein"
+                      "Jill Zimmerman"
+                      "Konrad Zuse"))
+         (i (list)))
+    (while-let ((j (seq-random-elt names))
+                (sufficient (length< i l)))
+      (unless (seq-contains-p i j)
+        (setq i (append i j))))
+    (string-join i ", ")))
+
+(n-random-names 4)
+@ 
+
+\chapter{Bibliography}
+\printbibliography
 
 \chapter{License}
-\input{gpl-3.0.tex}
+\input{../src/gpl-3.0.tex}
 
 \end{document}
 

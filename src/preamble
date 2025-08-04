@@ -1,0 +1,48 @@
+LaTeX:
+  \documentclass[draft, enable deprecated font commands]{report};
+  \title{"The Implementation of \textsc{WHYSE}"};
+  \author{"Bryce Carson"}.
+
+new command:
+  {\whyse}{\textsc{WHYSE}};
+  {\whyseel}{\texttt{whyse.el}};
+  {\whysenw}{\texttt{whyse.nw}};
+  {\elisp}{\textsc{Emacs LISP}};
+  {\lisp}{\textsc{LISP}};
+  {\sql}{SQL};
+  {\sequel}{SQL};
+  {\noweb}{\textsc{noweb}};
+  {\notangle}{\texttt{notangle}};
+  {\noweave}{\texttt{noweave}};
+  {\emacs}{\textsc{GNU Emacs}};
+  {\auctex}{AUC\TeX{}};
+  {\reftex}{Ref\TeX{}};
+  {\texinfo}{\TeX{}info};
+  {\html}{\textsc{HTML}}.
+
+use package:
+  standalone;
+  roboto[rm];
+  fontenc[T1];
+  fontspec{\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]};
+  geometry{\geometry{
+    top=0.625in,
+    bottom=0.625in,
+    left=0.625in,
+    right=0.625in,
+    papersize={6in, 9in}
+  }};
+  mparhack;
+  mathptmx;
+  biblatex[style=ieee]{\addbibresource{whyse.bib}};
+  knoweb[break code, footnote size code];
+  hyperref[color links, backref=true];
+  verbatim;
+  syntax;
+  xpsace;
+  paralist;
+  color;
+  fancyvrb.
+
+LaTeX:
+  \pagestyle{noweb}.

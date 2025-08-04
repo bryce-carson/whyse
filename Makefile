@@ -16,20 +16,23 @@ clean_docs ?= ${SRC}/clean-docs.awk
 readme:
 	emacs --batch --eval "(require 'org)" --eval '(org-babel-tangle-file "TODO.org")'
 
-weave: clean
+builddir: clean
 	mkdir -p $(BUILD)
+
+awk: builddir
+	awk -f $(SRC)/preamble-processed-with.awk $(SRC)/preamble > $(BUILD)/preamble-processed-with.awk.tex
+
+weave: builddir
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
-compile-pdf: tangle weave
-	latexmk -cd --xelatex --interaction=nonstopmode -diagnostics $(BUILD)/whyse.tex \
-	&& xelatex --output-directory $(BUILD) $(BUILD)/whyse.tex \
-	|| { STATUS=$?; \
-	if test -f whyse.log; \
-	then cat whyse.log; \
-	else echo "whyse.log does not exist, and the latexmk && xelatex pipeline failed for _some unlogged reason_."; \
-	fi; \
-	exit ${STATUS}; }
-pdf: compile-pdf
+latexmk: weave
+	cd $(BUILD) && latexmk --lualatex --interaction=nonstopmode whyse.tex
+xelatex: latexmk
+	cd $(BUILD) && lualatex --interaction=nonstopmode whyse.tex
+compile-pdf: tangle xelatex whyse.log
+	cat $(BUILD)/whyse.log
+pdf: tangle xelatex whyse.log
+	cat $(BUILD)/whyse.log
 
 tangle: clean
 	mkdir -p $(BUILD)
