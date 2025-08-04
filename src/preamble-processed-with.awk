@@ -30,12 +30,13 @@ $1 ~ /use package/{
             print("%% Attempted to match a usepackage delcaration, but could not match!")
             continue
         }
+
         gsub(/ /, "", package[2])
         printf("\\usepackage%s{%s}\n", package[2], package[1])
 
-        if (!match($i, /\w+(\[[^\]]+\])?{(\n+|.+)}/, expressions))
-            continue
+        if (match($i, /\w+(\[[^\]]+\])?{(\n+|.+)}/, expressions))
         printf("%s\n", expressions[2])
+
     }
     print("")
     next
