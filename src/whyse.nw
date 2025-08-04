@@ -1,7 +1,7 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
 % Codename "Wise Eel"
-\input{premable-processed-with.awk.tex}%by Makefile before it builds whyse.tex.
+\input{preamble-processed-with.awk.tex}%by Makefile before it builds whyse.tex.
 
 \begin{document}
 %% \frontmatter%% FIXME: what did this do and why did I disable it?
