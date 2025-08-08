@@ -26,13 +26,13 @@ weave: builddir
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
 latexmk: weave
-	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode whyse.tex
+	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f whyse.tex
 xelatex: latexmk
 	cd $(BUILD) && xelatex --interaction=nonstopmode whyse.tex
-compile-pdf: tangle xelatex whyse.log
-	cat $(BUILD)/whyse.log
-pdf: tangle xelatex whyse.log
-	cat $(BUILD)/whyse.log
+compile-pdf: tangle xelatex
+	$(pdf)
+pdf: tangle xelatex
+	if [ -f whyse.log ]; then cat $(BUILD)/whyse.log; fi
 
 tangle: clean
 	mkdir -p $(BUILD)

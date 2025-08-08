@@ -22,22 +22,23 @@
 \whyse~\textsc{((no)Web~HYpertext~System~in~Emacs)} is an integrated
 development environment for Noweb-based hypertexts within Emacs, similar
 to EDE but not sharing development principles. It is based off of an
-academic paper written in \cite[1991 by Brown and Czejdo]{brown1991}. A
+academic paper written in CITE brown1991.% \cite[1991 by Brown and Czejdo]{brown1991}.
+A
 paper describing this implementation---written in Noweb and browsable,
-editable, and auditable with \whyse, or readable in the printed
+editable, and auditable with \whyse{}, or readable in the printed
 form---is hoped to be submitted to \textit{The Journal of
 Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper will
 include historical information about literate programming, and citations
 (especially of those given credit in the [[@<<Commentary>>]] for
-ideating \whyse itself).
+ideating \whyse{} itself).
 
-Users of \whyse in Emacs are expected to be familiar with Noweb; this does not
+Users of \whyse{} in Emacs are expected to be familiar with Noweb; this does not
 include how Noweb is built from source (that is arcane, supposedly). It may,
 however, include the writing of filters implemented with Sed, AWK, or other
 languages. Users must know how to write a custom command-line for noweave
 (read the manual section regarding the \texttt{-v} option). If you only know
 how to call the noweave command you're reading the wrong document. Read the
-Noweb manual first, please. Developers of \whyse extensions should read the
+Noweb manual first, please. Developers of \whyse{} extensions should read the
 Noweb Hacker's Guide until they understand it, afterwards reading this
 documentation several times until the full implementation is understood. I
 recommend modifying the system using itself to keep organized, and writing
@@ -48,7 +49,7 @@ literately; you'll thank yourself later for doing so.
 
 
 
-\part{What is \whyse?}
+\part{What is \whyse{}?}
 \label{part:what-is-whyse}
 
 
@@ -58,16 +59,16 @@ literately; you'll thank yourself later for doing so.
 \chapter{Preface}\label{Preface}
 The organization of this literate program is (more or less) linear:
 implementation of the components of the program are explained as they
-enter scope while discussing how a user would encounter various \whyse
+enter scope while discussing how a user would encounter various \whyse{}
 features as in the \textit{user documenation}.
 
 
 
 
 
-\chapter{\whyse Projects}\label{Projects}
+\chapter{\whyse{} Projects}\label{Projects}
 A user will read from \textit{the package description} that they should
-call an interactive command to create a project. The \whyse application
+call an interactive command to create a project. The \whyse{} application
 is started with the interactive command: [[whyse]]. The command loads
 the first element of the customization variable
 [[w-registered-projects]], considering that the default project, or it
@@ -76,7 +77,7 @@ customization group ([[M-x~customize-group~whyse]]): an effective prompt
 for the user to enter the necessary information. If user's dislike this,
 they can disable it.
 
-A customization group for \whyse is defined to organize its
+A customization group for \whyse{} is defined to organize its
 customization variables, and these details are explained before moving
 on to explain the struct used during runtime.
 
@@ -115,7 +116,7 @@ its Noweb source file, along with a shell command which generates the
 Noweb tool syntax for this project. Each Noweb project has a different
 command-line, and some are complex enough to have a makefile, or
 multiple makefiles! Noweb itself is an example of that level of
-complexity. The shell command is executed by \whyse upon loading the
+complexity. The shell command is executed by \whyse{} upon loading the
 project, and the standard output captured for parsing by a PEG parser
 defined in [[@<<PEG rules>>]].
 
@@ -217,7 +218,7 @@ exist in a [[custom-set-variables]] form).
 The function documentation string should be expalnatory enough for the
 behaviour of the [[whyse]] command.
 
-<<\whyse>>=
+<<\whyse{}>>=
 (defun whyse ()
   "Opens the default whyse project, conditionally running hooks.
 
@@ -303,7 +304,7 @@ This is the default for new projects."
 The structure accessed in the namesake command of the package is rather
 simple. It is defined quickly, then explained briefly.
 
-<<\whyse project structure>>=
+<<\whyse{} project structure>>=
 (cl-defstruct w-project
   "A WHYSE project"
   ;; Fundamental
@@ -444,17 +445,19 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
 
 
-\section{Customizing the behaviour of \whyse with hooks}
-\whyse is meant to be customizable, defining as little as necessary to
+\section{Customizing the behaviour of \whyse{} with hooks}
+\whyse{} is meant to be customizable, defining as little as necessary to
 implement a development environment for Noweb as described by
-\cite[Brown and Czejdo]{brown1991}.
+CITE brown1991.
+% \cite[Brown and Czejdo]{brown1991}
+.
 
 <<open-project-hook>>=
 (defvar w-open-project-hook '()
   "Hooks to run when `whyse' has opened a project.")
 @
 
-The default behaviour of \whyse is to insert all the chunks of the parsed
+The default behaviour of \whyse{} is to insert all the chunks of the parsed
 document into a database. Before it does that it works upon the parse
 tree, preparing it into a suitable format usable with EmacSQL (which the
 author is aware he's stated elsewhere).
@@ -475,8 +478,8 @@ tool syntax.
 
 The \textsc{peg} package for \textsc{Emacs} provides automatic parser
 generation from a formal PEG grammar. The grammar is based off of the
-description of the tool syntax given in the \cite[Noweb Hacker's
-  Guide]{ramsey1992}.
+description of the tool syntax given in the CITE ramsey1992% \cite[Noweb Hacker's Guide]{ramsey1992}
+.
 
 %%% FIXME: the technobabble here is unhelpful.
 %% Parsing the tool syntax allows for the generation of an
@@ -525,9 +528,9 @@ defined.
 (noweb (bob) (not header) (+ file) (not trailer) (eob))
 @
 
-It is a fatal error for \whyse if the header or trailer wrapper keywords
+It is a fatal error for \whyse{} if the header or trailer wrapper keywords
 appear in the text it is to parse. They are totally irrelevant, and only
-matter for the final back-ends (\TeX, \LaTeX, or HTML) that produce
+matter for the final back-ends (\TeX{}, \LaTeX{}, or HTML) that produce
 human-readable documenation.
 
 The grammar needs to address the fact that the syntax of the Noweb tool
@@ -558,8 +561,8 @@ specific root chunk is given on the command line.
 
 TODO: Write about the need for the overall document to be separate from
 the one-or-more files specified in the document. Exempli gratia: the
-current document, contained in \whysenw contains two files,
-though they are separately tangled: \whyseel and
+current document, contained in \whysenw{} contains two files,
+though they are separately tangled: \whyseel{} and
 \texttt{test-parser-with-temporary-buffer.el}. If these two files were
 tangled at the same time, such that the output file discovery ability of
 Noweb was used, then the there would be more than one file in the
@@ -652,7 +655,7 @@ invalid keyword is anything related to quotations! \textit{This
 restriction only applies to code blocks, however, and documentation
 chunks may contain quotations, of course.} As an exception, the
 keywords were originally banned inside code chunks, but to parse the
-noweb document in which \whyse itself was written it needed to be
+noweb document in which \whyse{} itself was written it needed to be
 adjusted. The grammar should be studied again to ensure that textual
 description and reality are in step.
 
@@ -660,7 +663,7 @@ description and reality are in step.
 %% were modified quite significantly from the initial definition so that it
 %% would ``work'', and so that \textit{whyse.nw} would be successfully
 %% parsed. ``Further, the implementation was modified to accommodate the
-%% parsing of the Noweb \whysenw firstly.''
+%% parsing of the Noweb \whysenw{} firstly.''
 
 <<chunks and their boundaries>>=
 (chunk-contents
@@ -893,11 +896,11 @@ those recognized by the autodefinitions filter).
 @
 
 The following chunk's name is documentation enough for the purposes of
-\whyse. See the Noweb Hacker's Guide for more information.
+\whyse{}. See the Noweb Hacker's Guide for more information.
 
 [[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
 not widely used (assumedly) nor well-documented, so it is unsupported by
-\whyse (contributions for improved support are welcomed).
+\whyse{} (contributions for improved support are welcomed).
 
 <<unsupported indexing keywords>>=
 ;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
@@ -1095,7 +1098,7 @@ may or may not work as expected."
 \part{Discovering the mystery of the meat}
 \label{part:mystery-meat}
 
-What are the steps to follow to implement \whyse? What is the meat of
+What are the steps to follow to implement \whyse{}? What is the meat of
 the application?
 
 The application has been in development for a little over two years and
@@ -1103,27 +1106,27 @@ I haven't made progress in nearly that much time. I know that I need
 {an~event~loop~\ref{event-hook-loop}}.
 
 What are the individual events that take place in a system such as
-\whyse? What takes place between the input of a file in \noweb format
+\whyse{}? What takes place between the input of a file in \noweb{} format
 into an application that either extends the mode(s) suitable for that
 format or extends the mode(s) suitable for the resulting \LaTeX{}-format
 file?
 
 {\paragraph{noweb-usage}
-  The standard steps in the usage of \noweb are as follows:
+  The standard steps in the usage of \noweb{} are as follows:
 
   \begin{itemize}[noweb-to-latex]
-  \item Write a \noweb-formatted file, and
+  \item Write a \noweb{}-formatted file, and
   \item Call \notangle on the file, with various options, OR
   \item Call \noweave on the file, with various options.
   \end{itemize}
 
   with not much else to it (except in expert cases, like the writing of a
-  large book or the development of an application like \whyse).
+  large book or the development of an application like \whyse{}).
 }
 
 Developing an application like this, even when a rudimentary design is
-available in \textsc{WHS} described in \cite[1991 by Brown and
-Czejdo]{brown1991}, is not easy. I haven't fully designed the program,
+available in \textsc{WHS} described in CITE brown1991% \cite[1991 by Brown and Czejdo]{brown1991}
+, is not easy. I haven't fully designed the program,
 or completed an analysis: I suppose I'm taking an ``agile'' approach to
 development. It's certainly not ``test-driven'' or following a
 traditional software development lifecycle (SDLC).
@@ -1131,7 +1134,7 @@ traditional software development lifecycle (SDLC).
 The following quotation examples the output of \noweave. The in-line
 forms [[@<<chunk-name>>]] and [[some prose with a [[quotation]]]] are
 not exampled below, only a code chunk. Documentation chunks are literal
-\LaTeX{}, with minimal embracement by \noweb macros (just
+\LaTeX{}, with minimal embracement by \noweb{} macros (just
 \texttt{\\nwbegindocs{*}}).
 
 \begin{Verbatim}
@@ -1163,54 +1166,109 @@ not exampled below, only a code chunk. Documentation chunks are literal
 \nwendcode{}
 \end{Verbatim}
 
-The fact that \noweb users usually author documents LaTeX documentation,
+The fact that \noweb{} users usually author documents LaTeX documentation,
 rather than nroff or HTML, gives quarter to the existing \LaTeX{}
-support in \emacs. \reftex and \auctex support extensions as a matter of
-course because they're written in \elisp; it's part of what they are.
-Could I be rid of the \whyse project (at least a first implementation)
-by beginning with adding support for the \noweb cross-reference, label,
+support in \emacs{}. \reftex and \auctex support extensions as a matter of
+course because they're written in \elisp{}; it's part of what they are.
+Could I be rid of the \whyse{} project (at least a first implementation)
+by beginning with adding support for the \noweb{} cross-reference, label,
 and index macros? It's very likely. It's what I'm doing.
 
-My development plan is to add support for \noweb's macros to \reftex and
+My development plan is to add support for \noweb{}'s macros to \reftex and
 \auctex then use the information gleaned from these packages to
 buttonize and markup (with overlays) the chunk headers and
 cross-references in poly-noweb buffers. \texttt{diff}s of the
-continually watched product of the \noweb-formatted source file and the
+continually watched product of the \noweb{}-formatted source file and the
 user-modified \LaTeX{}-formatted document (which is a derivation of the
 former), and suggestions for filters could conceivably allow two-way
-communication between \noweb and \auctex. Would that be \whyse? I don't
-think it would be wise to call it \whyse---the \textsc{WHS} implemented
-in \emacs---but it would still be \whyse: \emph{a particular}
+communication between \noweb{} and \auctex. Would that be \whyse{}? I don't
+think it would be wise to call it \whyse{}---the \textsc{WHS} implemented
+in \emacs{}---but it would still be \whyse{}: \emph{a particular}
 \textsc{((no)Web~HYpertext~System~in~Emacs)}. It may still be a stepping
 stone to the original notion, which would be interesting to explore, but
 I think it would be better than that original goal as well; it wouldn't
-be as flexible as the \noweb system is, however, as it would only
-support \LaTeX{} documentation, whereas \noweb supports other backends.
+be as flexible as the \noweb{} system is, however, as it would only
+support \LaTeX{} documentation, whereas \noweb{} supports other backends.
 
 \begin{quote}
-  \reftex has been bundled and pre-installed with \emacs since version
+  \reftex has been bundled and pre-installed with \emacs{} since version
   20.2.
 
   --- the \reftex \texinfo manual, ``with typographic editions''.
 \end{quote}
 
-Given \reftex has been a part of \emacs for so long it makes sense to
+Given \reftex has been a part of \emacs{} for so long it makes sense to
 simply defer to its featureset where it provides something useful,
 rather than replacing it with new functionality in Emacs; I haven't
 surpassed the featureset or implementation of \reftex, certainly not, so
 rather than replacing that I'll add to it.
 
-\chapter{Configuring \reftex to recognize the \noweb labelled
-  environment environments} \label{cha:conf-reft-recogn}
+\chapter{Configuring \reftex to support the \noweb through knoweb} \label{cha:conf-reft-recogn}
 
-The manual states that [[reftex-label-alist]] contains is bound to an
+\begin{quotation}
+  Support for RefTeX in such a style file is useful when the LaTeX style
+ defines macros or environments connected with labels, citations, or the index.
+\end{quotation}
+
+<<knoweb.el>>=
+;;; This is knoweb.el --- an Emacs LISP style file for AUCTeX and RefTeX. -*- mode: emacs-lisp -*-
+<<knoweb.el>>=
+;; AUCTeX customization: support for knoweb label environments.
+;; Conditionally supporting RefTeX.
+(TeX-add-style-hook "knoweb"
+ (lambda ()
+   (if (fboundp 'reftex-add-label-environments)
+       ;; Provide the symbol for the knoweb label environments.
+       (reftex-add-label-environments '(webcode moddef nwtypesetcomment thenowebchunks thenowebindex)))))
+@ 
+
+For example, the [[webcode]] environment is defined with:
+
+\begin{verbatim}
+\newenvironment{webcode}{%
+  \@begincode
+}{%
+  \endtrivlist}
+\end{verbatim}
+
+It looks like the [[webcode]] environment starts processing with an
+at-command and ends it with [[\\endtrivlist]], which ends a trivial list.
+
+<<knoweb.el>>=
+(TeX-add-symbols
+ '("nwbegincode" TeX-arg-define-macro)
+ '("nwendcode" TeX-arg-define-macro))
+;; \newcommand{\nwbegincode}[1]{%
+;;   \begingroup
+;;   \setlength{\topsep}{\nwcodetopsep}
+;;   \@beginparpenalty=\@highpenalty
+;;   \@endparpenalty=-\@highpenalty
+;;   \@begincode }
+@ 
+
+\subsection{\auctex Folding Support}
+To enable folding of noweb macros they must be present in the variable
+\texttt{TeX-fold-macro-spec-list}. Folding of noweb environment would be
+supported by adding these to \texttt{TeX-fold-env-spec-list}. These will
+apply to all \auctex modes unless the mode-specific spec-list variable
+is used instead (e.g. \texttt{LaTeX-fold-env-spec-list} would limit the
+folding support for noweb environments to \latex-specific modes enhanced
+by \auctex).
+
+\subsection{\reftex Label Support}
+\label{sec:label support}
+<<>>=
+
+@ 
+
+The \reftex manual states that [[reftex-label-alist]] is bound to an
 association list with infromation about the label and reference commands
 used to refer to sections (and environments). Seeing the
 [[reftex-label-alist-builtin]] below, I can understand that there is
 support for implicit and explicit environments: with an implicit
-environment being a section (\grave{a} la \html; ``implicit
-environments'' may not be a concept in \latex, but such nesting is how I
-conceive of hierarchical structuring in \latex as it actually is in
+environment being a section (\`{a} la \html; ``implicit
+environments'' may not be a concept in \LaTeX{}, but such nesting is how I
+conceive of hierarchical structuring in \LaTeX{} as it actually is in
 \html).
 
 \begin{Verbatim}
@@ -1237,6 +1295,14 @@ conceive of hierarchical structuring in \latex as it actually is in
          ("any" 32 " " "~\\ref{%s}" nil)))
 \end{Verbatim}
 
+\subsection{\reftex Index Support}
+\label{sec:Index Support}
+
+<<knoweb.el>>=
+
+@
+
+
 \reftex can also be configured to recognize index macros from packages
 (i.e. it can work with index entries apart from those defined with the
 built-in index commands).
@@ -1252,6 +1318,8 @@ built-in index commands).
   If you have a large number of macros defined, you may want to write
   an AUCTeX style file to support them with both AUCTeX and RefTeX.
 \end{Verbatim}
+
+\input{survey-of-woven-whyse-LaTeX-commands.tex}
 
 \chapter{Event-hook Loop}\label{event-hook-loop}
 There has always been some confusion in my mind as to how the system
@@ -1315,9 +1383,9 @@ using the current [[lesskeys]].
 
 \chapter{Processing parsed nowebs into SQL}\label{processing lists}
 This chapter covers how the parsed text generated in the \ref{parsing}
-chapter is processed, either creating a series of \sql statements that
+chapter is processed, either creating a series of \sql{} statements that
 will be executed by SQLite using the interface provided by the
-\textsc{EmacSQL} package, or used in some other way through \elisp.
+\textsc{EmacSQL} package, or used in some other way through \elisp{}.
 
 First, the overall structure of the parsed text should be diagrammed.
 The parse tree is a list of noweb documents, each being a list
@@ -1331,7 +1399,7 @@ alist is bewteen the symbol relating to the rule that generated the cons
 cell, and the contents appropriate to the symbol.
 
 \section{Processing}
-There are many steps to compiling the parse tree into \sequel. The first
+There are many steps to compiling the parse tree into \sequel{}. The first
 step is to ensure the association lists in the parse tree are in a
 format that is acceptable to built-in Emacs Lisp functions; this will
 make it easier to navigate the tree and transform it.
@@ -1366,7 +1434,7 @@ The initial parse tree begins like the one below.
    ((code . 1)
     (text . "jkl; is the right-handed corollary of asdf."))
    ((docs . 2)
-    (text . "\latex{} is great!"))
+    (text . "\LaTeX{} is great!"))
    ((docs . 3)
     (text . "Noweb, written by Norman Ramsey is sweet!"))))
 \end{verbatim}
@@ -1395,7 +1463,7 @@ text lines and form feed characters. These tokens exist because the
 cross-referencing tokens fragment the text lines, and new lines in the
 noweb document are treated specially to facilitate this fragmentation.
 
-A small quote from the tool syntax of a development version of \whyse is
+A small quote from the tool syntax of a development version of \whyse{} is
 shown in this example in its parsed form. However, during actual parsing
 these adjacent tokens are \textit{immediately collapsed} into singular
 tokens.
@@ -1424,7 +1492,7 @@ the zeroth-indexed document. It's quite a simple function. To obtain a
 given chunk of this document from the parse tree the result of the
 function is called with [[nth]] and the index of the chunk.
 
-<<functions for navigating \whyse parse trees>>=
+<<functions for navigating \whyse{} parse trees>>=
 (defun w--nth-document-file-name (nth-document parse-tree)
   "Return the file name of the nth-indexed document in the parse tree.
 
@@ -1469,7 +1537,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 
 <<Code>>=
-<<functions for navigating \whyse parse trees>>
+<<functions for navigating \whyse{} parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
 
@@ -1514,13 +1582,13 @@ If the two associations shouldn't be joined, return them to the stack."
 @
 
 The `parse-tree' from the lexical environment (or scope, given that
-\whyse is not implemented with lexical binding) is mapped over until
+\whyse{} is not implemented with lexical binding) is mapped over until
 every file token has been processed and records have been inserted into
 all four tables of the database.
 
 All files represented in the [[parse-tree]] (actually an association
 list) are processed into SQL database records while mapping over the
-[[parse-tree]] (whichever is in scope at the time because \whyse is
+[[parse-tree]] (whichever is in scope at the time because \whyse{} is
 implemented without lexical binding).
 
 <<default hook functions>>=
@@ -1683,10 +1751,10 @@ finding them and collecting their output.
 
 The following association list gives the keyword and the value
 corresponding to that which were seen in the intermediate representation
-used by noweb itself. To implement \whyse we utilize the intermediate
+used by noweb itself. To implement \whyse{} we utilize the intermediate
 representation (IR) for both editing and document compilation. Features
-unique to \whyse would add in new keywords, and these would only be
-processed by \whyse; filters should always ignore IR content that
+unique to \whyse{} would add in new keywords, and these would only be
+processed by \whyse{}; filters should always ignore IR content that
 doesn't concern them.
 
 \begin{verbatim}
@@ -1738,7 +1806,7 @@ doesn't concern them.
 
 
 
-\chapter{Packaging \whyse}
+\chapter{Packaging \whyse{}}
 Installing an \textsc{Emacs~LISP} package is quite easy if the system is
 distributed through the \textsc{GNU~Emacs~LISP~Package~Archive}
 (\textsc{GNU~ELPA}), and only slightly less easy if it is distributed
@@ -1753,14 +1821,14 @@ from such.
 This software is in-development, so it will only be distributed directly
 through \textsc{Git}.
 
-\whyse follows the form of ``simple'', single-file packages documented in
-the Emacs Lisp Reference Manual. The package file, \whyseel, is
+\whyse{} follows the form of ``simple'', single-file packages documented in
+the Emacs Lisp Reference Manual. The package file, \whyseel{}, is
 emitted by \texttt{notangle} which is called by the Makefile in every
-target but [[clean]]. All source development occurs in \whysenw
+target but [[clean]]. All source development occurs in \whysenw{}
 using \textsc{Polymode}.
 
 The makefile distributed alongside whyse.nw in the tarball contains the
-command-line used to tangle and weave \whyse.
+command-line used to tangle and weave \whyse{}.
 
 <<whyse.el>>=
 <<Emacs Lisp package headers>>
@@ -1843,7 +1911,7 @@ in the License section at the end of this document.
 ;;;; Internals
 <<Customization and global variables>>
 <<Widgets>>
-<<\whyse project structure>>
+<<\whyse{} project structure>>
 <<with-project>>
 <<buffer parsing function>>
 <<open-project-hook>>
@@ -1851,7 +1919,7 @@ in the License section at the end of this document.
 
 ;;;; Commands
 ;;;###autoload
-<<\whyse>>
+<<\whyse{}>>
 
 <<provide the whyse feature and list the file local variables>>=
 (provide 'whyse)
@@ -2001,7 +2069,7 @@ intended for Human readers.
 ``Emacs provides commands to move over pages and to operate on them.''
 \end{quote}
 
-Such is the primary purpose of \whyse, to extend this page-handling to
+Such is the primary purpose of \whyse{}, to extend this page-handling to
 noweb ``chunks'', which may be delimited by adding the following to
 the regular expression which normally matches only form-feed
 characters.

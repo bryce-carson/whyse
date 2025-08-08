@@ -6,7 +6,6 @@ BEGIN {
 
 $1 ~ /LaTeX/ {
     for (i = 2; i <= NF; i++) {
-        gsub(/ /, "", $i)
         print($i)
     }
     if (FNR != NR)
@@ -17,7 +16,6 @@ $1 ~ /LaTeX/ {
 $1 ~ /new command/{
     print("")
     for (i = 2; i <= NF; i++) {
-        gsub(/ /, "", $i)
         print("\\newcommand"$i)
     }
     print("")

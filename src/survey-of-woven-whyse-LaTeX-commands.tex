@@ -1,0 +1,226 @@
+\section{GROUP ONE}\label{group-one}
+
+This group was seen within paragraphing text (within a documentation
+chunk).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\{}\FunctionTok{\textbackslash{}Tt}\NormalTok{\{\}}\FunctionTok{\textbackslash{}nwlinkedidentq}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}}\FunctionTok{\textbackslash{}nwendquote}\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Reformatted, without arguments in the commands, it reads as follows.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\{}
+    \FunctionTok{\textbackslash{}Tt}\NormalTok{\{\}}
+    \FunctionTok{\textbackslash{}nwlinkedidentq}\NormalTok{\{\}\{\}}
+    \FunctionTok{\textbackslash{}nwendquote}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Whether all paragraphing text references are like this remains to be
+seen.
+
+Not all prosaic noweb macros are entirely composed of
+\texttt{nwlinkedidentq}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\{}\FunctionTok{\textbackslash{}Tt}\NormalTok{\{\}M{-}x\{}\FunctionTok{\textbackslash{}char}\NormalTok{126\}customize{-}group\{}\FunctionTok{\textbackslash{}char}\NormalTok{126\}}\FunctionTok{\textbackslash{}nwlinkedidentq}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}}\FunctionTok{\textbackslash{}nwendquote}\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+This time the reformatted group will not be stripped of command
+arguments.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\{}
+    \FunctionTok{\textbackslash{}Tt}\NormalTok{\{\}}
+\NormalTok{    M{-}x\{}\FunctionTok{\textbackslash{}char}\NormalTok{126\}customize{-}group\{}\FunctionTok{\textbackslash{}char}\NormalTok{126\}}
+    \FunctionTok{\textbackslash{}nwlinkedidentq}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}}
+    \FunctionTok{\textbackslash{}nwendquote}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{nwlinkedidentq} and \texttt{nwlinkedidentc} are commands which
+call internal macros appropriate to the selected package options.
+
+\textbf{Options applicable to all identifiers:} - subscriptidents; -
+nosubscriptidents; - hyperidents; - nohyperidents;
+
+\textbf{Options applicable only to identifiers appearing in quoted
+code:} - subscriptquotedidents; - nosubscriptquotedidents; -
+hyperquotedidents; - nohyperquotedidents.
+
+\section{GROUP TWO}\label{group-two}
+
+There command \texttt{nwlinkedidentc} is markup for identifiers used
+\emph{in code}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\textbackslash{}nwfilename}\NormalTok{\{/var/home/bryce/Documents/src/whyse/src/whyse.nw\}}\FunctionTok{\textbackslash{}nwbegincode}\NormalTok{\{1\}}\FunctionTok{\textbackslash{}sublabel}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}\FunctionTok{\textbackslash{}nwmargintag}\NormalTok{\{\{}\FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}\FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}\}\}}\FunctionTok{\textbackslash{}moddef}\NormalTok{\{Customization and global variables\textasciitilde{}\{}\FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}\FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}\}\}}\FunctionTok{\textbackslash{}endmoddef\textbackslash{}nwstartdeflinemarkup\textbackslash{}nwusesondefline}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}\}}\FunctionTok{\textbackslash{}nwprevnextdefs}\NormalTok{\{}\FunctionTok{\textbackslash{}relax}\NormalTok{\}\{NW43JrUv{-}4YCtgL{-}2\}}\FunctionTok{\textbackslash{}nwenddeflinemarkup}
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}(defgroup }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{  "noWeb HYpertext System in Emacs"}
+\NormalTok{  :tag "WHYSE"}
+\NormalTok{  :group \textquotesingle{}applications)}
+
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\}(defcustom }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{  "This variable stores all of the projects that are known to WHYSE."}
+\NormalTok{  :group \textquotesingle{}whyse}
+\NormalTok{  :type \textquotesingle{}(repeat w{-}{-}project{-}widget)}
+\NormalTok{  :require \textquotesingle{}widget}
+\NormalTok{  :tag "WHYSE Registered Projects")}
+
+\FunctionTok{\textbackslash{}nwalsodefined}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}2\}}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}3\}\}}\FunctionTok{\textbackslash{}nwused}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}\}}\FunctionTok{\textbackslash{}nwidentdefs}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}\{w{-}registered{-}projects\}\}}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}\}\}}\FunctionTok{\textbackslash{}nwendcode}\NormalTok{\{\}}\FunctionTok{\textbackslash{}nwbegindocs}\NormalTok{\{2\}}\FunctionTok{\textbackslash{}nwdocspar}
+\end{Highlighting}
+\end{Shaded}
+
+Reformatting this longer section, we have the following:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\textbackslash{}nwfilename}\NormalTok{\{/var/home/bryce/Documents/src/whyse/src/whyse.nw\}}
+\FunctionTok{\textbackslash{}nwbegincode}\NormalTok{\{1\}}
+\FunctionTok{\textbackslash{}sublabel}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\FunctionTok{\textbackslash{}nwmargintag}\NormalTok{\{}
+\NormalTok{    \{}
+        \FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}
+        \FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{    \}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}moddef}\NormalTok{\{Customization and global variables\textasciitilde{}}
+\NormalTok{    \{}
+        \FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}
+        \FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{    \}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}endmoddef}
+
+\FunctionTok{\textbackslash{}nwstartdeflinemarkup}
+    \FunctionTok{\textbackslash{}nwusesondefline}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}\}}
+    \FunctionTok{\textbackslash{}nwprevnextdefs}\NormalTok{\{}\FunctionTok{\textbackslash{}relax}\NormalTok{\}\{NW43JrUv{-}4YCtgL{-}2\}}
+\FunctionTok{\textbackslash{}nwenddeflinemarkup}
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}}\CommentTok{\% three arguments}
+\NormalTok{(defgroup }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{  "noWeb HYpertext System in Emacs"}
+\NormalTok{  :tag "WHYSE"}
+\NormalTok{  :group \textquotesingle{}applications)}
+
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{(defcustom }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{  "This variable stores all of the projects that are known to WHYSE."}
+\NormalTok{  :group \textquotesingle{}whyse}
+\NormalTok{  :type \textquotesingle{}(repeat w{-}{-}project{-}widget)}
+\NormalTok{  :require \textquotesingle{}widget}
+\NormalTok{  :tag "WHYSE Registered Projects")}
+
+\FunctionTok{\textbackslash{}nwalsodefined}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}2\}}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}3\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwused}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwidentdefs}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{}
+\NormalTok{        \{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}}
+\NormalTok{        \{w{-}registered{-}projects\}}
+\NormalTok{    \}}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{}
+\NormalTok{        \{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}}
+\NormalTok{    \}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwendcode}\NormalTok{\{\}}
+
+\FunctionTok{\textbackslash{}nwbegindocs}\NormalTok{\{2\}}\FunctionTok{\textbackslash{}nwdocspar}
+\end{Highlighting}
+\end{Shaded}
+
+\ldots and as formatted by \textbf{latexindent.pl}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\textbackslash{}nwfilename}\NormalTok{\{/var/home/bryce/Documents/src/whyse/src/whyse.nw\}}
+\FunctionTok{\textbackslash{}nwbegincode}\NormalTok{\{1\}}
+\FunctionTok{\textbackslash{}sublabel}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\FunctionTok{\textbackslash{}nwmargintag}\NormalTok{\{}
+\NormalTok{    \{}
+        \FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}
+        \FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{    \}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}moddef}\NormalTok{\{Customization and global variables\textasciitilde{}}
+\NormalTok{    \{}
+        \FunctionTok{\textbackslash{}nwtagstyle}\NormalTok{\{\}}
+        \FunctionTok{\textbackslash{}subpageref}\NormalTok{\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{    \}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}endmoddef}
+
+\FunctionTok{\textbackslash{}nwstartdeflinemarkup}
+\FunctionTok{\textbackslash{}nwusesondefline}\NormalTok{\{}\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}\}}
+\FunctionTok{\textbackslash{}nwprevnextdefs}\NormalTok{\{}\FunctionTok{\textbackslash{}relax}\NormalTok{\}\{NW43JrUv{-}4YCtgL{-}2\}}
+\FunctionTok{\textbackslash{}nwenddeflinemarkup}
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\}}\CommentTok{\% three arguments}
+\NormalTok{(defgroup }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{whyse\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{"noWeb HYpertext System in Emacs"}
+\NormalTok{:tag "WHYSE"}
+\NormalTok{:group \textquotesingle{}applications)}
+
+\FunctionTok{\textbackslash{}nwindexdefn}\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\}}
+\NormalTok{(defcustom }\FunctionTok{\textbackslash{}nwlinkedidentc}\NormalTok{\{w{-}registered{-}projects\}\{NW43JrUv{-}4YCtgL{-}1\} nil}
+\NormalTok{"This variable stores all of the projects that are known to WHYSE."}
+\NormalTok{:group \textquotesingle{}whyse}
+\NormalTok{:type \textquotesingle{}(repeat w{-}{-}project{-}widget)}
+\NormalTok{:require \textquotesingle{}widget}
+\NormalTok{:tag "WHYSE Registered Projects")}
+
+\FunctionTok{\textbackslash{}nwalsodefined}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}2\}}
+\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4YCtgL{-}3\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwused}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{NW43JrUv{-}4e7Hxw{-}3\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwidentdefs}\NormalTok{\{}
+    \FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{}
+\NormalTok{    \{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{w{-}registered{-}projects\}\}}
+\NormalTok{    \{w{-}registered{-}projects\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}\textbackslash{}}\NormalTok{\{}
+\NormalTok{\{}\FunctionTok{\textbackslash{}nwixident}\NormalTok{\{whyse\}\}\{whyse\}}
+\NormalTok{\}}
+\NormalTok{\}}
+\FunctionTok{\textbackslash{}nwendcode}\NormalTok{\{\}}
+
+\FunctionTok{\textbackslash{}nwbegindocs}\NormalTok{\{2\}}\FunctionTok{\textbackslash{}nwdocspar}
+\end{Highlighting}
+\end{Shaded}
+
+Until a later time, I can simply forget about the \texttt{nwfilename}
+macro. I am working on the absolute basic support at the moment. I
+cannot think about multi-noweb file documents yet.
+
+\texttt{nwbegincode} and \texttt{nwendcode} are environment specifying
+macros. It's fairly easy to understand that these must be paired
+properly. Exactly what they do is not a concern to me yet, I'm just
+noting that these are here and that they're mirrored commands. BEGIN.
+END. Simple, right?
+
+\texttt{moddef} and \texttt{endmoddef} are likewise paired commands.
+(IMPLICITLY BEGIN)THING. ENDTHING. This is less simple.
+
+\texttt{nwstartdeflinemarkup} and \texttt{nwenddeflinemarkup} are
+likewise a pair.
+
+\texttt{nwindexdefn} is a command that defines a term to be indexed. It
+takes three arguments.
+
+\texttt{nwlinkedidentc} is a cross-reference to an identifier. It takes
+two arguments.
