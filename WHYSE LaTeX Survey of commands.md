@@ -34,6 +34,9 @@ This time the reformatted group will not be stripped of command arguments.
 }
 ```
 
+The third and fourth groups (within the first) ensure that `\char126` is
+interpreted as a single unit, inserting a character with that number.
+
 `nwlinkedidentq` and `nwlinkedidentc` are commands which call internal macros appropriate to the selected package options.
 
 **Options applicable to all identifiers:**

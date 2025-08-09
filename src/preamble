@@ -34,6 +34,8 @@ use package:
   }};
   mparhack;
   mathptmx;
+  listings;
+  framed;
 # biblatex[style=ieee]{\addbibresource{whyse.bib}};
   knoweb[break code, footnote size code];
   hyperref[color links, backref=page];
