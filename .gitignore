@@ -22,3 +22,17 @@
 /whyse.aux
 # exemplary compilation
 whs.pdf
+/Dockerfile.aux
+/Dockerfile.fdb_latexmk
+/Dockerfile.fls
+/Dockerfile.log
+/Dockerfile.tex
+/Dockerfile.xdv
+/_region_.aux
+/_region_.fdb_latexmk
+/_region_.fls
+/_region_.log
+/_region_.tex
+/auto/
+/texput.aux
+/texput.log
