@@ -1,12 +1,21 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: dockerfile-mode; polymode-default-inner-mode: dockerfile-mode; fill-column: 72; -*-
 \newcommand{\whyse}{\textsc{WHYSE}}
 
+\section{Create the Dockerfile}
+\label{sec:dockerfile}
+
+The Dockerfile is a little annoying to read, so I ingested the relevant
+parts into a literate program in this file. It's a little silly to have
+done that because reading a Noweb file is also annoying, something I'm
+trying to fix, but at least it is now easier to manage the file by
+reason of documenting why I'm making a decision or a change.
+
 <<Dockerfile>>=
 # THIS DOCKERFILE IS TANGLED FROM DOCKERFILE.NW. Read the woven version, DOCKERFILE.PDF in doc/Dockerfile.pdf.
 # EDIT Dockerfile.nw to make editions.
 @ 
 
-\section{Build Dependencies}
+\subsection{Build Dependencies}
 \label{sec:build_dependencies}
 
 I have only had success compiling a \LaTeX{} document in a Debian 11 environment
