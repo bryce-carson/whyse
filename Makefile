@@ -5,7 +5,7 @@ SRC ?= ${ROOT_DIR}src
 TEST ?= ${ROOT_DIR}test
 
 # Allow NOWEB_LIB to be overridden (e.g., via command line or Docker)
-NOWEB_LIB ?= /usr/lib64/noweb
+NOWEB_LIB ?= /usr/local/noweb
 
 markup ?= ${NOWEB_LIB}/markup
 finduses ?= ${NOWEB_LIB}/finduses
@@ -20,10 +20,11 @@ builddir: clean
 	mkdir -p $(BUILD)
 
 awk: builddir
-	awk -f $(SRC)/preamble-processed-with.awk $(SRC)/preamble > $(BUILD)/preamble-processed-with.awk.tex
+	awk -f $(SRC)/preamble-processor.awk $(SRC)/preamble > $(BUILD)/preamble.tex
 
-weave: builddir
-	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
+weave: builddir awk
+	# noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $(BUILD)/whyse.tex
+	noweave -delay $(SRC)/whyse.nw > $(BUILD)/whyse.tex
 
 latexmk: weave
 	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f whyse.tex

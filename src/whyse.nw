@@ -1,7 +1,7 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
 % Codename "Wise Eel"
-\input{preamble-processed-with.awk.tex}%by Makefile before it builds whyse.tex.
+\input{preamble.tex}%by Makefile before it builds whyse.tex.
 
 \begin{document}
 %% \frontmatter%% FIXME: what did this do and why did I disable it?
@@ -23,14 +23,19 @@
 development environment for Noweb-based hypertexts within Emacs, similar
 to EDE but not sharing development principles. It is based off of an
 academic paper written in CITE brown1991.% \cite[1991 by Brown and Czejdo]{brown1991}.
-A
-paper describing this implementation---written in Noweb and browsable,
+
+You might pronounce the software as Wei{\ss}, or Wiess. I'm not a German
+speaker or writer, so the borrowed alphabet and spelling conventions may
+not help Germans especially nor the intended audience of native English
+readers.
+
+A paper describing this implementation---written in Noweb and browsable,
 editable, and auditable with \whyse{}, or readable in the printed
 form---is hoped to be submitted to \textit{The Journal of
-Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper will
-include historical information about literate programming, and citations
-(especially of those given credit in the [[@<<Commentary>>]] for
-ideating \whyse{} itself).
+  Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper
+will include historical information about literate programming, and
+citations (especially of those given credit in the [[@<<Commentary>>]]
+for ideating \whyse{} itself).
 
 Users of \whyse{} in Emacs are expected to be familiar with Noweb; this does not
 include how Noweb is built from source (that is arcane, supposedly). It may,
@@ -61,7 +66,6 @@ The organization of this literate program is (more or less) linear:
 implementation of the components of the program are explained as they
 enter scope while discussing how a user would encounter various \whyse{}
 features as in the \textit{user documenation}.
-
 
 
 
@@ -241,7 +245,7 @@ whyse group."
            (project (make-w-project :name (cl-first default-project)
                                     :noweb (cl-second default-project)
                                     :script (cl-third default-project)))
-           (parse-tree <<parse-project-in-temp-buffer>>))
+           (parse-tree (peg-noweb-parse-file (cl-second default-project))))
       (progn
         <<setup project database>>
         (run-hooks 'w-open-project-hook)
@@ -471,635 +475,13 @@ author is aware he's stated elsewhere).
 
 
 
-\chapter{Parsing project nowebs}\label{parsing}
-This section covers the parsing of the noweb tool syntax produced when
-[[whyse]] executes the project's defined shell script to generate the
-tool syntax.
-
-The \textsc{peg} package for \textsc{Emacs} provides automatic parser
-generation from a formal PEG grammar. The grammar is based off of the
-description of the tool syntax given in the CITE ramsey1992% \cite[Noweb Hacker's Guide]{ramsey1992}
-.
-
-%%% FIXME: the technobabble here is unhelpful.
-%% Parsing the tool syntax allows for the generation of an
-%% partially--directed graph, a digraph, of the network of chunks which
-%% have hierarchical, self and non-self references, with their
-%% sequential ordering and non-sequential orderings available for
-%% navigation (see
-%% \href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
-%% Knowledge Organization}} for futher information).
-
-%% NOTE: to match the new line character in a text stream, the string
-%% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
-%% of line by guarding the boolean return value of the standard Emacs
-%% Lisp (eolp). To test if point is at the end of a line, use (eol), to
-%% match the end of line, and permit parsing the next line of input,
-%% include the string literal "\n".
-\section{PEG rules}\label{rules}
-Every character of an input text to be parsed by parsing expressions in
-a PEG must be defined in terminal rules of the formal grammar. The root
-rule in the grammar for Noweb tool syntax is the appropriately named
-%% TODO: modify with-peg-rules; it should have `(declare (indent 2))'.
-[[noweb]] rule. Beginning [[with-peg-rules]] brought into scope, the
-root rule [[noweb]] is ran on the buffer containing the tool syntax
-produced by the project shell script.
-
-The grammar can be broken into five sections, each covering some part of
-parsing.
-
-<<PEG rules>>=
-<<high-level Noweb tool syntax structure>>
-<<files and their paths>>
-<<chunks and their boundaries>>
-<<quotations>>
-<<keyword definitions>>
-<<meta rules>>
-@
-
-As stated, the [[noweb]] rule defines the root expression---or starting
-expression---for the grammar. The tool syntax of Noweb is simply a list
-of one or more files, which are each composed of at least one chunk.
-Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
-defined.
-
-<<high-level Noweb tool syntax structure>>=
-;;; Overall Noweb structure
-(noweb (bob) (not header) (+ file) (not trailer) (eob))
-@
-
-It is a fatal error for \whyse{} if the header or trailer wrapper keywords
-appear in the text it is to parse. They are totally irrelevant, and only
-matter for the final back-ends (\TeX{}, \LaTeX{}, or HTML) that produce
-human-readable documenation.
-
-The grammar needs to address the fact that the syntax of the Noweb tool
-format is highly line-oriented, given the influence of AWK on the design
-and usage of Noweb (a historical version was entirely implemented in
-AWK). The following [[<<meta rules>>]] define rules which organize the
-constructs of a line-oriented, or data-oriented, syntax.
-
-<<meta rules>>=
-;; Helpers
-(nl (eol) "\n")
-(!eol (+ (not "\n") (any)))
-(spc " ")
-@
-
-TODO: Review the following paragraph and rephrase it.
-
-With the [[<<meta rules>>]] enabling easier definitions of what a given
-``keyword'' looks like, the /concept of a file/ can be defined. A file
-is ``anything that looks like a file to Noweb'';
-%% TODO: verify the functionality of:
-%% -Rone.el -Rtwo.el -Rthree.el#, or that of
-%% -Rone.el,two.el,three.el,four,five.h,six.c#
-files may be tangled from the noweb sources by specifying their root
-chunk names on the command-line. However, by default, only the chunk
-named ``*'' (it's chunk header is [[@<<*>>]]) is tangled when no
-specific root chunk is given on the command line.
-
-TODO: Write about the need for the overall document to be separate from
-the one-or-more files specified in the document. Exempli gratia: the
-current document, contained in \whysenw{} contains two files,
-though they are separately tangled: \whyseel{} and
-\texttt{test-parser-with-temporary-buffer.el}. If these two files were
-tangled at the same time, such that the output file discovery ability of
-Noweb was used, then the there would be more than one file in the
-intermediate tool syntax, but still a single preceeding documentation
-chunk before the first file, and a single succeeding documentation chunk
-after the last file.
-
-<<files and their paths>>=
-;; Technically, file is a tagging keyword, but that classification only
-;; makes sense in the Hacker's Guide to Noweb, not in the parser for the
-;; tool syntax.
-(file (bol) "@file" spc (substring path) nl
-      (action (setq w--file-current-line 0))
-      (list (and (+ chunk)
-                 (list (or (and x-chunks i-identifiers)
-                           (and i-identifiers x-chunks))))
-            ;; Trailing documentation chunk and new-lines after the xref
-            ;; and index.
-            (opt chunk)
-            (opt (+ nl)))
-      `(path chunk-list -- (cons path chunk-list)))
-(path (opt (or ".." ".")) (* path-component) file-name)
-(path-component (and path-separator (+ [word])))
-;; Perhaps I should instead `regexp-quote' the result of
-;; `f-path-separator' rather than hard-code the UNIX-like path
-;; separator. Doesn't Windows support automatic translation of UNIX-like
-;; paths to Windows-paths on the current drive now?
-(path-separator ["\\/"])
-(file-name (+ (or [word] ".")))
-@
-
-NOTE: Writing PEXes for matching file names was the most difficult part
-I have encountered so far, as it has forced me to understand that a
-first reading of documentation is usually not sufficient to understand a
-complex library in an area of programming I have not practiced in before
-(language parsing).
-
-Because chunks must not overlap, but can nest, the beginnings of chunks
-need to be pushed to the parsing stack and the end of a chunk needs to
-be popped off of it. The stack pushing operations in [[kind]] and
-[[ordinal]] delimit chunks by their kinds and number, and the stack
-actions in the [[end]] rule check that the chunk-related tokens on the
-stack are balanced.
-
-<<chunks and their boundaries>>=
-(chunk begin (list (* chunk-contents)) end)
-(begin (bol) "@begin" spc kind spc ordinal (eol) nl
-       (action (if (string= (cl-second peg--stack) "code")
-                   (setq w--peg-parser-within-codep t))))
-(end (bol) "@end" spc kind spc ordinal (eol) nl
-     (action
-      (setq w--peg-parser-within-codep nil))
-     ;; The stack grows down and the heap grows up,
-     ;; that's the yin and yang of the computer thang
-     `(kind-one
-       ordinal-one
-       keywords
-       kind-two
-       ordinal-two
-       --
-       (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
-           (cons (cons (if (string= kind-one "code")
-                           'code
-                         'docs)
-                       ordinal-one)
-                 keywords)
-         (error "Chunk nesting error encountered."))))
-(ordinal (substring [0-9] (* [0-9]))
-         `(number -- (string-to-number number)))
-(kind (substring (or "code" "docs")))
-@
-
-Valid [[chunk-contents]] is somewhat confusing, because chunks
-can contain many types of information other than text and new
-lines. The definition of what is valid follows.
-
-\begin{enumerate}
-\item \texttt{text}
-\item \texttt{nl}
-\item \texttt{defn \textit{name}}
-\item \texttt{use \textit{name}}
-\item \texttt{line \textit{n}}
-\item \texttt{language \textit{language}}
-\item \texttt{index \ldots}
-\item \texttt{xref \ldots}
-\end{enumerate}
-
-Any other keywords are invalid inside a code block. An example of an
-invalid keyword is anything related to quotations! \textit{This
-restriction only applies to code blocks, however, and documentation
-chunks may contain quotations, of course.} As an exception, the
-keywords were originally banned inside code chunks, but to parse the
-noweb document in which \whyse{} itself was written it needed to be
-adjusted. The grammar should be studied again to ensure that textual
-description and reality are in step.
-
-%% TODO: rephrase this and ensure it is accurate. The rules for parsing
-%% were modified quite significantly from the initial definition so that it
-%% would ``work'', and so that \textit{whyse.nw} would be successfully
-%% parsed. ``Further, the implementation was modified to accommodate the
-%% parsing of the Noweb \whysenw{} firstly.''
-
-<<chunks and their boundaries>>=
-(chunk-contents
- (or
-  <<structural keywords>>
-  <<tagging keywords>>
-  x-notused
-  <<tool errors>>))
-@
-
-It is easier to handle the fatal keyword appearing inside chunks when it
-is a permissible keyword to appear inside a chunk; this allows the
-parser to consider a chunk with fatal inside of it \textit{as a valid
-chunk}, but that does not mean that a chunk with a fatal keyword
-inside it does not invalidate a Noweb, it still does: the fatal keyword
-causes a fatal crash in parsing regardless. Those structural keywords
-which may be used inside the contents of a chunk are given next.
-
-<<structural keywords (except quotations)>>=
-;; structural
-text
-nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
-defn
-;;; NOTE: previously, a note on the following line incorrectly stated
-;;; the `use' token was related to the `identifierusedinmodule' table,
-;;; when it is actually related to the `parentchild' table.
-use
-@
-
-All structural keywords, then, are:
-
-<<structural keywords>>=
-<<structural keywords (except quotations)>>
-quotation
-@
-
-<<tagging keywords>>=
-;; tagging
-line
-language
-;; index
-i-define-or-use
-i-definitions
-;; xref
-x-prev-or-next-def
-x-continued-definitions-of-the-current-chunk
-i-usages
-x-usages
-x-label
-x-ref
-@
-
-Sometimes, however, the system will permit a chunk to be undefined and
-this leads to the only cases in the tool syntax where it is not
-line-oriented. [[noidx]] will read the cross references to other chunks
-and will be unable to generate the label, so it will insert [[@notdef]]
-where it would otherwise upcase ``nw'' and then insert the label. This
-is why [[x-undefined]] is placed among the other [[<<tool errors>>]]
-keywords.
-
-<<tool errors>>=
-;; error
-fatal
-x-undefined
-@
-
-The fundamental keywords are ``text'' and ``nwnl'' (new line, per Noweb
-convention). Text keywords contain source text, and any new line tokens
-in the source text are replaced with the appropriate number of @nl
-keywords (per convention); these are reduced to a single text token when
-they are adjacent on the [[peg--stack]].
-
-<<chunks and their boundaries>>=
-(text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-      `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
-(nwnl (bol) (substring "@nl") nl (action (setf w--file-current-line
-                                               (1+ w--file-current-line)))
-      ;; Be sure that when thinking about the symbol `nl' here that
-      ;; you're not confusing it with the peg rule nl.
-      `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
-@
-
-Nowebs are built from chunks, so the definition and usage of (i.e.
-references to) a chunk are important keywords.
-
-<<chunks and their boundaries>>=
-(defn "@defn" spc (substring !eol) nl
-      `(name -- (cons 'chunk name)))
-
-;; In @<<whyse.el>>=, it leads to usages tokens like below:
-;; (chunk-child-usage . "Commentary")
-;; (chunk-child-usage . "Code")
-(use
- (bol) "@use" spc (substring !eol) nl
- `(name --
-        (if name (cons 'chunk-child-usage name)
-          (error "UH-OH! There's a syntax error in the tool output!"))))
-@
-
-\begin{quotation}
-Documentation may contain text and newlines, represented by @text and
-[@nwnl]. It may also contain quoted code bracketed by @quote . . .
-@endquote. Every @quote must be terminated by an @endquote within the
-same chunk. Quoted code corresponds to the [[…]] construct in
-the noweb source.
-\end{quotation}
-
-<<quotations>>=
-(quotation (bol) "@quote" nl
-           (action (when w--peg-parser-within-codep
-                     (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
-           (substring (+ (and (not "@endquote") (any))))
-           (bol) "@endquote" nl
-           `(lst -- (cons 'quotation lst)))
-@
-
-<<keyword definitions>>=
-(line (bol) "@line" spc (substring ordinal) nl
-      `(o -- (cons 'line o)))
-
-(language (bol) "@language" spc (substring words-eol))
-@
-
-The indexing and cross-referencing abilities of Noweb are excellent
-features which enable a reader to navigate through a printed (off-line)
-or on-line version of the literate document quite nicely. These
-functionalities each begin with a rule which matches only part of a line
-of the tool syntax since there are many indexing and cross-referencing
-keywords. The common part of each line is a rule which merely matches
-the [[@index]] or [[@xref]] keyword. The rest of the lines are handled
-by a list of rules in [[index-keyword]] or [[xref-keyword]].
-
-
-The \textit{Noweb Hacker's Guide} lists these two lines in the ``Tagging
-keywords'' table, indicating that it's unlikely (or forbidden) that the
-index or xref keywords would appear alone without any subsequent
-information on the same line.
-
-\begin{quotation}
-@index ... Index information.
-
-@xref ... Cross-reference information
-\end{quotation}
-
-There are many keywords defined by the Noweb tool syntax, so they
-are referenced in this block and defined and documented
-separately. Some of these keywords are delimiters, so they are
-not given full ``keyword'' status (defined as a PEX rule) but
-exist as constants in the definition of a rule that defines the
-grouping.
-
-<<keyword definitions>>=
-;; Index
-<<indexing and cross-referencing set-off words>>
-<<fundamental indexing keywords, which are restricted to within a code chunk>>
-<<the index of identifiers>>
-<<unsupported indexing keywords>>
-
-;; Cross-reference
-<<cross-referencing keywords>>
-
-;; Error
-<<error-causing keywords>>
-@
-
-Further keywords are categorized neatly as Indexing or
-Cross--referencing keywords, so they are contained in subsections.
-
-\subsection{indexing}
-Indexing keywords, both those used within chunks and those used outside
-of chunks, are defined in this section. The
-[[<<fundamental indexing keywords, which are restricted to within a code chunk>>]],
-index definitions or usages of identifiers and track the definitions of
-identifiers in a chunk and the usages of identifiers in a chunk. They
-may seem redundant, but are not; the Noweb Hacker's Guide offers a
-better explanation of the differences.
-
-<<indexing and cross-referencing set-off words>>=
-(idx (bol) "@index" spc)
-(xr (bol) "@xref" spc)
-
-<<fundamental indexing keywords, which are restricted to within a code chunk>>=
-(i-define-or-use
- idx
- (substring (or "defn" "use")) spc (substring !eol) nl
- (action
-  (unless w--peg-parser-within-codep
-    (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
- `(s1 s2 -- (cons (make-symbol s1) s2)))
-
-<<identifiers defined in a chunk>>
-<<identifiers used in a chunk>>
-
-<<identifiers defined in a chunk>>=
-(i-definitions idx "begindefs" nl
-               (list (+ (and (+ i-isused) i-defitem)))
-               idx "enddefs" nl
-               `(definitions -- (cons 'definitions definitions)))
-(i-isused idx (substring "isused") spc (substring label) nl
-          `(u l -- (cons 'used! l)))
-(i-defitem idx (substring "defitem") spc (substring !eol) nl
-           `(d i -- (cons 'def-item i)))
-
-<<identifiers used in a chunk>>=
-(i-usages idx "beginuses" nl
-          (list (+ (and (+ i-isdefined) i-useitem)))
-          idx "enduses" nl
-          `(usages -- (cons 'usages usages)))
-(i-isdefined idx (substring "isdefined" spc label) nl)
-(i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
-@
-
-The summary index of identifiers is a file--specific set of keywords.
-The index lists all identifiers defined in the file (at least all of
-those recognized by the autodefinitions filter).
-
-<<the index of identifiers>>=
-(i-identifiers idx "beginindex" nl
-               (list (+ i-entry))
-               idx "endindex" nl
-               `(l -- (cons 'i-identifiers l)))
-(i-entry idx "entrybegin" spc (substring label spc !eol) nl
-         (list (+ (or i-entrydefn i-entryuse)))
-         idx "entryend" nl
-         `(entry-label lst -- (cons 'entry-label lst)))
-(i-entrydefn idx (substring "entrydefn") spc (substring label) nl
-             `(defn label -- (cons 'defn label)))
-(i-entryuse idx (substring "entryuse") spc (substring label) nl
-            `(use lst -- (cons 'use lst)))
-@
-
-The following chunk's name is documentation enough for the purposes of
-\whyse{}. See the Noweb Hacker's Guide for more information.
-
-[[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
-not widely used (assumedly) nor well-documented, so it is unsupported by
-\whyse{} (contributions for improved support are welcomed).
-
-<<unsupported indexing keywords>>=
-;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
-;; widely used (assumedly) nor well-documented, so it is unsupported by
-;; WHYSE (contributions for improved support are welcomed).
-(i-localdefn idx "localdefn" spc !eol nl)
-(i-nl idx "nl" spc !eol nl
-      (action (error <<index nl error message>>)))
-@
-
-\subsection{cross referencing}
-<<cross-referencing keywords>>=
-(x-label xr (substring "label" spc label) nl
-         `(substr -- (cons 'x-label (cadr (split-string substr)))))
-(x-ref xr (substring "ref" spc label) nl
-       `(substr --  (cons 'ref (cadr (split-string substr)))))
-
-;; FIXME: improve the error handling at this point. It is not fragile
-;; any longer, because most things are ignored and this is hackish;
-;; however, the message reporting is not too helpful. It would be nice
-;; to have _only_ the chunk name reported, and formatted with @<< and >>.
-;;
-;; TODO: Reproduction steps: make a reference to an undefined code chunk
-;; within another code chunk. For fixing this issue, undefined code
-;; chunks should also be referenced within quotations in documentation.
-(x-undefined
- xr (or "ref" "chunkbegin") spc
- (guard
-  (if (string= "nw@notdef"
-               (buffer-substring-no-properties (point) (+ 9 (point))))
-      (error (format "%s: %s: %s:\n@<@<%s>>"
-                     "WHYSE"
-                     "nw@notdef detected"
-                     "an undefined chunk was referenced"
-                     (buffer-substring-no-properties (progn (forward-line) (point))
-                                                     (end-of-line)))))))
-
-(x-prev-or-next-def
- xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
- `(previous-or-next-chunk-defn label -- (cons (make-symbol previous-or-next-chunk-defn) label)))
-
-(x-continued-definitions-of-the-current-chunk
- xr "begindefs" nl
- (list (+ (and xr (substring "defitem") spc (substring label) nl)))
- xr "enddefs" nl)
-
-(x-usages
- xr "beginuses" nl
- (list (+ (and xr "useitem" spc (substring label) nl)))
- xr "enduses" nl)
-
-(x-notused xr "notused" spc (substring !eol) nl
-           `(name -- (cons 'unused! name)))
-(x-chunks nwnl
-          nwnl
-          xr "beginchunks" nl
-          (list (+ x-chunk))
-          xr "endchunks" nl
-          `(l -- (cons 'x-chunks l)))
-(x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
-         (list (+ (list (and xr
-                             (substring (or "chunkuse" "chunkdefn"))
-                             `(chunk-usage-or-definition -- (make-symbol chunk-usage-or-definition))
-                             spc
-                             (substring label)
-                             nl))))
-         xr "chunkend" nl)
-
-;; Associates label with tag (@xref tag $LABEL $TAG)
-(x-tag xr "tag" spc label spc !eol nl)
-(label (+ (or "-" [alnum]))) ;; A label never contains whitespace.
-
-<<error-causing keywords>>=
-;; User-errors (header and trailer) and tool-error (fatal)
-;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
-(header (bol) "@header" ;; formatter options
-        (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-(trailer (bol) "@trailer" ;; formatter
-         (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-(fatal (bol) "@fatal"
-       (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
-@
-
-<<index nl error message>>=
-(string-join
- '("\"@index nl\" detected."
-   "This indicates hand-written @ %def syntax in the Noweb source."
-   "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
-   "Write an autodefs AWK script for the language you are using.")
- "\n")
-@
-
-%%  NOTE: it would be helpful to construct this sort of parse tree at
-%%  the CHUNK level, and this information can be directly sent to the
-%%  database.
-%% `((n . ,n)
-%%   (name . ,substr)
-%%   ;; Displacement: count of @nl encountered in this file so far.
-%%   (offset . ,offset)
-%%   (file . ,file)
-%%   (section . ,section)) ;; Discover a single LaTeX sectioning command
-%%                         ;; in the @text commands which are prior to
-%%                         ;; this module's definition, as that is the
-%%                         ;; direct parent section of this module.
-%%  SQL attributes in the `module' table
-%% module_number; module_name; displacement; file_name; section_name
-
-%% The definition of a Noweb file, given by Ramsey, is simply a file
-%% containing one or more chunks; minimally, a Noweb file will contain the
-%% default documentation chunk.
-
-%% To summarize this section, since it is longer than the previous section,
-%% the object is to convert the noweb document to tool syntax and parse it
-%% with the peg parser.
-
-%% In more explicit words, this section describes the actions that occur
-%% when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
-%% preconditions have been met; the [[whyse]] function has already been
-%% introduced, and only the ``meaty'' business end of its operation has
-%% been left undefined until now. Ergo, [[w-with-project]] gathers together
-%% the functionality that converts a Noweb to its tool syntax with a
-%% project's specified shell script, and parses the text before the next
-%% section of body forms is executed. Those send the parsed text to the
-%% database, and finally create the atomic window for the IDE in the active
-%% frame.
-
-%% In earlier development versions the following function body was
-%% referenced with noweb chunks rather than being defined as a function,
-%% however it was decided that implementing this as a function allowed a
-%% user-suggestion for an API-like function that was planned for
-%% implementation anyways. Now it is a function, satisfying internal and
-%% API needs.
-
-<<parse-project-in-temp-buffer>>=
-(with-temp-buffer
-  (insert (shell-command-to-string (w-project-script project)))
-  (goto-char (point-min))
-  (w--parse-current-buffer-with-rules))
-
-<<with-project>>=
-;; TODO: understand how and why this macro works like
-;; `with-temp-buffer'; I only copied a couple things from the defintion
-;; of that macro, but I don't yet understand its definition fully. I
-;; will need to before I really start to understand Emacs Lisp. I do
-;; understand enough, but there is a lot more to know. A whole lot.
-(defmacro w-with-project (project &rest body)
-  (declare (indent 0) (indent 2) (debug t))
-  "Evaluates BODY with PROJECT in scope. This is like `let' except
-it doesn't bind arbitrary values to arbitrary symbols. PROJECT is
-taken as the symbol `project' during evaluation of BODY.
-
-PROJECT is in scope because it is an argument of this macro. This
-may or may not work as expected."
-  (eval `(progn ,@body)))
-
-<<buffer parsing function>>=
-;; FIXME: the current parse tree contains a `nil' after the chunk type
-;; and number assoc, and that needs to be analyzed. Why is this `nil' in
-;; the stack? I assume and believe it is because of the collapsing of
-;; stringy tokens; when a token should be put back onto the stack it may
-;; also be putting a `nil' onto the stack in the first call to the
-;; function.
-;;;; Parsing expression grammar (PEG) rules
-(defun w--parse-current-buffer-with-rules ()
-  "Parse the current buffer with the PEG defined for Noweb tool syntax."
-  (with-peg-rules (<<PEG rules>>)
-
-   ;; FIXME: within this local, temporary scope there is no reason to use `w--' in a name.
-   (let (w--peg-parser-within-codep
-         (w--first-stringy-token? t))
-     (peg-run (peg noweb) #'w--parse-failure-function))))
-
-(defun w--parse-failure-function (lst)
-  (setq w--parse-success nil)
-  (pop-to-buffer (clone-buffer))
-  (save-excursion
-    (put-text-property (point) (point-min)
-                       'face 'success)
-
-    (put-text-property (point) (point-max)
-                       'face 'error)
-
-    (goto-char (point-max))
-    (message "PEXes which failed:\n%S" lst)))
-@
-
-<<Customization and global variables>>=
-(defvar w--parse-success t
-  "The success or failure of the last parsing of noweb tool syntax.")
-@
-
-
-
-
 \part{Discovering the mystery of the meat}
 \label{part:mystery-meat}
 
 What are the steps to follow to implement \whyse{}? What is the meat of
-the application?
+the application? This is not a question different from
+~\Ref{part:what-is-whyse}. That section focused on explaining the
+purpose of \whyse{}, rathern than
 
 The application has been in development for a little over two years and
 I haven't made progress in nearly that much time. I know that I need
@@ -1207,7 +589,8 @@ rather than replacing that I'll add to it.
 
 \begin{quotation}
   Support for RefTeX in such a style file is useful when the LaTeX style
- defines macros or environments connected with labels, citations, or the index.
+  defines macros or environments connected with labels, citations, or
+  the index.
 \end{quotation}
 
 <<knoweb.el>>=
@@ -1864,6 +1247,7 @@ The following chunk lists the [[<<required packages>>]]; as of
 (emacs "25.1")
 (emacsql "20230220")
 (peg "1.0.1")
+(peg-noweb "0.1")
 (cl-lib "1.0")
 @
 
@@ -1912,8 +1296,6 @@ in the License section at the end of this document.
 <<Customization and global variables>>
 <<Widgets>>
 <<\whyse{} project structure>>
-<<with-project>>
-<<buffer parsing function>>
 <<open-project-hook>>
 <<default hook functions>>
 
@@ -1979,6 +1361,7 @@ in the License section at the end of this document.
 \nowebindex
 
 \chapter{Miscellaneous code and functions useful for development and debugging}\label{misc}
+
 <<Code>>=
 (defun w--log-in-buffer (buffer-name &rest body)
   "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
@@ -2996,6 +2379,55 @@ much.
 
 \chapter{License}
 \input{../src/gpl-3.0.tex}
+
+\chapter{November 8, 2025}
+
+The following diagram shows which lines, in a Noweb document, need
+RefTeX support and what kind. Within a chunk there are cross-references
+to labels defined elsewhere as well as index entry definitions and
+cross-references to labels identically-defined.
+
+\begin{verbatim}
++-------------------+
+|                   |
+| @<<example.c>>=    |
+|i#define A foo     | i Index "A".
+| int main() {      |
+|x  printf(@<<S>>);  | x Cross-reference "S".
+| }                 |
+|                   |
+|l@<<S>>=            | l Label "S".
+| "Hello, world!"   |
+| @                 |
+|                   |
+| [[@<<S>>]] is a   | x Cross-reference "S".
+| new chunk label.  |
++-------------------+
+\end{verbatim}
+
+\chapter{Pipeline Architecture}
+\label{chap:pipe}
+
+I want to keep things very fucking simple now, because perfect and
+documented has become the enemy of the good and implemented.
+
+<<index-keywords.sh>>=
+#!/bin/sh
+
+awk '/^@index/ { print $0 }' </dev/stdin
+@ 
+
+The prior filter will remove all keywords that aren't indexing keywords.
+
+<<definitions.sh>>=
+#!/bin/sh
+
+awk '/^@index defn (.*)/ {
+if (match($0, /^@index defn (.*)/)) {
+ print(substr($0, match($0, /^@index defn (.*)/)))
+}
+}' </dev/stdin
+@ 
 
 \end{document}
 

@@ -1,7 +1,7 @@
 LaTeX:
   \documentclass[draft, enable deprecated font commands]{report};
-  \title{"The Implementation of \textsc{WHYSE}"};
-  \author{"Bryce Carson"}.
+  \title{The Implementation of \textsc{WHYSE}};
+  \author{Bryce Carson}.
 
 new command:
   {\whyse}{\textsc{WHYSE}};
@@ -37,7 +37,8 @@ use package:
   listings;
   framed;
 # biblatex[style=ieee]{\addbibresource{whyse.bib}};
-  knoweb[break code, footnote size code];
+  noweb;
+#  knoweb[break code, footnote size code];
   hyperref[color links, backref=page];
   verbatim;
   syntax;
