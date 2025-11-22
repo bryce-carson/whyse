@@ -1320,37 +1320,6 @@ in the License section at the end of this document.
 \newpage
 \chapter{TESTING}
 
-\section{Parsing tool syntax within a temporary buffer}
-<<test-parser-with-temporary-buffer.el>>=
-;; -*- lexical-binding: nil; -*-
-(defvar w--parse-success t
-  "A simple boolean regarding the success or fialure of the last
-  attempt to parse a buffer of Noweb tool syntax.")
-
-<<buffer parsing function>>
-(with-temp-buffer
-  (insert (shell-command-to-string
-           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
-  (goto-char (point-min))
-  (w--parse-current-buffer-with-rules))
-
-;; Local Variables:
-;; mode: lisp-interaction
-;; no-byte-compile: t
-;; no-native-compile: t
-;; eval: (read-only-mode)
-;; End:
-@
-
-
-
-
-
-
-
-
-
-
 %% \backmatter
 \chapter{Indices}
 
