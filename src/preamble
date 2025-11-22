@@ -24,7 +24,7 @@ use package:
   standalone;
   roboto[rm];
   fontenc[T1];
-  fontspec{\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]};
+#  fontspec{\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]};
   geometry{\geometry{
     top=0.625in,
     bottom=0.625in,
