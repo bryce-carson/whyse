@@ -276,3 +276,357 @@ non-null and that noclobber is not set.
   }
   fi;
 #+end_src
+* TODO Study knoweb.pdf to understand the Noweb LaTeX macros, page style, and more
+* Utilize hyperbole or widget to introduce functionality to buffer text
+** Test Buffer
+This buffer text is useful for creating widgets and testing the hypermedia functionality of whyse.
+
+#+begin_src :noweb no :tangle test/test.nw
+  <<a>>=
+  a
+  b
+  c
+  @
+  is as easy as
+  <<a>>=
+  1
+  2
+  <<b>>
+  <<b>>=
+  3
+  <<c>>=
+  <<a>>
+  @
+#+end_src
+
+The expected contents of ~c~ are:
+
+#+begin_example
+a
+b
+c
+is as easy as
+1
+2
+3
+#+end_example
+
+The following widget.el-related code inserts a code chunk header with navigation
+buttons between previous and proceeding chunk definitions (continuations).
+
+Perhaps I should use a minor mode to control narrowing. When narrowed only the
+current chunk would be visible. Adding text prior to the chunk header would
+append the new documentation to an existing documentation chunk or insert one.
+Terminating the code chunk with an =@= would work similarly and documentation
+proceeding the code chunk would be prepended to an existing documentation chunk
+following the code chunk or insert one. These mentions of appending, inserting,
+and preprending relate to a narrowed view, when the buffer text is narrowed to
+display /only a given code chunk/; when not narrowed this would be natural and
+manual... perhaps a virtual buffer would be the correct choice. Multiple
+buffers?
+
+#+begin_src emacs-lisp
+  (define-widget 'noweb-definition 'group
+    "A group of widgets giving the appearance of a chunk definition and the navigation between prior and proceeding definitions of the same chunk name.
+
+  Example:\n<<a-chunk-definition>>= [prev][next][both]")
+
+  ;; TODO: collect the widgets into a compound widget created with
+  ;; `define-widget'.
+  (defun whyse--create-defn-widget (chunk-name lines)
+    "Create a widget linking to earlier and later (if any) definitions of the
+  same CHUNK-NAME on the LINES of the original web buffer text."
+    ;; TODO: this widget should be followed by two buttons, each which will cause
+    ;; point to move to a position returned from the top of a `prev' or `next'
+    ;; stack of buffer positions.
+    (widget-create 'link
+                   :format "<<%v>>="
+                   :value chunk-name)
+
+    ;; Previous definitions (if any). `ctrl+enter' should go to the first.
+    (widget-insert "\t")
+    (widget-create 'button
+                   :format "%t [%v]"
+                   :tag "🧭"
+                   :value "prev")
+
+    ;; Next definitions (if any). `ctrl+enter' should go to the last.
+    (widget-create 'button
+                   :format "[%v]"
+                   :value "next")
+
+    (widget-insert "\t")
+    (widget-create 'button
+                   :format "%t [%v]"
+                   :tag "📜"
+                   :value "above|below|both"))
+
+  (whyse--create-defn-widget "a" lines)
+#+end_src
+
+The button-label string "above|below|both" in the example of the widget
+definition code above refers to a button whose label changes based upon what is
+currently toggled for the code chunk behaviour. When "both" is displayed, both
+prior and proceeding documentation chunks (if any) will be displayed while
+narrowing is in effect. 'Above' and 'below' are chosen to differentiate this
+button from the text 'prev' and 'next'.
+
+* The stages in the /notangle/ pipeline
+1. Convert the web to a machine-readable (tool) format.
+2. Extract the desired code chunk.
+
+* The stages in the /noweave/ pipeline
+This is an example of a particular noweave pipeline which includes indexing C
+code for identifiers and cross-references between chunks.
+
+1. Convert the web to a machine-readable (tool) format.
+2. Identify definitions of identifiers.
+3. Find usages of identifiers.
+4. Create an index of identifiers and cross-references.
+5. Generate LaTeX.
+
+* The stages in the /whyse/ pipeline
+#+begin_src sh :var WEB="~/src/whyse/src/whyse.nw"
+  markup WEB | autdefs elisp | finduses | noidx
+#+end_src
+
+1. Convert the web to a machine-readable (tool) format: ~markup WEB~.
+2. Identify definitions of identifiers: ~autodefs elisp~.
+3. Find usages of identifiers, skipping uses in quoted code (documentation): ~finduses -noquote~.
+4. Create an index of identifiers and cross-references: ~noidx~.
+5. Generate Emacs LISP.
+   1. Convert code and documentation chunks into widgets.
+      1. Documentation chunks are largely preserved as plain text; quotations and cross-references may need special handling.
+      2. Code chunks are converted to widgets using plain text.
+6. Evaluate the Emacs LISP.
+7. Modify the web source buffer using whyse-mode.
+8. Export the buffer to a web.
+   1. Convert widgets to plain text.
+      1. Chunk definition widgets contain "<<chunk-name>>=", which can be written directly; the rest of the widget data isn't exported.
+      2. Documentation chunks are already plain text.
+   2. Save the buffer to a file.
+9. Repeat steps 1--8 until the program and its documentation is complete.
+
+* Survey of the LaTeX commands generated by =totex=
+** GROUP ONE
+:PROPERTIES:
+:CUSTOM_ID: group-one
+:END:
+This group was seen within paragraphing text (within a documentation
+chunk).
+
+#+begin_src latex
+{\Tt{}\nwlinkedidentq{whyse}{NW43JrUv-4YCtgL-1}\nwendquote}
+#+end_src
+
+Reformatted, without arguments in the commands, it reads as follows.
+
+#+begin_src latex
+{
+    \Tt{}
+    \nwlinkedidentq{}{}
+    \nwendquote
+}
+#+end_src
+
+Whether all paragraphing text references are like this remains to be
+seen.
+
+Not all prosaic noweb macros are entirely composed of =nwlinkedidentq=:
+
+#+begin_src latex
+{\Tt{}M-x{\char126}customize-group{\char126}\nwlinkedidentq{whyse}{NW43JrUv-4YCtgL-1}\nwendquote}
+#+end_src
+
+This time the reformatted group will not be stripped of command
+arguments.
+
+#+begin_src latex
+{
+    \Tt{}
+    M-x{\char126}customize-group{\char126}
+    \nwlinkedidentq{whyse}{NW43JrUv-4YCtgL-1}
+    \nwendquote
+}
+#+end_src
+
+The third and fourth groups (within the first) ensure that =\char126= is
+interpreted as a single unit, inserting a character with that number.
+
+=nwlinkedidentq= and =nwlinkedidentc= are commands which call internal
+macros appropriate to the selected package options.
+
+*Options applicable to all identifiers:*
+
+- subscriptidents;
+- nosubscriptidents;
+- hyperidents;
+- nohyperidents;
+
+*Options applicable only to identifiers appearing in quoted code:*
+
+- subscriptquotedidents;
+- nosubscriptquotedidents;
+- hyperquotedidents;
+- nohyperquotedidents.
+
+** GROUP TWO
+:PROPERTIES:
+:CUSTOM_ID: group-two
+:END:
+The command =nwlinkedidentc= is markup for identifiers used /in code/:
+
+#+begin_src latex
+\nwfilename{/var/home/bryce/Documents/src/whyse/src/whyse.nw}\nwbegincode{1}\sublabel{NW43JrUv-4YCtgL-1}\nwmargintag{{\nwtagstyle{}\subpageref{NW43JrUv-4YCtgL-1}}}\moddef{Customization and global variables~{\nwtagstyle{}\subpageref{NW43JrUv-4YCtgL-1}}}\endmoddef\nwstartdeflinemarkup\nwusesondefline{\\{NW43JrUv-4e7Hxw-3}}\nwprevnextdefs{\relax}{NW43JrUv-4YCtgL-2}\nwenddeflinemarkup
+\nwindexdefn{\nwixident{whyse}}{whyse}{NW43JrUv-4YCtgL-1}(defgroup \nwlinkedidentc{whyse}{NW43JrUv-4YCtgL-1} nil
+  "noWeb HYpertext System in Emacs"
+  :tag "WHYSE"
+  :group 'applications)
+
+\nwindexdefn{\nwixident{w-registered-projects}}{w-registered-projects}{NW43JrUv-4YCtgL-1}(defcustom \nwlinkedidentc{w-registered-projects}{NW43JrUv-4YCtgL-1} nil
+  "This variable stores all of the projects that are known to WHYSE."
+  :group 'whyse
+  :type '(repeat w--project-widget)
+  :require 'widget
+  :tag "WHYSE Registered Projects")
+
+\nwalsodefined{\\{NW43JrUv-4YCtgL-2}\\{NW43JrUv-4YCtgL-3}}\nwused{\\{NW43JrUv-4e7Hxw-3}}\nwidentdefs{\\{{\nwixident{w-registered-projects}}{w-registered-projects}}\\{{\nwixident{whyse}}{whyse}}}\nwendcode{}\nwbegindocs{2}\nwdocspar
+#+end_src
+
+Reformatting this longer section, we have the following:
+
+#+begin_src latex
+\nwfilename{/var/home/bryce/Documents/src/whyse/src/whyse.nw}
+\nwbegincode{1}
+\sublabel{NW43JrUv-4YCtgL-1}
+\nwmargintag{
+    {
+        \nwtagstyle{}
+        \subpageref{NW43JrUv-4YCtgL-1}
+    }
+}
+\moddef{Customization and global variables~
+    {
+        \nwtagstyle{}
+        \subpageref{NW43JrUv-4YCtgL-1}
+    }
+}
+\endmoddef
+
+\nwstartdeflinemarkup
+    \nwusesondefline{\\{NW43JrUv-4e7Hxw-3}}
+    \nwprevnextdefs{\relax}{NW43JrUv-4YCtgL-2}
+\nwenddeflinemarkup
+\nwindexdefn{\nwixident{whyse}}{whyse}{NW43JrUv-4YCtgL-1}% three arguments
+(defgroup \nwlinkedidentc{whyse}{NW43JrUv-4YCtgL-1} nil
+  "noWeb HYpertext System in Emacs"
+  :tag "WHYSE"
+  :group 'applications)
+
+\nwindexdefn{\nwixident{w-registered-projects}}{w-registered-projects}{NW43JrUv-4YCtgL-1}
+(defcustom \nwlinkedidentc{w-registered-projects}{NW43JrUv-4YCtgL-1} nil
+  "This variable stores all of the projects that are known to WHYSE."
+  :group 'whyse
+  :type '(repeat w--project-widget)
+  :require 'widget
+  :tag "WHYSE Registered Projects")
+
+\nwalsodefined{
+    \\{NW43JrUv-4YCtgL-2}
+    \\{NW43JrUv-4YCtgL-3}
+}
+\nwused{
+    \\{NW43JrUv-4e7Hxw-3}
+}
+\nwidentdefs{
+    \\{
+        {\nwixident{w-registered-projects}}
+        {w-registered-projects}
+    }
+    \\{
+        {\nwixident{whyse}}{whyse}
+    }
+}
+\nwendcode{}
+
+\nwbegindocs{2}\nwdocspar
+#+end_src
+
+...and as formatted by *latexindent.pl*:
+
+#+begin_src latex
+\nwfilename{/var/home/bryce/Documents/src/whyse/src/whyse.nw}
+\nwbegincode{1}
+\sublabel{NW43JrUv-4YCtgL-1}
+\nwmargintag{
+    {
+        \nwtagstyle{}
+        \subpageref{NW43JrUv-4YCtgL-1}
+    }
+}
+\moddef{Customization and global variables~
+    {
+        \nwtagstyle{}
+        \subpageref{NW43JrUv-4YCtgL-1}
+    }
+}
+\endmoddef
+
+\nwstartdeflinemarkup
+\nwusesondefline{\\{NW43JrUv-4e7Hxw-3}}
+\nwprevnextdefs{\relax}{NW43JrUv-4YCtgL-2}
+\nwenddeflinemarkup
+\nwindexdefn{\nwixident{whyse}}{whyse}{NW43JrUv-4YCtgL-1}% three arguments
+(defgroup \nwlinkedidentc{whyse}{NW43JrUv-4YCtgL-1} nil
+"noWeb HYpertext System in Emacs"
+:tag "WHYSE"
+:group 'applications)
+
+\nwindexdefn{\nwixident{w-registered-projects}}{w-registered-projects}{NW43JrUv-4YCtgL-1}
+(defcustom \nwlinkedidentc{w-registered-projects}{NW43JrUv-4YCtgL-1} nil
+"This variable stores all of the projects that are known to WHYSE."
+:group 'whyse
+:type '(repeat w--project-widget)
+:require 'widget
+:tag "WHYSE Registered Projects")
+
+\nwalsodefined{
+    \\{NW43JrUv-4YCtgL-2}
+\\{NW43JrUv-4YCtgL-3}
+}
+\nwused{
+    \\{NW43JrUv-4e7Hxw-3}
+}
+\nwidentdefs{
+    \\{
+    {\nwixident{w-registered-projects}}
+    {w-registered-projects}
+}
+\\{
+{\nwixident{whyse}}{whyse}
+}
+}
+\nwendcode{}
+
+\nwbegindocs{2}\nwdocspar
+#+end_src
+
+Until a later time, I can simply forget about the =nwfilename= macro. I
+am working on the absolute basic support at the moment. I cannot think
+about multi-noweb file documents yet.
+
+=nwbegincode= and =nwendcode= are environment specifying macros. It's
+fairly easy to understand that these must be paired properly. Exactly
+what they do is not a concern to me yet, I'm just noting that these are
+here and that they're mirrored commands. BEGIN. END. Simple, right?
+
+=moddef= and =endmoddef= are likewise paired commands. (IMPLICITLY
+BEGIN)THING. ENDTHING. This is less simple.
+
+=nwstartdeflinemarkup= and =nwenddeflinemarkup= are likewise a pair.
+
+=nwindexdefn= is a command that defines a term to be indexed. It takes
+three arguments.
+
+=nwlinkedidentc= is a cross-reference to an identifier. It takes two
+arguments.
