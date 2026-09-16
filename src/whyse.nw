@@ -1,7 +1,53 @@
 %% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
 % Codename "Wise Eel"
-\input{preamble-processed-with.awk.tex}%by Makefile before it builds whyse.tex.
+\documentclass[draft, enable deprecated font commands]{report}
+\title{"The Implementation of \textsc{WHYSE}"}
+\author{"Bryce Carson"}
+
+\newcommand{\whyse}{\textsc{WHYSE}}
+\newcommand{\whyseel}{\texttt{whyse.el}}
+\newcommand{\whysenw}{\texttt{whyse.nw}}
+\newcommand{\elisp}{\textsc{Emacs LISP}}
+\newcommand{\lisp}{\textsc{LISP}}
+\newcommand{\sql}{SQL}
+\newcommand{\sequel}{SQL}
+\newcommand{\noweb}{\textsc{noweb}}
+\newcommand{\notangle}{\texttt{notangle}}
+\newcommand{\noweave}{\texttt{noweave}}
+\newcommand{\emacs}{\textsc{GNU Emacs}}
+\newcommand{\auctex}{AUC\TeX{}}
+\newcommand{\reftex}{Ref\TeX{}}
+\newcommand{\texinfo}{\TeX{}info}
+\newcommand{\html}{\textsc{HTML}}
+
+\usepackage{standalone}
+\usepackage[rm]{roboto}
+\usepackage[T1]{fontenc}
+\usepackage{fontspec}
+\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]
+\usepackage{geometry}
+\geometry{
+  top=0.625in,
+  bottom=0.625in,
+  left=0.625in,
+  right=0.625in,
+  papersize={6in, 9in}
+}
+\usepackage{mparhack}
+\usepackage{mathptmx}
+\usepackage{listings}
+\usepackage{framed}
+\usepackage[breakcode,footnotesizecode]{knoweb}
+\usepackage[colorlinks,backref=page]{hyperref}
+\usepackage{verbatim}
+\usepackage{syntax}
+\usepackage{xspace}
+\usepackage{paralist}
+\usepackage{color}
+\usepackage{fancyvrb}
+
+\pagestyle{noweb}
 
 \begin{document}
 %% \frontmatter%% FIXME: what did this do and why did I disable it?
@@ -23,14 +69,14 @@
 development environment for Noweb-based hypertexts within Emacs, similar
 to EDE but not sharing development principles. It is based off of an
 academic paper written in CITE brown1991.% \cite[1991 by Brown and Czejdo]{brown1991}.
-A
-paper describing this implementation---written in Noweb and browsable,
+
+A paper describing this implementation---written in Noweb and browsable,
 editable, and auditable with \whyse{}, or readable in the printed
 form---is hoped to be submitted to \textit{The Journal of
-Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper will
-include historical information about literate programming, and citations
-(especially of those given credit in the [[@<<Commentary>>]] for
-ideating \whyse{} itself).
+  Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper
+will include historical information about literate programming, and
+citations (especially of those given credit in the [[@<<Commentary>>]]
+for ideating \whyse{} itself).
 
 Users of \whyse{} in Emacs are expected to be familiar with Noweb; this does not
 include how Noweb is built from source (that is arcane, supposedly). It may,
@@ -235,7 +281,7 @@ whyse group."
   ;; no-op function.
   (when (and (not w-load-default-project?)
              (not w-open-customize-when-no-projects-defined?))
-    (warn "The customization options for `whyse' have effectively disabled the `whyse' command."))
+    (warn "The current customization options for `whyse' have effectively disabled the `whyse' command."))
   (if-let ((w-load-default-project?)
            (default-project (cl-first w-registered-projects))
            (project (make-w-project :name (cl-first default-project)
@@ -246,7 +292,7 @@ whyse group."
         <<setup project database>>
         (run-hooks 'w-open-project-hook)
         ;; TODO: the connection closure should be on a timer that,
-        ;; perphas, should be reset everytime a `w'-prefixed function is
+        ;; perhaps, should be reset everytime a `w'-prefixed function is
         ;; called.
         (emacsql-close (w-project-database-connection project)))
     (unless (not w-open-customize-when-no-projects-defined?)
@@ -468,571 +514,8 @@ author is aware he's stated elsewhere).
 @
 
 
+%% NOTE: peg-noweb.nw was excised from this location.
 
-
-
-\chapter{Parsing project nowebs}\label{parsing}
-This section covers the parsing of the noweb tool syntax produced when
-[[whyse]] executes the project's defined shell script to generate the
-tool syntax.
-
-The \textsc{peg} package for \textsc{Emacs} provides automatic parser
-generation from a formal PEG grammar. The grammar is based off of the
-description of the tool syntax given in the CITE ramsey1992% \cite[Noweb Hacker's Guide]{ramsey1992}
-.
-
-%%% FIXME: the technobabble here is unhelpful.
-%% Parsing the tool syntax allows for the generation of an
-%% partially--directed graph, a digraph, of the network of chunks which
-%% have hierarchical, self and non-self references, with their
-%% sequential ordering and non-sequential orderings available for
-%% navigation (see
-%% \href{https://www.isko.org/cyclo/hypertext#2.5}{\textsc{Intl. Soc.
-%% Knowledge Organization}} for futher information).
-
-%% NOTE: to match the new line character in a text stream, the string
-%% literal "\n" must be included. The (eol) PEG rule /tests/ for the end
-%% of line by guarding the boolean return value of the standard Emacs
-%% Lisp (eolp). To test if point is at the end of a line, use (eol), to
-%% match the end of line, and permit parsing the next line of input,
-%% include the string literal "\n".
-\section{PEG rules}\label{rules}
-Every character of an input text to be parsed by parsing expressions in
-a PEG must be defined in terminal rules of the formal grammar. The root
-rule in the grammar for Noweb tool syntax is the appropriately named
-%% TODO: modify with-peg-rules; it should have `(declare (indent 2))'.
-[[noweb]] rule. Beginning [[with-peg-rules]] brought into scope, the
-root rule [[noweb]] is ran on the buffer containing the tool syntax
-produced by the project shell script.
-
-The grammar can be broken into five sections, each covering some part of
-parsing.
-
-<<PEG rules>>=
-<<high-level Noweb tool syntax structure>>
-<<files and their paths>>
-<<chunks and their boundaries>>
-<<quotations>>
-<<keyword definitions>>
-<<meta rules>>
-@
-
-As stated, the [[noweb]] rule defines the root expression---or starting
-expression---for the grammar. The tool syntax of Noweb is simply a list
-of one or more files, which are each composed of at least one chunk.
-Ergo, the following [[<<high-level Noweb tool syntax structure>>]] is
-defined.
-
-<<high-level Noweb tool syntax structure>>=
-;;; Overall Noweb structure
-(noweb (bob) (not header) (+ file) (not trailer) (eob))
-@
-
-It is a fatal error for \whyse{} if the header or trailer wrapper keywords
-appear in the text it is to parse. They are totally irrelevant, and only
-matter for the final back-ends (\TeX{}, \LaTeX{}, or HTML) that produce
-human-readable documenation.
-
-The grammar needs to address the fact that the syntax of the Noweb tool
-format is highly line-oriented, given the influence of AWK on the design
-and usage of Noweb (a historical version was entirely implemented in
-AWK). The following [[<<meta rules>>]] define rules which organize the
-constructs of a line-oriented, or data-oriented, syntax.
-
-<<meta rules>>=
-;; Helpers
-(nl (eol) "\n")
-(!eol (+ (not "\n") (any)))
-(spc " ")
-@
-
-TODO: Review the following paragraph and rephrase it.
-
-With the [[<<meta rules>>]] enabling easier definitions of what a given
-``keyword'' looks like, the /concept of a file/ can be defined. A file
-is ``anything that looks like a file to Noweb'';
-%% TODO: verify the functionality of:
-%% -Rone.el -Rtwo.el -Rthree.el#, or that of
-%% -Rone.el,two.el,three.el,four,five.h,six.c#
-files may be tangled from the noweb sources by specifying their root
-chunk names on the command-line. However, by default, only the chunk
-named ``*'' (it's chunk header is [[@<<*>>]]) is tangled when no
-specific root chunk is given on the command line.
-
-TODO: Write about the need for the overall document to be separate from
-the one-or-more files specified in the document. Exempli gratia: the
-current document, contained in \whysenw{} contains two files,
-though they are separately tangled: \whyseel{} and
-\texttt{test-parser-with-temporary-buffer.el}. If these two files were
-tangled at the same time, such that the output file discovery ability of
-Noweb was used, then the there would be more than one file in the
-intermediate tool syntax, but still a single preceeding documentation
-chunk before the first file, and a single succeeding documentation chunk
-after the last file.
-
-<<files and their paths>>=
-;; Technically, file is a tagging keyword, but that classification only
-;; makes sense in the Hacker's Guide to Noweb, not in the parser for the
-;; tool syntax.
-(file (bol) "@file" spc (substring path) nl
-      (action (setq w--file-current-line 0))
-      (list (and (+ chunk)
-                 (list (or (and x-chunks i-identifiers)
-                           (and i-identifiers x-chunks))))
-            ;; Trailing documentation chunk and new-lines after the xref
-            ;; and index.
-            (opt chunk)
-            (opt (+ nl)))
-      `(path chunk-list -- (cons path chunk-list)))
-(path (opt (or ".." ".")) (* path-component) file-name)
-(path-component (and path-separator (+ [word])))
-;; Perhaps I should instead `regexp-quote' the result of
-;; `f-path-separator' rather than hard-code the UNIX-like path
-;; separator. Doesn't Windows support automatic translation of UNIX-like
-;; paths to Windows-paths on the current drive now?
-(path-separator ["\\/"])
-(file-name (+ (or [word] ".")))
-@
-
-NOTE: Writing PEXes for matching file names was the most difficult part
-I have encountered so far, as it has forced me to understand that a
-first reading of documentation is usually not sufficient to understand a
-complex library in an area of programming I have not practiced in before
-(language parsing).
-
-Because chunks must not overlap, but can nest, the beginnings of chunks
-need to be pushed to the parsing stack and the end of a chunk needs to
-be popped off of it. The stack pushing operations in [[kind]] and
-[[ordinal]] delimit chunks by their kinds and number, and the stack
-actions in the [[end]] rule check that the chunk-related tokens on the
-stack are balanced.
-
-<<chunks and their boundaries>>=
-(chunk begin (list (* chunk-contents)) end)
-(begin (bol) "@begin" spc kind spc ordinal (eol) nl
-       (action (if (string= (cl-second peg--stack) "code")
-                   (setq w--peg-parser-within-codep t))))
-(end (bol) "@end" spc kind spc ordinal (eol) nl
-     (action
-      (setq w--peg-parser-within-codep nil))
-     ;; The stack grows down and the heap grows up,
-     ;; that's the yin and yang of the computer thang
-     `(kind-one
-       ordinal-one
-       keywords
-       kind-two
-       ordinal-two
-       --
-       (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
-           (cons (cons (if (string= kind-one "code")
-                           'code
-                         'docs)
-                       ordinal-one)
-                 keywords)
-         (error "Chunk nesting error encountered."))))
-(ordinal (substring [0-9] (* [0-9]))
-         `(number -- (string-to-number number)))
-(kind (substring (or "code" "docs")))
-@
-
-Valid [[chunk-contents]] is somewhat confusing, because chunks
-can contain many types of information other than text and new
-lines. The definition of what is valid follows.
-
-\begin{enumerate}
-\item \texttt{text}
-\item \texttt{nl}
-\item \texttt{defn \textit{name}}
-\item \texttt{use \textit{name}}
-\item \texttt{line \textit{n}}
-\item \texttt{language \textit{language}}
-\item \texttt{index \ldots}
-\item \texttt{xref \ldots}
-\end{enumerate}
-
-Any other keywords are invalid inside a code block. An example of an
-invalid keyword is anything related to quotations! \textit{This
-restriction only applies to code blocks, however, and documentation
-chunks may contain quotations, of course.} As an exception, the
-keywords were originally banned inside code chunks, but to parse the
-noweb document in which \whyse{} itself was written it needed to be
-adjusted. The grammar should be studied again to ensure that textual
-description and reality are in step.
-
-%% TODO: rephrase this and ensure it is accurate. The rules for parsing
-%% were modified quite significantly from the initial definition so that it
-%% would ``work'', and so that \textit{whyse.nw} would be successfully
-%% parsed. ``Further, the implementation was modified to accommodate the
-%% parsing of the Noweb \whysenw{} firstly.''
-
-<<chunks and their boundaries>>=
-(chunk-contents
- (or
-  <<structural keywords>>
-  <<tagging keywords>>
-  x-notused
-  <<tool errors>>))
-@
-
-It is easier to handle the fatal keyword appearing inside chunks when it
-is a permissible keyword to appear inside a chunk; this allows the
-parser to consider a chunk with fatal inside of it \textit{as a valid
-chunk}, but that does not mean that a chunk with a fatal keyword
-inside it does not invalidate a Noweb, it still does: the fatal keyword
-causes a fatal crash in parsing regardless. Those structural keywords
-which may be used inside the contents of a chunk are given next.
-
-<<structural keywords (except quotations)>>=
-;; structural
-text
-nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
-defn
-;;; NOTE: previously, a note on the following line incorrectly stated
-;;; the `use' token was related to the `identifierusedinmodule' table,
-;;; when it is actually related to the `parentchild' table.
-use
-@
-
-All structural keywords, then, are:
-
-<<structural keywords>>=
-<<structural keywords (except quotations)>>
-quotation
-@
-
-<<tagging keywords>>=
-;; tagging
-line
-language
-;; index
-i-define-or-use
-i-definitions
-;; xref
-x-prev-or-next-def
-x-continued-definitions-of-the-current-chunk
-i-usages
-x-usages
-x-label
-x-ref
-@
-
-Sometimes, however, the system will permit a chunk to be undefined and
-this leads to the only cases in the tool syntax where it is not
-line-oriented. [[noidx]] will read the cross references to other chunks
-and will be unable to generate the label, so it will insert [[@notdef]]
-where it would otherwise upcase ``nw'' and then insert the label. This
-is why [[x-undefined]] is placed among the other [[<<tool errors>>]]
-keywords.
-
-<<tool errors>>=
-;; error
-fatal
-x-undefined
-@
-
-The fundamental keywords are ``text'' and ``nwnl'' (new line, per Noweb
-convention). Text keywords contain source text, and any new line tokens
-in the source text are replaced with the appropriate number of @nl
-keywords (per convention); these are reduced to a single text token when
-they are adjacent on the [[peg--stack]].
-
-<<chunks and their boundaries>>=
-(text (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
-      `(txt -- (w--concatenate-text-tokens (cons 'text txt))))
-(nwnl (bol) (substring "@nl") nl (action (setf w--file-current-line
-                                               (1+ w--file-current-line)))
-      ;; Be sure that when thinking about the symbol `nl' here that
-      ;; you're not confusing it with the peg rule nl.
-      `(nl -- (w--concatenate-text-tokens (cons 'nl "\n"))))
-@
-
-Nowebs are built from chunks, so the definition and usage of (i.e.
-references to) a chunk are important keywords.
-
-<<chunks and their boundaries>>=
-(defn "@defn" spc (substring !eol) nl
-      `(name -- (cons 'chunk name)))
-
-;; In @<<whyse.el>>=, it leads to usages tokens like below:
-;; (chunk-child-usage . "Commentary")
-;; (chunk-child-usage . "Code")
-(use
- (bol) "@use" spc (substring !eol) nl
- `(name --
-        (if name (cons 'chunk-child-usage name)
-          (error "UH-OH! There's a syntax error in the tool output!"))))
-@
-
-\begin{quotation}
-Documentation may contain text and newlines, represented by @text and
-[@nwnl]. It may also contain quoted code bracketed by @quote . . .
-@endquote. Every @quote must be terminated by an @endquote within the
-same chunk. Quoted code corresponds to the [[…]] construct in
-the noweb source.
-\end{quotation}
-
-<<quotations>>=
-(quotation (bol) "@quote" nl
-           (action (when w--peg-parser-within-codep
-                     (error "The parser found a quotation within a code chunk. A @fatal should have been found here, but was not.")))
-           (substring (+ (and (not "@endquote") (any))))
-           (bol) "@endquote" nl
-           `(lst -- (cons 'quotation lst)))
-@
-
-<<keyword definitions>>=
-(line (bol) "@line" spc (substring ordinal) nl
-      `(o -- (cons 'line o)))
-
-(language (bol) "@language" spc (substring words-eol))
-@
-
-The indexing and cross-referencing abilities of Noweb are excellent
-features which enable a reader to navigate through a printed (off-line)
-or on-line version of the literate document quite nicely. These
-functionalities each begin with a rule which matches only part of a line
-of the tool syntax since there are many indexing and cross-referencing
-keywords. The common part of each line is a rule which merely matches
-the [[@index]] or [[@xref]] keyword. The rest of the lines are handled
-by a list of rules in [[index-keyword]] or [[xref-keyword]].
-
-
-The \textit{Noweb Hacker's Guide} lists these two lines in the ``Tagging
-keywords'' table, indicating that it's unlikely (or forbidden) that the
-index or xref keywords would appear alone without any subsequent
-information on the same line.
-
-\begin{quotation}
-@index ... Index information.
-
-@xref ... Cross-reference information
-\end{quotation}
-
-There are many keywords defined by the Noweb tool syntax, so they
-are referenced in this block and defined and documented
-separately. Some of these keywords are delimiters, so they are
-not given full ``keyword'' status (defined as a PEX rule) but
-exist as constants in the definition of a rule that defines the
-grouping.
-
-<<keyword definitions>>=
-;; Index
-<<indexing and cross-referencing set-off words>>
-<<fundamental indexing keywords, which are restricted to within a code chunk>>
-<<the index of identifiers>>
-<<unsupported indexing keywords>>
-
-;; Cross-reference
-<<cross-referencing keywords>>
-
-;; Error
-<<error-causing keywords>>
-@
-
-Further keywords are categorized neatly as Indexing or
-Cross--referencing keywords, so they are contained in subsections.
-
-\subsection{indexing}
-Indexing keywords, both those used within chunks and those used outside
-of chunks, are defined in this section. The
-[[<<fundamental indexing keywords, which are restricted to within a code chunk>>]],
-index definitions or usages of identifiers and track the definitions of
-identifiers in a chunk and the usages of identifiers in a chunk. They
-may seem redundant, but are not; the Noweb Hacker's Guide offers a
-better explanation of the differences.
-
-<<indexing and cross-referencing set-off words>>=
-(idx (bol) "@index" spc)
-(xr (bol) "@xref" spc)
-
-<<fundamental indexing keywords, which are restricted to within a code chunk>>=
-(i-define-or-use
- idx
- (substring (or "defn" "use")) spc (substring !eol) nl
- (action
-  (unless w--peg-parser-within-codep
-    (error "WHYSE parse error: index definition or index usage occurred outside of a code chunk.")))
- `(s1 s2 -- (cons (make-symbol s1) s2)))
-
-<<identifiers defined in a chunk>>
-<<identifiers used in a chunk>>
-
-<<identifiers defined in a chunk>>=
-(i-definitions idx "begindefs" nl
-               (list (+ (and (+ i-isused) i-defitem)))
-               idx "enddefs" nl
-               `(definitions -- (cons 'definitions definitions)))
-(i-isused idx (substring "isused") spc (substring label) nl
-          `(u l -- (cons 'used! l)))
-(i-defitem idx (substring "defitem") spc (substring !eol) nl
-           `(d i -- (cons 'def-item i)))
-
-<<identifiers used in a chunk>>=
-(i-usages idx "beginuses" nl
-          (list (+ (and (+ i-isdefined) i-useitem)))
-          idx "enduses" nl
-          `(usages -- (cons 'usages usages)))
-(i-isdefined idx (substring "isdefined" spc label) nl)
-(i-useitem idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
-@
-
-The summary index of identifiers is a file--specific set of keywords.
-The index lists all identifiers defined in the file (at least all of
-those recognized by the autodefinitions filter).
-
-<<the index of identifiers>>=
-(i-identifiers idx "beginindex" nl
-               (list (+ i-entry))
-               idx "endindex" nl
-               `(l -- (cons 'i-identifiers l)))
-(i-entry idx "entrybegin" spc (substring label spc !eol) nl
-         (list (+ (or i-entrydefn i-entryuse)))
-         idx "entryend" nl
-         `(entry-label lst -- (cons 'entry-label lst)))
-(i-entrydefn idx (substring "entrydefn") spc (substring label) nl
-             `(defn label -- (cons 'defn label)))
-(i-entryuse idx (substring "entryuse") spc (substring label) nl
-            `(use lst -- (cons 'use lst)))
-@
-
-The following chunk's name is documentation enough for the purposes of
-\whyse{}. See the Noweb Hacker's Guide for more information.
-
-[[@index nl]] was deprecated in Noweb 2.10, and [[@index localdefn]] is
-not widely used (assumedly) nor well-documented, so it is unsupported by
-\whyse{} (contributions for improved support are welcomed).
-
-<<unsupported indexing keywords>>=
-;; @index nl was deprecated in Noweb 2.10, and @index localdefn is not
-;; widely used (assumedly) nor well-documented, so it is unsupported by
-;; WHYSE (contributions for improved support are welcomed).
-(i-localdefn idx "localdefn" spc !eol nl)
-(i-nl idx "nl" spc !eol nl
-      (action (error <<index nl error message>>)))
-@
-
-\subsection{cross referencing}
-<<cross-referencing keywords>>=
-(x-label xr (substring "label" spc label) nl
-         `(substr -- (cons 'x-label (cadr (split-string substr)))))
-(x-ref xr (substring "ref" spc label) nl
-       `(substr --  (cons 'ref (cadr (split-string substr)))))
-
-;; FIXME: improve the error handling at this point. It is not fragile
-;; any longer, because most things are ignored and this is hackish;
-;; however, the message reporting is not too helpful. It would be nice
-;; to have _only_ the chunk name reported, and formatted with @<< and >>.
-;;
-;; TODO: Reproduction steps: make a reference to an undefined code chunk
-;; within another code chunk. For fixing this issue, undefined code
-;; chunks should also be referenced within quotations in documentation.
-(x-undefined
- xr (or "ref" "chunkbegin") spc
- (guard
-  (if (string= "nw@notdef"
-               (buffer-substring-no-properties (point) (+ 9 (point))))
-      (error (format "%s: %s: %s:\n@<@<%s>>"
-                     "WHYSE"
-                     "nw@notdef detected"
-                     "an undefined chunk was referenced"
-                     (buffer-substring-no-properties (progn (forward-line) (point))
-                                                     (end-of-line)))))))
-
-(x-prev-or-next-def
- xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
- `(previous-or-next-chunk-defn label -- (cons (make-symbol previous-or-next-chunk-defn) label)))
-
-(x-continued-definitions-of-the-current-chunk
- xr "begindefs" nl
- (list (+ (and xr (substring "defitem") spc (substring label) nl)))
- xr "enddefs" nl)
-
-(x-usages
- xr "beginuses" nl
- (list (+ (and xr "useitem" spc (substring label) nl)))
- xr "enduses" nl)
-
-(x-notused xr "notused" spc (substring !eol) nl
-           `(name -- (cons 'unused! name)))
-(x-chunks nwnl
-          nwnl
-          xr "beginchunks" nl
-          (list (+ x-chunk))
-          xr "endchunks" nl
-          `(l -- (cons 'x-chunks l)))
-(x-chunk xr "chunkbegin" spc (substring label) spc (substring !eol) nl
-         (list (+ (list (and xr
-                             (substring (or "chunkuse" "chunkdefn"))
-                             `(chunk-usage-or-definition -- (make-symbol chunk-usage-or-definition))
-                             spc
-                             (substring label)
-                             nl))))
-         xr "chunkend" nl)
-
-;; Associates label with tag (@xref tag $LABEL $TAG)
-(x-tag xr "tag" spc label spc !eol nl)
-(label (+ (or "-" [alnum]))) ;; A label never contains whitespace.
-
-<<error-causing keywords>>=
-;; User-errors (header and trailer) and tool-error (fatal)
-;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
-(header (bol) "@header" ;; formatter options
-        (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-(trailer (bol) "@trailer" ;; formatter
-         (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
-(fatal (bol) "@fatal"
-       (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
-@
-
-<<index nl error message>>=
-(string-join
- '("\"@index nl\" detected."
-   "This indicates hand-written @ %def syntax in the Noweb source."
-   "This syntax was deprecated in Noweb 2.10, and is entirely unsupported."
-   "Write an autodefs AWK script for the language you are using.")
- "\n")
-@
-
-%%  NOTE: it would be helpful to construct this sort of parse tree at
-%%  the CHUNK level, and this information can be directly sent to the
-%%  database.
-%% `((n . ,n)
-%%   (name . ,substr)
-%%   ;; Displacement: count of @nl encountered in this file so far.
-%%   (offset . ,offset)
-%%   (file . ,file)
-%%   (section . ,section)) ;; Discover a single LaTeX sectioning command
-%%                         ;; in the @text commands which are prior to
-%%                         ;; this module's definition, as that is the
-%%                         ;; direct parent section of this module.
-%%  SQL attributes in the `module' table
-%% module_number; module_name; displacement; file_name; section_name
-
-%% The definition of a Noweb file, given by Ramsey, is simply a file
-%% containing one or more chunks; minimally, a Noweb file will contain the
-%% default documentation chunk.
-
-%% To summarize this section, since it is longer than the previous section,
-%% the object is to convert the noweb document to tool syntax and parse it
-%% with the peg parser.
-
-%% In more explicit words, this section describes the actions that occur
-%% when a user invokes [[whyse]] interactively (with \textit{M-x}) and the
-%% preconditions have been met; the [[whyse]] function has already been
-%% introduced, and only the ``meaty'' business end of its operation has
-%% been left undefined until now. Ergo, [[w-with-project]] gathers together
-%% the functionality that converts a Noweb to its tool syntax with a
-%% project's specified shell script, and parses the text before the next
-%% section of body forms is executed. Those send the parsed text to the
-%% database, and finally create the atomic window for the IDE in the active
-%% frame.
-
-%% In earlier development versions the following function body was
-%% referenced with noweb chunks rather than being defined as a function,
-%% however it was decided that implementing this as a function allowed a
-%% user-suggestion for an API-like function that was planned for
-%% implementation anyways. Now it is a function, satisfying internal and
-%% API needs.
 
 <<parse-project-in-temp-buffer>>=
 (with-temp-buffer
@@ -1102,8 +585,8 @@ What are the steps to follow to implement \whyse{}? What is the meat of
 the application?
 
 The application has been in development for a little over two years and
-I haven't made progress in nearly that much time. I know that I need
-{an~event~loop~\ref{event-hook-loop}}.
+I haven't made any progress in nearly the same amount of time. I know
+that I need {an~event~loop~\ref{event-hook-loop}}.
 
 What are the individual events that take place in a system such as
 \whyse{}? What takes place between the input of a file in \noweb{} format
@@ -1324,12 +807,12 @@ There has always been some confusion in my mind as to how the system
 will work. Reading a noweb file for a first time is no issue, nor is
 parsing the tool syntax at any time.
 
-Implementing the \textsc{WHS}% WEB Hypertext System
-using the UNIX philosophy---many small tools chained together to create
-solutions and systems---would make nineties noweb users happy. It's also
-how I thought of a solution to my confusion, which is one of the reasons
-why I stopped working on this project for almost two years (apart from
-normal life stresses and other projects taking up my time).
+Implementing the \textsc{WHS} using the UNIX philosophy---many small
+tools chained together to create solutions and systems---would make
+nineties noweb users happy. It's also how I thought of a solution to my
+confusion, which is one of the reasons why I stopped working on this
+project for almost two years (apart from normal life stresses and other
+projects taking up my time).
 
 \begin{verbatim}
   example.nw | less# with options for noweb syntax highlighting
@@ -1534,7 +1017,7 @@ The return value, if non-nil, is actually the name of the chunk."
 
 
 
-<<Code>>=
+<<Package Code>>=
 <<functions for navigating \whyse{} parse trees>>
 <<functions to collapse text and newline tokens into their largest possible form>>
 @
@@ -1694,7 +1177,7 @@ next.
 
 
 \subsection{finding the section title of a chunk}
-<<Code>>=
+<<Package Code>>=
 <<find section title>>
 
 <<find section title>>=
@@ -1796,11 +1279,10 @@ doesn't concern them.
 
 
 
+
 \part{Appendices}
 \label{part:appendices}
 \appendix
-
-
 
 
 
@@ -1814,25 +1296,25 @@ archives have existed, but they are all ephemeral. The most popular
 alternative to \textsc{GNU~ELPA}, \textsc{Non-GNU~ELPA}, and
 \textsc{MELPA} is direct distribution of files through \textsc{Git}
 servers and the use of a package by the end user to install directly
-from such.
+from such (e.g. \textsc{Quelpa}).
 
 This software is in-development, so it will only be distributed directly
 through \textsc{Git}.
 
-\whyse{} follows the form of ``simple'', single-file packages documented in
-the Emacs Lisp Reference Manual. The package file, \whyseel{}, is
+\whyse{} follows the form of single-file packages documented in the
+\textit{Emacs Lisp Reference Manual}. The package file, \whyseel{}, is
 emitted by \texttt{notangle} which is called by the Makefile in every
-target but [[clean]]. All source development occurs in \whysenw{}
-using \textsc{Polymode}.
+target but [[clean]]. All source development occurs in \whysenw{} using
+\textsc{Polymode}.
 
-The makefile distributed alongside whyse.nw in the tarball contains the
+The makefile distributed alongside \whysenw{} in the tarball contains the
 command-line used to tangle and weave \whyse{}.
 
 <<whyse.el>>=
 <<Emacs Lisp package headers>>
 <<Licensing and copyright>>
 <<Commentary>>
-<<Code>>
+<<Package Code>>
 <<provide the whyse feature and list the file local variables>>
 @
 
@@ -1855,13 +1337,14 @@ command-line used to tangle and weave \whyse{}.
 @
 
 The following chunk lists the [[<<required packages>>]]; as of
-[[whyse-0.1-devel]] the only required packages are [[peg]] and
-[[cl-lib]], [[emacsql]].
+[[whyse-0.1-devel]] the only required packages are [[peg]], [[cl-lib]],
+[[emacsql]].
 
 <<required packages>>=
 (emacs "25.1")
 (emacsql "20230220")
 (peg "1.0.1")
+(peg-noweb "0.1")
 (cl-lib "1.0")
 @
 
@@ -1901,7 +1384,7 @@ in the License section at the end of this document.
 ;; literate programming, and citations (especially of those given credit here
 ;; for ideating WHYSE itself).
 
-<<Code>>=
+<<Package Code>>=
 ;;; Code:
 ;;;; Compiler directives
 (eval-when-compile (require 'wid-edit))
@@ -1933,1061 +1416,10 @@ in the License section at the end of this document.
 
 
 
-\newpage
-\chapter{TESTING}
-
-\section{Parsing tool syntax within a temporary buffer}
-<<test-parser-with-temporary-buffer.el>>=
-;; -*- lexical-binding: nil; -*-
-(defvar w--parse-success t
-  "A simple boolean regarding the success or fialure of the last
-  attempt to parse a buffer of Noweb tool syntax.")
-
-<<buffer parsing function>>
-(with-temp-buffer
-  (insert (shell-command-to-string
-           "make --silent --file ~/src/whyse/Makefile tool-syntax"))
-  (goto-char (point-min))
-  (w--parse-current-buffer-with-rules))
-
-;; Local Variables:
-;; mode: lisp-interaction
-;; no-byte-compile: t
-;; no-native-compile: t
-;; eval: (read-only-mode)
-;; End:
-@
-
-
-
-
-
-
-
-
-
-
 %% \backmatter
 \chapter{Indices}
-
-\section{Chunks}
-\nowebchunks
-
-\section{Identifiers}
-\nowebindex
-
-\chapter{Miscellaneous code and functions useful for development and debugging}\label{misc}
-<<Code>>=
-(defun w--log-in-buffer (buffer-name &rest body)
-  "In a new buffer named BUFFER-NAME, insert the value of evaluating BODY."
-  (save-mark-and-excursion
-    (with-current-buffer
-        (generate-new-buffer buffer-name)
-      (insert (format-message "%S" body)))))
-
-<<module-header top-level>>
-@
-
-The top-level of the module header is defined here now.
-
-Code modules have names, but documentation modules only sometimes have
-sections. Sometimes a documentation module doesn't have a section
-because the definition of one or more sections occur within it, and
-therefore a section cannot apply to it by reason of occurring before the
-beginning of the module. Therefore the headerbar must have an area
-within it for holding a code module's name or LaTeX section
-name. Additionally it must also have an area to contain further buttons.
-It makes sense to define, loosely, a left, right, and center area to be
-filled with other widgets (which will inherit widths of the area).
-
-<<module-header top-level>>=
-(define-widget 'module-header 'group
-  ;; :keymap w-widget-headerbar-map
-  :width (frame-width)
-  :tag "|"
-  :format "%t%v")
-@
-
-A keymap provides for handling keyboard and mouse events.
-
-<<Code>>=
-<<module-header keymap>>
-<<module-header keymap>>=
-(define-keymap :name "module-header-keymap" :parent global-map)
-@
-
-The module header keymap derives from the global keymap for now. I don't
-know anything about keymaps, and I always consult documenation when
-defining or deleting defintions for key bindings in Emacs.
-
-<<module-header top-level>>=
-:value '(module-header-left module-header-center module-header-right)
-@
-
-<<Code>>=
-<<module-header-left>>
-<<module-header-center>>
-<<module-header-right>>
-@
-
-<<module-header-left>>=
-(define-widget 'w--module-header-left 'group
-  "The left-most area of the module header widget.
-
-It contains the name of the module, whether the module is an
-addition, whether it has been modified, and the number of the
-module."
-  (link :format "%t"
-        :tag (format "@<<%s>>%s%s%d"
-                     module-name
-                     addition?
-                     modified?
-                     module-number)))
-
-<<module-header-center>>=
-(define-widget 'w--module-header-center 'group
-  "DOCSTRING"
-  '((item :tag "module")))
-
-<<module-header-right>>=
-(define-widget 'w--module-header-right 'group
-  "DOCSTRING"
-  '((item :tag "module")))
-
-@
-
-\chapter{Commands for Human Languages}\label{noweb-narrowing}
-The Emacs Manual has a chapter dedicated to /Commands for Human
-Languages/. This software documentation shall have a chapter dedicated
-to that too, since literate programming (per Knuth) is primarily
-intended for Human readers.
-
-\section{Pages}
-\begin{quote}
-``Emacs provides commands to move over pages and to operate on them.''
-\end{quote}
-
-Such is the primary purpose of \whyse{}, to extend this page-handling to
-noweb ``chunks'', which may be delimited by adding the following to
-the regular expression which normally matches only form-feed
-characters.
-
-<<customize page-delimiter regular expression for noweb>>=
-(customize-set-variable
- 'page-delimiter
- "^\\(@<<.*>>=\\)\\|^\\(@\\)\\|^\f"
- "Modify the default value of the `page-delimiter' such that the
-built-in page navigation features are useful in noweb buffers.")
-@
-
-Navigating between chunks in a noweb source document is so fundamental
-to literate programming that you may want to bind \texttt{backward-page}
-and \texttt{forward-page} to the specially labelled "Page Up" and "Page
-Down" keys on your keyboard (represented in elisp with the special
-strings "<prior>" and "<next>" when you use \texttt{describe-key} on
-these keyboard buttons).
-
-\section{Advising the forward- and backward-page functions}
-Using the Emacs advice interface is probably the most straightforward
-way to implement widening and re-narrowing of the buffer when calling
-\texttt{forward-page} and \texttt{backward-page}, and further to echo
-the result of \texttt{what-page}.
-
-It would be simplest to not handle the page delimiter specially unless
-necessary, so leaving this delimiter in-place is most flexible.
-
-<<nwn.el>>=
-;;; Noweb Narrowing -*- mode: emacs-lisp -*-
-
-;;; Commentary:
-;;  Advise the `forward-page` and `backward-page` functions to widen and
-;;  then restore chunk-based narrowing when it is in effect (if and only
-;;  if the current buffer is editing a .nw file).
-
-<<current buffer is a noweb file>>=
-(string= "nw" (file-name-extension (buffer-file-name)))
-@
-
-After reviewing the function documentation for \texttt{narrow-to-page}
-I learned of the effect of the universal argument. The simplest way to
-advise the forward and backward page functions to work as desired
-would be to provide advise which replaces the function call with a
-call to narrow to page with an appropriate numeric argument.
-
-Undesireabley, page-based narrowing hides the code chunk definition
-line. It is permissible that it hides the documentation chunk
-definition, but it is simpler and more extensible to let these remain
-visible but read-only when narrowing is in effect.
-
-<<nwn.el>>=
-;;; nwn-narrow-to-page is a modified version of the built-in function
-;;; narrow-to-page.
-(defun nwn-narrow-to-page (&optional arg)
-  "Make text outside current page invisible.
-
-For this modified version of `narrow-to-page', a page is a noweb
-chunk (either code or docs). See the `page-delimiter'.
-
-A numeric arg specifies to move forward or backward by that many
-chunks, thus showing a chunk other than the one point was
-originally in."
-  <<declare the function interactivity-type and set arg to zero if missing>>
-  (save-excursion
-    <<widen the buffer then handle non-zero arg values>>
-    @
-
-    After widening the buffer and handling non-zero argument values, it is
-    necessary to find the end of the current page (chunk) to establish the
-    end of the region in which narrowing will take place (a region delimited
-                                                            by chunk boundaries).
-
-    <<nwn.el>>=
-    <<find the end of the page>>
-    <<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>))
-
-<<declare the function interactivity-type and set arg to zero if missing>>=
-(interactive "P")
-(setq arg (if arg (prefix-numeric-value arg) 0))
-<<widen the buffer then handle non-zero arg values>>=
-(widen)
-(if (> arg 0)
-    (forward-page arg)
-  (if (< arg 0)
-      (let ((adjust 0)
-            (opoint (point)))
-        ;; If we are not now at the beginning of a page, move back one
-        ;; extra time, to get to the start of this page.
-        (save-excursion
-          (beginning-of-line)
-          (or (and (looking-at page-delimiter)
-                   (eq (match-end 0) opoint))
-              (setq adjust 1)))
-        (forward-page (- arg adjust)))))
-<<find the end of the page>>=
-(set-match-data nil)
-(forward-page)
-@
-
-%% TODO: credit this text, which came from the original source code for
-%% narrow-to-page.
-\begin{itemize}
-\item{If we stopped due to end of buffer, stay there.}
-\item{If we stopped after a page delimiter, put end of restriction at the beginning of that line.}
-\item{Before checking the match that was found, verify that forward-page actually set the match data.}
-\end{itemize}
-
-<<find the end of the page>>=
-(if (and (match-beginning 0)
-         (save-excursion
-           (goto-char (match-beginning 0))
-           (looking-at page-delimiter)))
-    (goto-char (match-beginning 0)))
-<<restore chunk-narrowing by narrowing to region delimited by chunk delimiters>>=
-(narrow-to-region (point)
-                  (progn
-                    ;; Find the top of the page.
-                    (forward-page -1)
-                    ;; If we found beginning of buffer, stay there.
-                    ;; If extra text follows page delimiter on same line,
-                    ;; include it.
-                    ;; Otherwise, show text starting with following line.
-                    (if (and (eolp) (not (bobp)))
-                        (forward-line 1))
-                    (point)))
-@
-
-See these overlay properties: [[insert-in-front-hooks]],
-[[modification-hooks]], and [[insert-behind-hooks]]; also see
-[[keymap]]. These are sufficient, surprisingly, to implement the
-entirety of the "in-buffer" UI that I was imagining that I'd develop
-with \textit{widget.el}.
-
-The overlay property [[:before-string]] really helps!
-
-<<nwn.el>>=
-(defun nwn--forward-page ()
-  "Move forward one chunk."
-  (interactive)
-  (nwn-narrow-to-page 1)
-  (goto-char (point-min))
-  (recenter-top-bottom 0))
-
-(defun nwn--backward-page ()
-  "Move backward one chunk."
-  (interactive)
-  (nwn-narrow-to-page -1)
-  (goto-char (point-min))
-  (recenter-top-bottom 0))
-
-(define-minor-mode nwn-mode
-  "Noweb Narrowing minor mode provides alternative motion commands
-between pages, defined by a buffer-local value of
-`page-delimiter' appropriate for Noweb chunks."
-  :lighter " nWn "
-  :list '(fundamental-mode text-mode latex-mode noweb-mode poly-noweb-mode)
-  :keymap '(([next] . nwn--forward-page)
-            ([prior] . nwn--backward-page))
-  (if <<current buffer is a noweb file>>
-      (if nwn-mode
-          (progn (make-local-variable 'page-delimiter)
-                 <<customize page-delimiter regular expression for noweb>>
-                 (nwn-narrow-to-page))
-        (kill-local-variable 'page-delimiter)
-        (when (buffer-narrowed-p)
-          (widen)))
-      (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
-
-(defvar nwn--chunk-delimiter-match nil
-  "The match data for the delimiter previous to the start of the
-currently active narrowed buffer region.")
-
-(defun nwn--make-overlay ()
-  "Insert the chunk name (page-delimiter) overlay for a narrowed chunk.
-
-Called when narrowing to a page delimited by the
-nwn--chunk-delimiter-match, this function inserts the delimiter
-preceeding the chunk (if a code chunk) or the most-recent LaTeX
-section name (if any, else \"@\" to indicate a documentation
-chunk)."
-  (let ((ov (make-overlay 0 0 (current-buffer) t)))
-    (overlay-put ov 'before-string (concat nwn--chunk-delimiter-match "
-"))
-    (overlay-put ov 'face widget-documentation-face)
-    ov))
-
-(defvar nwn--overlay (nwn--make-overlay))
-
-(defun nwn--forward-page-advice (&rest r)
-  (when (boundp 'nwn--overlay)
-    (delete-overlay nwn--overlay))
-  (nwn--make-overlay))
-
-(advice-add #'nwn-narrow-to-page
-            :after #'nwn--forward-page-advice)
-@
-
-\chapter{List of Computer Scientists}
-Inspired by the random names that Docker uses to name containers, I
-derived a list of names of computer scientists or industry professionals
-(less some names) from a ``dynamic list'' on Wikipedia.
-
-$$
-10^{10}=10000000000
-$$
-
-With just ten lists of ten words each there can be ten billion possible
-combinations, but this would be ten names for an identifier. That's too
-much.
-
-<<computer-scientists.el>>=
-(defun n-random-names (l)
-  (let ((names (list "Wil van der Aalst"
-                      "Scott Aaronson"
-                      "Rediet Abebe"
-                      "Hal Abelson"
-                      "Serge Abiteboul"
-                      "Samson Abramsky"
-                      "Leonard Adleman"
-                      "Manindra Agrawal"
-                      "Luis von Ahn"
-                      "Alfred Aho"
-                      "Frances E. Allen"
-                      "Gene Amdahl"
-                      "David P. Anderson"
-                      "Lisa Anthony"
-                      "Andrew Appel"
-                      "Cecilia R. Aragon"
-                      "Bruce Arden"
-                      "Kevin Ashton"
-                      "Sanjeev Arora"
-                      "Winifred 'Tim' Alice Asprey"
-                      "John Vincent Atanasoff"
-                      "Shakuntala Atre"
-                      "Lennart Augustsson"
-                      "Charles Babbage"
-                      "Charles Bachman"
-                      "Roland Carl Backhouse"
-                      "John Backus"
-                      "David F. Bacon"
-                      "David Bader"
-                      "Victor Bahl"
-                      "Fatmah Baothman"
-                      "Anthony James Barr"
-                      "Jean Bartik"
-                      "Andrew Barto"
-                      "Friedrich L. Bauer"
-                      "Rudolf Bayer"
-                      "Gordon Bell"
-                      "Steven M. Bellovin"
-                      "Cecilia Berdichevsky"
-                      "Tim Berners-Lee"
-                      "Daniel J. Bernstein"
-                      "Peter Bernus"
-                      "Abhay Bhushan"
-                      "Dines Bjørner"
-                      "Gerrit Blaauw"
-                      "Sue Black"
-                      "David Blei"
-                      "Dorothy Blum"
-                      "Lenore Blum"
-                      "Manuel Blum"
-                      "Barry Boehm"
-                      "Corrado Böhm"
-                      "Kurt Bollacker"
-                      "Jeff Bonwick"
-                      "Grady Booch"
-                      "George Boole"
-                      "Andrew Booth"
-                      "Kathleen Booth"
-                      "Anita Borg"
-                      "Alan H. Borning"
-                      "Bert Bos"
-                      "Mikhail Botvinnik"
-                      "Jonathan Bowen"
-                      "Stephen R. Bourne"
-                      "Harry Bouwman"
-                      "Robert S. Boyer"
-                      "Karlheinz Brandenburg"
-                      "Gilles Brassard"
-                      "Lawrence M. Breed"
-                      "Jack E. Bresenham"
-                      "David J. Brown"
-                      "Per Brinch Hansen"
-                      "Sjaak Brinkkemper"
-                      "Fred Brooks"
-                      "Rod Brooks"
-                      "Margaret Burnett"
-                      "Rod Burstall"
-                      "Michael Butler"
-                      "Pino Caballero Gil"
-                      "Tracy Camp"
-                      "Martin Campbell-Kelly"
-                      "Rosemary Candlin"
-                      "Rod Canion"
-                      "Bryan Cantrill"
-                      "Luca Cardelli"
-                      "John Carmack"
-                      "Michael Caspersen"
-                      "Edwin Catmull"
-                      "Vint Cerf"
-                      "Gregory Chaitin"
-                      "Robert Cailliau"
-                      "Zhou Chaochen"
-                      "Peter Chen"
-                      "Leonardo Chiariglione"
-                      "Tracy Chou"
-                      "Alonzo Church"
-                      "Alberto Ciaramella"
-                      "Edmund M. Clarke"
-                      "John Cocke"
-                      "Edgar F. Codd"
-                      "Jacques Cohen"
-                      "Ian Coldwater"
-                      "Simon Colton"
-                      "Alain Colmerauer"
-                      "Douglas Comer"
-                      "Paul Justin Compton"
-                      "Richard W. Conway"
-                      "Stephen Cook"
-                      "James Cooley"
-                      "Steven Anson Coons"
-                      "Danese Cooper"
-                      "Fernando J. Corbató"
-                      "Gordon Cormack"
-                      "Kit Cosper"
-                      "Patrick Cousot"
-                      "Ingemar Cox"
-                      "Damien Coyle"
-                      "Seymour Cray"
-                      "Nello Cristianini"
-                      "Jon Crowcroft"
-                      "W. Bruce Croft"
-                      "Glen Culler"
-                      "Haskell Curry"
-                      "Luigi Dadda"
-                      "Ole-Johan Dahl"
-                      "Ryan Dahl"
-                      "Andries van Dam"
-                      "Samir Das"
-                      "Neil Daswani"
-                      "Christopher J. Date"
-                      "Terry A. Davis"
-                      "Erik Demaine"
-                      "Tom DeMarco"
-                      "Richard DeMillo"
-                      "Dorothy E. Denning"
-                      "Peter J. Denning"
-                      "Michael Dertouzos"
-                      "Alexander Dewdney"
-                      "Robert Dewar"
-                      "Vinod Dham"
-                      "Jan Dietz"
-                      "Whitfield Diffie"
-                      "Edsger W. Dijkstra"
-                      "Matthew Dillon"
-                      "Alan Dix"
-                      "Jack Dongarra"
-                      "Marco Dorigo"
-                      "Paul Dourish"
-                      "Charles Stark Draper"
-                      "Susan Dumais"
-                      "Adam Dunkels"
-                      "Jon Michael Dunn"
-                      "Schahram Dustdar"
-                      "Peter Eades"
-                      "Annie Easley"
-                      "Wim Ebbinkhuijsen"
-                      "John Presper Eckert"
-                      "Alan Edelman"
-                      "Brendan Eich"
-                      "Philip Emeagwali"
-                      "E. Allen Emerson"
-                      "Douglas Engelbart"
-                      "Barbara Engelhardt"
-                      "David Eppstein"
-                      "Andrey Ershov"
-                      "Don Estridge"
-                      "Oren Etzioni"
-                      "Christopher Riche Evans"
-                      "David C. Evans"
-                      "Shimon Even"
-                      "Scott Fahlman"
-                      "Edward Feigenbaum"
-                      "Edward Felten"
-                      "Tim Finin"
-                      "Raphael Finkel"
-                      "Donald Firesmith"
-                      "Gary William Flake"
-                      "Tommy Flowers"
-                      "Robert Floyd"
-                      "Sally Floyd"
-                      "Lawrence J. Fogel"
-                      "James D. Foley"
-                      "Ken Forbus"
-                      "L. R. Ford, Jr."
-                      "Lance Fortnow"
-                      "Mahmoud Samir Fayed"
-                      "Martin Fowler"
-                      "Robert France"
-                      "Herbert W. Franke"
-                      "Edward Fredkin"
-                      "Yoav Freund"
-                      "Daniel P. Friedman"
-                      "Charlotte Froese Fischer"
-                      "Ping Fu"
-                      "Xiaoming Fu"
-                      "Kunihiko Fukushima"
-                      "D. R. Fulkerson"
-                      "Richard P. Gabriel"
-                      "Zvi Galil"
-                      "Bernard Galler"
-                      "Hector Garcia-Molina"
-                      "Michael Garey"
-                      "Hugo de Garis"
-                      "David Gelernter"
-                      "Lisa Gelobter"
-                      "Charles Geschke"
-                      "Zoubin Ghahramani"
-                      "Sanjay Ghemawat"
-                      "Jeremy Gibbons"
-                      "Juan E. Gilbert"
-                      "Lee Giles"
-                      "Seymour Ginsburg"
-                      "Robert L. Glass"
-                      "Kurt Gödel"
-                      "Ashok Goel"
-                      "Joseph Goguen"
-                      "E. Mark Gold"
-                      "Adele Goldberg"
-                      "Andrew V. Goldberg"
-                      "Ian Goldberg"
-                      "Judy Goldsmith"
-                      "Oded Goldreich"
-                      "Shafi Goldwasser"
-                      "Gene Golub"
-                      "Martin Charles Golumbic"
-                      "Gastón Gonnet"
-                      "Ian Goodfellow"
-                      "James Gosling"
-                      "Robert M. Graham"
-                      "Susan L. Graham"
-                      "Jim Gray"
-                      "Michael Gregg"
-                      "Sheila Greibach"
-                      "David Gries"
-                      "Robert Griesemer"
-                      "Ralph Griswold"
-                      "Bill Gropp"
-                      "Tom Gruber"
-                      "Shelia Guberman"
-                      "Ramanathan V. Guha"
-                      "Neil J. Gunther"
-                      "Jürg Gutknecht"
-                      "Michael Guy"
-                      "Giri Topper"
-                      "Nico Habermann"
-                      "Philipp Matthäus Hahn"
-                      "Eldon C. Hall"
-                      "Wendy Hall"
-                      "Joseph Halpern"
-                      "Margaret Hamilton"
-                      "Richard Hamming"
-                      "Jiawei Han"
-                      "Frank Harary"
-                      "Brian Harris"
-                      "Juris Hartmanis"
-                      "Johan Håstad"
-                      "Les Hatton"
-                      "Igor Hawryszkiewycz"
-                      "He Jifeng"
-                      "Eric Hehner"
-                      "Martin Hellman"
-                      "Gernot Heiser"
-                      "James Hendler"
-                      "John L. Hennessy"
-                      "Andrew Herbert"
-                      "Carl Hewitt"
-                      "Kelsey Hightower"
-                      "Danny Hillis"
-                      "Geoffrey Hinton"
-                      "Julia Hirschberg"
-                      "Tin Kam Ho"
-                      "C. A. R. Hoare"
-                      "Louis Hodes"
-                      "Betty Holberton"
-                      "John Henry Holland"
-                      "Herman Hollerith"
-                      "Bri Holt"
-                      "Gerard Holzmann"
-                      "John Hopcroft"
-                      "Admiral Grace Hopper"
-                      "Eric Horvitz"
-                      "Alston Householder"
-                      "Paul Hudak"
-                      "David A. Huffman"
-                      "John Hughes"
-                      "Roger Hui"
-                      "Watts Humphrey"
-                      "Sandra Hutchins"
-                      "Jean Ichbiah"
-                      "Roberto Ierusalimschy"
-                      "Dan Ingalls"
-                      "Mary Jane Irwin"
-                      "Kenneth E. Iverson"
-                      "Ivar Jacobson"
-                      "Anil K. Jain"
-                      "Ramesh Jain"
-                      "Jonathan James"
-                      "Jordi Ustrell Aguilà"
-                      "David S. Johnson"
-                      "Stephen C. Johnson"
-                      "Angie Jones"
-                      "Cliff Jones"
-                      "Michael I. Jordan"
-                      "Mathai Joseph"
-                      "Aravind K. Joshi"
-                      "Bill Joy"
-                      "Dan Jurafsky"
-                      "William Kahan"
-                      "Robert E. Kahn"
-                      "Avinash Kak"
-                      "Poul-Henning Kamp"
-                      "David Karger"
-                      "Richard Karp"
-                      "Narendra Karmarkar"
-                      "Marek Karpinski"
-                      "Ted Kaehler"
-                      "Alan Kay"
-                      "Neeraj Kayal"
-                      "Manolis Kellis"
-                      "John George Kemeny"
-                      "Ken Kennedy"
-                      "Brian Kernighan"
-                      "Carl Kesselman"
-                      "Gregor Kiczales"
-                      "Logan Kilpatrick"
-                      "Peter T. Kirstein"
-                      "Stephen Cole Kleene"
-                      "Dan Klein"
-                      "Leonard Kleinrock"
-                      "Donald Knuth"
-                      "Andrew Koenig"
-                      "Daphne Koller"
-                      "Michael Kölling"
-                      "Andrey Nikolaevich Kolmogorov"
-                      "Janet L. Kolodner"
-                      "David Korn"
-                      "Kees Koster"
-                      "Robert Kowalski"
-                      "John Koza"
-                      "John Krogstie"
-                      "Joseph Kruskal"
-                      "Maarja Kruusmaa"
-                      "D. Richard Kuhn"
-                      "Thomas E. Kurtz"
-                      "Richard E. Ladner"
-                      "Monica S. Lam"
-                      "Leslie Lamport"
-                      "Butler Lampson"
-                      "Peter Landin"
-                      "Tom Lane"
-                      "Börje Langefors"
-                      "Hans Langmaack"
-                      "Chris Lattner"
-                      "Steve Lawrence"
-                      "Edward D. Lazowska"
-                      "Joshua Lederberg"
-                      "Manny M Lehman"
-                      "Charles E. Leiserson"
-                      "Douglas Lenat"
-                      "Yann LeCun"
-                      "Rasmus Lerdorf"
-                      "Leonid Levin"
-                      "Kevin Leyton-Brown"
-                      "J.C.R. Licklider"
-                      "David Liddle"
-                      "Jochen Liedtke"
-                      "John Lions"
-                      "Charles H. Lindsey"
-                      "Richard J. Lipton"
-                      "Barbara Liskov"
-                      "Yanhong Annie Liu"
-                      "Darrell Long"
-                      "Patricia D. Lopez"
-                      "Gillian Lovegrove"
-                      "Ada Lovelace"
-                      "David Luckham"
-                      "Eugene Luks"
-                      "Nancy Lynch"
-                      "Nadia Magnenat Thalmann"
-                      "Tom Maibaum"
-                      "George Mallen"
-                      "Simon Marlow"
-                      "Zohar Manna"
-                      "James Martin"
-                      "Robert C. Martin"
-                      "John Mashey"
-                      "Yuri Matiyasevich"
-                      "Yukihiro Matsumoto"
-                      "John Mauchly"
-                      "Ujjwal Maulik"
-                      "Derek McAuley"
-                      "Conor McBride"
-                      "John McCarthy"
-                      "Andrew McCallum"
-                      "Douglas McIlroy"
-                      "Chris McKinstry"
-                      "Marshall Kirk McKusick"
-                      "Lambert Meertens"
-                      "Kurt Mehlhorn"
-                      "Dora Metcalf"
-                      "Bertrand Meyer"
-                      "Silvio Micali"
-                      "Robin Milner"
-                      "Jack Minker"
-                      "Marvin Minsky"
-                      "James G. Mitchell"
-                      "Tom M. Mitchell"
-                      "Arvind Mithal"
-                      "Paul Mockapetris"
-                      "Cleve Moler"
-                      "Faron Moller"
-                      "John P. Moon"
-                      "Charles H. Moore"
-                      "Edward F. Moore"
-                      "Gordon Moore"
-                      "J Strother Moore"
-                      "Roger Moore"
-                      "Hans Moravec"
-                      "Carroll Morgan"
-                      "Robert Tappan Morris"
-                      "Joel Moses"
-                      "Rajeev Motwani"
-                      "Oleg A. Mukhanov"
-                      "Stephen Muggleton"
-                      "Klaus-Robert Müller"
-                      "Alan Mycroft"
-                      "Brad A. Myers"
-                      "Mihai Nadin"
-                      "Makoto Nagao"
-                      "Frieder Nake"
-                      "Bonnie Nardi"
-                      "Peter Naur"
-                      "Roger Needham"
-                      "James G. Nell"
-                      "Greg Nelson"
-                      "Bernard de Neumann"
-                      "Klara Dan von Neumann"
-                      "John von Neumann"
-                      "Allen Newell"
-                      "Max Newman"
-                      "Andrew Ng"
-                      "Nils John Nilsson"
-                      "G.M. Nijssen"
-                      "Tobias Nipkow"
-                      "Maurice Nivat"
-                      "Jerre Noe"
-                      "Peter Nordin"
-                      "Donald Norman"
-                      "Peter Norvig"
-                      "George Novacky"
-                      "Kristen Nygaard"
-                      "Martin Odersky"
-                      "Peter O'Hearn"
-                      "T. William Olle"
-                      "Steve Omohundro"
-                      "Severo Ornstein"
-                      "John O'Sullivan"
-                      "John Ousterhout"
-                      "Mark Overmars"
-                      "Susan Owicki"
-                      "Sankar Pal"
-                      "Paritosh Pandya"
-                      "Christos Papadimitriou"
-                      "Keshab K. Parhi"
-                      "David Park"
-                      "David Parnas"
-                      "DJ Patil"
-                      "Yale Patt"
-                      "David Patterson"
-                      "Mike Paterson"
-                      "Mihai Pătraşcu"
-                      "Lawrence Paulson"
-                      "Randy Pausch"
-                      "Juan Pavón"
-                      "Judea Pearl"
-                      "Alan Perlis"
-                      "Radia Perlman"
-                      "Pier Giorgio Perotto"
-                      "Rózsa Péter"
-                      "Simon Peyton Jones"
-                      "Kathy Pham"
-                      "Roberto Pieraccini"
-                      "Keshav Pingali"
-                      "Gordon Plotkin"
-                      "Amir Pnueli"
-                      "Willem van der Poel"
-                      "Robin Popplestone"
-                      "Cicely Popplewell"
-                      "Emil Post"
-                      "Jon Postel"
-                      "Franco Preparata"
-                      "William H. Press"
-                      "Rapelang Rabana"
-                      "Grzegorz Rozenberg"
-                      "Michael O. Rabin"
-                      "Dragomir R. Radev"
-                      "T. V. Raman"
-                      "Brian Randell"
-                      "Anders P. Ravn"
-                      "Raj Reddy"
-                      "David P. Reed"
-                      "Trygve Reenskaug"
-                      "John C. Reynolds"
-                      "Joyce K. Reynolds"
-                      "Reinder van de Riet"
-                      "Bernard Richards"
-                      "Martin Richards"
-                      "Adam Ries"
-                      "C. J. van Rijsbergen"
-                      "Dennis Ritchie"
-                      "Ron Rivest"
-                      "Lawrence Roberts"
-                      "Paul Robertson"
-                      "Ken Robinson"
-                      "Colette Rolland"
-                      "John Romero"
-                      "Azriel Rosenfeld"
-                      "Douglas T. Ross"
-                      "Ronald S. Ross"
-                      "Guido van Rossum"
-                      "M. A. Rothman"
-                      "Winston W. Royce"
-                      "Rudy Rucker"
-                      "Steven Rudich"
-                      "Jeff Rulifson"
-                      "James Rumbaugh"
-                      "Peter Ružička"
-                      "George Sadowsky"
-                      "Mehrnoosh Sadrzadeh"
-                      "Umar Saif"
-                      "Gerard Salton"
-                      "Jean E. Sammet"
-                      "Claude Sammut"
-                      "Carl Sassenrath"
-                      "Mahadev Satyanarayanan"
-                      "Walter Savitch"
-                      "Nitin Saxena"
-                      "Jonathan Schaeffer"
-                      "Heidi Schelhowe"
-                      "Wilhelm Schickard"
-                      "Jürgen Schmidhuber"
-                      "Steve Schneider"
-                      "Bruce Schneier"
-                      "Fred B. Schneider"
-                      "Sarita Schoenebeck"
-                      "Glenda Schroeder"
-                      "Bernhard Schölkopf"
-                      "Dana Scott"
-                      "Michael L. Scott"
-                      "Robert Sedgewick"
-                      "Ravi Sethi"
-                      "Nigel Shadbolt"
-                      "Adi Shamir"
-                      "Claude Shannon"
-                      "Cliff Shaw"
-                      "Scott Shenker"
-                      "Shashi Shekhar"
-                      "Ben Shneiderman"
-                      "Edward H. Shortliffe"
-                      "Daniel Siewiorek"
-                      "Joseph Sifakis"
-                      "Herbert A. Simon"
-                      "Munindar P. Singh"
-                      "Ramesh Sitaraman"
-                      "Daniel Sleator"
-                      "Aaron Sloman"
-                      "Arne Sølvberg"
-                      "Brian Cantwell Smith"
-                      "David Canfield Smith"
-                      "Steven Spewak"
-                      "Carol Spradling"
-                      "Robert Sproull"
-                      "Rohini Kesavan Srihari"
-                      "Sargur Srihari"
-                      "Maciej Stachowiak"
-                      "Richard Stallman"
-                      "Ronald Stamper"
-                      "Thad Starner"
-                      "Richard E. Stearns"
-                      "Guy L. Steele, Jr."
-                      "Thomas Sterling"
-                      "Alexander Stepanov"
-                      "W. Richard Stevens"
-                      "Larry Stockmeyer"
-                      "Salvatore Stolfo"
-                      "Michael Stonebraker"
-                      "Olaf Storaasli"
-                      "Christopher Strachey"
-                      "Volker Strassen"
-                      "Bjarne Stroustrup"
-                      "Madhu Sudan"
-                      "Gerald Jay Sussman"
-                      "Bert Sutherland"
-                      "Ivan Sutherland"
-                      "Latanya Sweeney"
-                      "Mario Szegedy"
-                      "Parisa Tabriz"
-                      "Roberto Tamassia"
-                      "Andrew S. Tanenbaum"
-                      "Austin Tate"
-                      "Bernhard Thalheim"
-                      "Éva Tardos"
-                      "Gábor Tardos"
-                      "Robert Tarjan"
-                      "Valerie Taylor"
-                      "Mario Tchou"
-                      "Jaime Teevan"
-                      "Shang-Hua Teng"
-                      "Larry Tesler"
-                      "Avie Tevanian"
-                      "Charles P. Thacker"
-                      "Daniel Thalmann"
-                      "Ken Thompson"
-                      "Simon Thompson"
-                      "Sebastian Thrun"
-                      "Walter F. Tichy"
-                      "Seinosuke Toda"
-                      "Chai Keong Toh"
-                      "Linus Torvalds"
-                      "Leonardo Torres Quevedo"
-                      "Godfried Toussaint"
-                      "Gloria Townsend"
-                      "Edwin E. Tozer"
-                      "Joseph F Traub"
-                      "John V. Tucker"
-                      "John Tukey"
-                      "Alan Turing"
-                      "David Turner"
-                      "Murray Turoff"
-                      "Jeffrey D. Ullman"
-                      "Leslie Valiant"
-                      "Vladimir Vapnik"
-                      "Moshe Vardi"
-                      "Dorothy Vaughan"
-                      "Bernard Vauquois"
-                      "Umesh Vazirani"
-                      "Manuela M. Veloso"
-                      "François Vernadat"
-                      "Richard Veryard"
-                      "Sergiy Vilkomir"
-                      "Paul Vitanyi"
-                      "Andrew Viterbi"
-                      "Jeffrey Scott Vitter"
-                      "Paul Vixie"
-                      "Eiiti Wada"
-                      "David Wagner"
-                      "David Waltz"
-                      "James Z. Wang"
-                      "Steve Ward"
-                      "Manfred K. Warmuth"
-                      "David H. D. Warren"
-                      "Kevin Warwick"
-                      "Jan Weglarz"
-                      "Philip Wadler"
-                      "Peter Wegner"
-                      "Joseph Henry Wegstein"
-                      "Peter J. Weinberger"
-                      "Mark Weiser"
-                      "Joseph Weizenbaum"
-                      "David Wheeler"
-                      "Franklin H. Westervelt"
-                      "Steve Whittaker"
-                      "Jennifer Widom"
-                      "Gio Wiederhold"
-                      "Norbert Wiener"
-                      "Adriaan van Wijngaarden"
-                      "Mary Allen Wilkes"
-                      "Maurice Vincent Wilkes"
-                      "Yorick Wilks"
-                      "James H. Wilkinson"
-                      "Sophie Wilson"
-                      "Shmuel Winograd"
-                      "Terry Winograd"
-                      "Patrick Winston"
-                      "Niklaus Wirth"
-                      "Neil Wiseman"
-                      "Dennis E. Wisnosky"
-                      "Stephen Wolfram"
-                      "Mike Woodger"
-                      "Philip Woodward"
-                      "Beatrice Helen Worsley"
-                      "Steve Wozniak"
-                      "Jie Wu"
-                      "William Wulf"
-                      "Mihalis Yannakakis"
-                      "Andrew Chi-Chih Yao"
-                      "John Yen"
-                      "Nobuo Yoneda"
-                      "Edward Yourdon"
-                      "Moti Yung"
-                      "Lotfi Zadeh"
-                      "Hans Zantema"
-                      "Arif Zaman"
-                      "Stanley Zdonik"
-                      "Hussein Zedan"
-                      "Shlomo Zilberstein"
-                      "Jill Zimmerman"
-                      "Konrad Zuse"))
-         (i (list)))
-    (while-let ((j (seq-random-elt names))
-                (sufficient (length< i l)))
-      (unless (seq-contains-p i j)
-        (setq i (append i j))))
-    (string-join i ", ")))
-
-(n-random-names 4)
-@ 
+\section{Chunks} \nowebchunks
+\section{Identifiers} \nowebindex
 
 % \chapter{Bibliography}
 % \printbibliography
