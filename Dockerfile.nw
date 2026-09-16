@@ -129,9 +129,15 @@ rules in the [[Makefile]] to ensure I had knoweb successfully
 built for my actual development machine; it's not pleasant to work in
 the terminal of a container.
 
+Using the target names \texttt{knoweb.sty} and \texttt{autodefs.elisp} while
+debugging to sort out why the \texttt{knoweb} target is not working. I know
+these targets depend on the \texttt{knoweb} target and are actual files to be
+created (but make doesn't know that!), so the implicit rule search may
+be avoided?
+
 <<Dockerfile>>=
 WORKDIR /opt
-RUN make knoweb
+RUN make --debug=basic knoweb.sty autodefs.elisp
 @
 
 \subsection{Make the \whyse PDF}
