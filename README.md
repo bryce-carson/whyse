@@ -6,7 +6,7 @@ Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
 
 [^2]: Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information (1991)
 
-# WHYSE ⸺ The WEB HYpertext System in Emacs
+# WHYSE: The WEB HYpertext System in Emacs
 WHYSE is an integrated development environment for Noweb and LaTeX,
 integrating these tools with new system features for editing and reviewing literate programs.
 
@@ -22,33 +22,8 @@ created from the Dockerfile. Unfortunately, compiling the PDF for Whyse outside
 of this specific environment is quite difficult, given [the fragile nature of
 the knoweb.sty macros that I have experienced](https://github.com/JoeRiel/knoweb/issues/1).
 
-Firstly, Noweb 2.13 and LaTeX are required for development. Run `make
-compile-pdf` to compile and render the PDF on your system.
-
-The files *I have in my directory* are as follows.
-
-```
-⬢ [bryce@toolbx whyse]$ tree
-.
-├── Dockerfile
-├── LICENSE
-├── Makefile
-├── noweb-navigation-mode.el
-├── README.md
-├── src
-│   ├── clean-docs.awk
-│   ├── gpl-3.0.tex
-│   ├── offsets.awk
-│   ├── whyse.bib
-│   └── whyse.nw
-├── test
-│   ├── makem.sh
-│   ├── test-parser-with-temporary-buffer.el
-│   └── widgetry.el
-└── TODO.org
-
-3 directories, 14 files
-```
+Firstly, Noweb 2.13 and LaTeX are required for development. Run `make` to
+compile the PDF on your system.
 
 `autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which
 provides LaTeX support for Noweb and Emacs Lisp identifier definitions in AWK

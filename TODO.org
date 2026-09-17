@@ -1,52 +1,55 @@
-* TODO Use RefTeX's ~reftex-section-regexp~ to recognize arbitrary LaTeX sectioning commands
+* Finishing WHYSE
+To finish this project, multiple years after its inception, I'll need to create
+a plan. I don't want to leave this project unfinished because WHYSE probably
+deserves to see the light of day after all the effort I've put into it.
+peg-noweb is already complete, so that can be included a dependency and removed
+from WHYSE's sources, ultimately. Planning isn't something I'm great at, so I
+need to use Org to my advantage.
+
+Tracking how much time I spend on the project is unimportant.
+
+** SQL Commands
+WHYSE needs a flexible, intuitive way to accept SQL commands from the user and
+send them to SQLite.
+
+Using three approaches allows user flexibility: associate a comint REPL with the
+SQLite database (=sql-comint-sqlite=); accept queries from the minibuffer;
+execute queries using a command API.
+
+The command API would facilitate the second approach: any query string given by
+the user in the minibuffer would be evaluated. Likewise, predefined queries
+would be evaluated using the same function.
+
+*** SQL Server
+SQLite does not have a server, so the Emacs Lisp code can simply write to the
+database on demand.
+
+** Graphical representation of chunk relationships
+There are many existing packages for visualizing DAGs in Emacs buffers. I will
+use one of these at the package user's option, otherwise something built-in will
+visualize trees.
+
+** Organization of the edit buffer(s)
+Perhaps I will display one window with one virtual buffer rather than display
+three windows somehow narrowed to different parts of a single source buffer.
+Perhaps an indirect buffer would be more appropriate? Perhaps windowing and such
+is a terrible idea for me to handle: perhaps the user should handle this
+themselves! The main idea is the display of indices and for these indices to be
+functional, and the SQL interaction. The display of windows otherwise and the
+narrowing of chunk text is secondary.
+
+* Old ideas about RefTeX and other advanced implementation details
+** TODO Use RefTeX's ~reftex-section-regexp~ to recognize arbitrary LaTeX sectioning commands
 - [[elisp:(load-library "reftex")][ ~(load-library "reftex")~ # before clicking the function link]]
 - [[help:reftex-section-regexp][reftex-section-regexp]]
 - navigate to the ~setq~ for that symbol.
 
-* DONE Write a GitHub workflow for generating the PDF, Emacs Package, and running elisp tests :ARCHIVE:
-CLOSED: [2025-07-27 Sun 18:39]
-The workflow file in the repository is here: [[file:.github/workflows/build.yml][Build WHYSE PDF and Emacs package workflow]].
-
-* TODO Debug failure to properly compile PDF
-* DONE Hack on the recognizer.nw and finduses.nw to better support (Emacs) LISP :ARCHIVE:
-CLOSED: [2025-07-25 Fri 01:17]
-Find Uses and the Recognizer (respectively in =finduses.nw= and =recognizer.nw=)
-need some tweaking to better support LISP identifiers. It may be as simple as
-moving =-= from ~SYMBOLS~ to ~ALPHANUMERIC~.
-
-* TODO Improve the parse tree, per the FIXME in [[file:test/test-parser-with-temporary-buffer.el][test/test-parser-with-temporary-buffer.el]]
-The current parse tree contains a ~nil~ after the chunk type and number assoc,
-and that needs to be analyzed. Why is this ~nil~ in the stack? I assume and
-believe it is because of the collapsing of stringy tokens; when a token should
-be put back onto the stack it may also be putting a ~nil~ onto the stack in the
-first call to the function.
-
-* TODO Improve documentation of the [[file:src/whyse.nw::<<default hook functions>>=][<<default hook function>>]]
-Better document the functionality of the default hook function
-~w--prepare-sexp-sql-from-file-tokens~. The current explanation is a copy of the
-brief explanation in the hook documentation string.
-
-* Prosaic improvements
-- [[file:src/whyse.nw::simple. It is defined quickly, then explained briefly.][Ensure that the previous statement in-prose [not in the TODO summary] is still correct.]]
-- [[file:src/whyse.nw::to summarize: \[\[w-open-project-hook\]\] is run.][Describe initialization of the system after parsing.]]
-- [[file:src/whyse.nw::Every project should have a database file located somewhere within the][Finish the creation of a database. Use what I learned in the fall!]]
-- [[file:src/whyse.nw::Sometimes, however, the system will permit a chunk to be undefined and][Verify that this statement is true]]: ``Usually Noweb will warn a user that a chunk was referenced but undefined, or that there was some other issue with chunks.''
-- [[file:src/whyse.nw::<<functions to collapse text and newline tokens into their largest possible form>>][Place the insertion of the functions into the code chunk better.]]
-- [[file:src/whyse.nw::featureset of SQL). The history of SEQL statements compiled is treated like a][Make the number of entries in this history list]] customizable, limited to some given number or a default of one hundred.
-- [[https://www.gnu.org/software/emacs/manual/html_node/ert/][Adopt the ERT (Emacs Regression Tests)]] package
-
-  To test WHYSE features as they are developed and become featureful. When a
-  feature is implemented a test should be written which conforms to the
-  current documentation so that regressions can be caught when changes are
-  made.
-- [[https://github.com/alphapapa/makem.sh][Adopt/use makem.sh]], by ``alphapapa''.
-
-* Explore alternative implementations
+** Explore alternative implementations
 An implementation of something WHS-like in Org mode, rather than noweb-mode,
 would be interesting. It seems quite capable, and in fact is more featureful
 than noweb. Noweb may be outmoded, honestly, but it does have its place.
 
-** TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
+*** TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
 Rather than using widget.el in the main Polymode buffer it would be prudent to
 use the Button package to make buttons out of pre-existing text.
 
@@ -114,152 +117,22 @@ preferrably a transient map or hydra like Info mode.
        map)))
 #+end_src
 
-* DONE Convert README.nw into a subtree within this file            :ARCHIVE:
-CLOSED: [2025-07-26 Sat 20:33]
-* Tangle the README from this org file
-The README file is tangled with the following chunks in the order given.
+* Prosaic improvements
+- [[file:src/whyse.nw::simple. It is defined quickly, then explained briefly.][Ensure that the previous statement in-prose [not in the TODO summary] is still correct.]]
+- [[file:src/whyse.nw::to summarize: \[\[w-open-project-hook\]\] is run.][Describe initialization of the system after parsing.]]
+- [[file:src/whyse.nw::Every project should have a database file located somewhere within the][Finish the creation of a database. Use what I learned in the fall!]]
+- [[file:src/whyse.nw::Sometimes, however, the system will permit a chunk to be undefined and][Verify that this statement is true]]: "Usually Noweb will warn a user that a chunk was referenced but undefined, or that there was some other issue with chunks."
+- [[file:src/whyse.nw::<<functions to collapse text and newline tokens into their largest possible form>>][Place the insertion of the functions into the code chunk better.]]
+- [[file:src/whyse.nw::featureset of SQL). The history of SEQL statements compiled is treated like a][Make the number of entries in this history list]] customizable, limited to some given number or a default of one hundred.
+- [[https://www.gnu.org/software/emacs/manual/html_node/ert/][Adopt the ERT (Emacs Regression Tests)]] package to test WHYSE features as they
+  are developed and become featureful. When a feature is implemented a test
+  should be written which conforms to the current documentation so that
+  regressions can be caught when changes are made.
+- [[https://github.com/alphapapa/makem.sh][Adopt/use makem.sh]], by alphapapa.
 
-#+begin_src markdown :noweb yes :tangle README.md
-  <<about>>
+* Noweb Filters
+This subtree exists because I needed to study how the =carboncopy= shell script emulates =tee=.
 
-  <<development>>
-
-  <<latex>>
-
-  <<hiatus>>
-
-  <<directory>>
-#+end_src
-
-I need to tell first-time visitors what WHYSE is, and why they might like to use it.
-
-For those interested in using it they need to know how to download and install
-it; it is not my purpose to teach them how to use GitHub. There's a big green
-button, if a visitor cannot press that they won't be able to use WHYSE
-regardless.
-
-As an Emacs mode it doesn't require LaTeX or make on the user's system. As a
-literate document this is required.
-
-#+begin_src markdown :noweb-ref latex
-  ## LaTeX compilation difficulties
-  I have not had success compiling a knoweb-styled LaTeX document in any
-  environment apart from a Debian 11 OS environment with TeXLive 2020. Only this
-  combination works; other versions of TexLive or newer versions of Debian, or
-  other Linux distributions have not worked with the peculiarities of the style
-  file and the latex environment.
-
-  As of Saturday, July 26 2025 there is now a Dockerfile which I successfully use
-  with `podman` on my Fedora Silverblue machine to build whyse and all of its
-  dependencies.
-#+end_src
-
-#+begin_src markdown :noweb-ref about
-  # About
-  The WEB Hypertext System[^2] implemented in Emacs Lisp for Norman Ramsey's
-  Noweb[^1] rather than Knuth's Pascal-based WEB or the later CWEB.
-
-  [^1]: Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
-
-  [^2]: Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information (1991)
-
-  # WHYSE ⸺ The WEB HYpertext System in Emacs
-  WHYSE is an integrated development environment for Noweb and LaTeX,
-  integrating these tools with new system features for editing and reviewing literate programs.
-
-  The IDE is inspired by the system described in Brown and Czejdo's 1991 ICCI
-  conference proceeding[^2], and is in early development.
-#+end_src
-
-#+begin_src markdown :noweb-ref hiatus
-  # Returning to development after a long hiatus
-  One of the hallmarks of literate programming is the supposed speed with which a
-  developer can acquaint (or re-acquaint) themselves with a codebase. The
-  suppository is that you're directly inputting the source code whilst reading
-  copius documentation explaining the reasoning for that code and the way it fits
-  together with other parts while you're construting your own mental model (while
-  you are reading critically, because all software and documentation has errors
-  and omissions).
-
-  I'm returning to the project on April 19th, 2025 (Sat 19 Apr 2025 12:34:49 AM
-  MDT). I am not sure how long I have been away; after checking the git log it
-  appears I've been largely inactive since May 13th, 2024. That's nearly one year!
-
-  I was inactive after the last "return" until late-July 2025. Significant
-  progress was made in terms of the Dockerfile.
-#+end_src
-
-#+begin_src markdown :noweb-ref directory
-  # Ignored files
-  If you've received a tarball of this source code you may have received
-  additional files which are otherwise ignored. One of these is whs.pdf,
-  which is a rendering of the source code from an earlier version of
-  whyse retained only to show what a PDF should look like.
-#+end_src
-
-** TODO update the file tree in the following chunk (it is out of date)
-
-#+begin_src markdown :noweb-ref development
-  # Development overview
-  To orient new contributors and help adventurous hackers use the software, this
-  overview is provided to help with navigation.
-
-  The easiest way to get started with development on Whyse is to use a container
-  created from the Dockerfile. Unfortunately, compiling the PDF for Whyse outside
-  of this specific environment is quite difficult, given [the fragile nature of
-  the knoweb.sty macros that I have experienced](https://github.com/JoeRiel/knoweb/issues/1).
-
-  Firstly, Noweb 2.13 and LaTeX are required for development. Run `make
-  compile-pdf` to compile and render the PDF on your system.
-
-  The files *I have in my directory* are as follows.
-
-  ```
-  ⬢ [bryce@toolbx whyse]$ tree
-  .
-  ├── Dockerfile
-  ├── LICENSE
-  ├── Makefile
-  ├── noweb-navigation-mode.el
-  ├── README.md
-  ├── src
-  │   ├── clean-docs.awk
-  │   ├── gpl-3.0.tex
-  │   ├── offsets.awk
-  │   ├── whyse.bib
-  │   └── whyse.nw
-  ├── test
-  │   ├── makem.sh
-  │   ├── test-parser-with-temporary-buffer.el
-  │   └── widgetry.el
-  └── TODO.org
-
-  3 directories, 14 files
-  ```
-
-  `autodefs.elisp` and `knoweb.sty` are taken from the knoweb project, which
-  provides LaTeX support for Noweb and Emacs Lisp identifier definitions in AWK
-  for Noweb to use for indexing. Upstream knoweb is not required.
-
-  The *project* license is contained in `LICENSE`. Particular files, if released
-  under a different license, contian separate licensing notices where appropriate
-  within the file; binary files do not contain license notices, and images, fonts,
-  sounds, movies, etc. are under their own license, if any works of these mediums
-  exist within the project at any time.
-
-  The Makefile has commands to `weave` noweb sources to LaTeX source, `tangle`
-  files from noweb sources, and `compile-pdf`s from generated LaTeX sources. It
-  also contains a command to generate noweb intermediate tool syntax for developer
-  inspection.
-
-  `whyse.bib` contains a BibTeX reference for academic works. It contains a
-  reference to Brown & Czejdo's 1991 conference proceeding[^2] that inspired this
-  package.
-
-  The only other source file is `whyse.nw`, the noweb source for WHYSE itself.
-#+end_src
-
-* Filters
 ** Carbon copies of the tool syntax
 When conducting business on paper using a (carbon) copy pad is commonplace to
 produce a copy of a document---such as a form or a receipt---for both customer
