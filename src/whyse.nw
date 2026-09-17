@@ -2358,21 +2358,25 @@ to labels defined elsewhere as well as index entry definitions and
 cross-references to labels identically-defined.
 
 \begin{verbatim}
+ *
 +-------------------+
 |                   |
-| @<<example.c>>=    |
+| @<<example.c>>=   |
 |i#define A foo     | i Index "A".
 | int main() {      |
-|x  printf(@<<S>>);  | x Cross-reference "S".
+|x  printf(@<<S>>); | x Cross-reference "S".
 | }                 |
 |                   |
-|l@<<S>>=            | l Label "S".
+|l@<<S>>=           | l Label "S".
 | "Hello, world!"   |
 | @                 |
 |                   |
-| [[@<<S>>]] is a   | x Cross-reference "S".
+|x[[@<<S>>]] is a   | x Cross-reference "S".
 | new chunk label.  |
 +-------------------+
+
+* Indicates that column is markup/gutter content not part of the normal
+buffer contents.
 \end{verbatim}
 
 \chapter{Pipeline Architecture}
@@ -2382,7 +2386,7 @@ I want to keep things very fucking simple now, because perfect and
 documented has become the enemy of the good and implemented.
 
 <<index-keywords.sh>>=
-#!/bin/sh
+#!/usr/bin/sh
 
 awk '/^@index/ { print $0 }' </dev/stdin
 @ 
@@ -2390,7 +2394,7 @@ awk '/^@index/ { print $0 }' </dev/stdin
 The prior filter will remove all keywords that aren't indexing keywords.
 
 <<definitions.sh>>=
-#!/bin/sh
+#!/usr/bin/sh
 
 awk '/^@index defn (.*)/ {
 if (match($0, /^@index defn (.*)/)) {
@@ -2398,6 +2402,63 @@ if (match($0, /^@index defn (.*)/)) {
 }
 }' </dev/stdin
 @ 
+
+<<example.sh>>=
+#!/usr/bin/sh
+awk '
+BEGIN {
+    # idefnrx = /^@index defn (.*)/
+    FS=" "
+    nwnl=1
+}
+# idefnrx {
+#     if (match($0, idefnrx)) {
+#         print(substr($0, match($0, idefnrx)))
+#     }
+# }
+/^@nl/ {
+  nwnl=nwnl+1
+}
+/^@defn/ {
+    module_name = substr($0, 7)
+    #print(substr($0, 6))# skip "@defn "
+}
+$1 == "@index" && $2 == "defn" {
+    id = substr($0, 13)# skip "@index defn ", print the rest of the line.
+    print(sprintf("%s\x1C%s\x1C%d", id, module_name, nwnl))
+}
+' < /dev/stdin
+@ 
+
+<<very nice.el>>=
+(defun w--module-navigate (widget direction widget-number)
+  (let ((widget-number (widget-get widget :module-number)))
+    (if (and (stringp direction)
+             (string= direction "prev"))
+        (while; not at the beginning or end of the buffer, nor at the desired widget
+            (or (not (bobp))
+                (not (and (widget-at)
+                          (widget-member (widget-at) :module-number)
+                          (= (widget-member (widget-at) :module-number)
+                             (1- widget-number)))))
+          (backward-line))
+      (while; not at the beginning or end of the buffer, nor at the desired widget
+          (or (not (eobp))
+              (not (and (widget-at)
+                        (widget-member (widget-at) :module-number)
+                        (= (widget-member (widget-at) :module-number)
+                           (1+ widget-number)))))
+        (forward-line)))))
+
+(widget-create 'push-button
+               :format "%[prev%]"
+               :button-face custom-button
+               :module-navigate #'w--module-navigate
+               :action (lambda (widget value)
+                         (widget-apply widget :module-navigate
+                                       value
+                                       (widget-get widget :module-number))))
+@
 
 \end{document}
 

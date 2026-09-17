@@ -372,8 +372,43 @@ narrowing is in effect. 'Above' and 'below' are chosen to differentiate this
 button from the text 'prev' and 'next'.
 
 * The stages in the /notangle/ pipeline
-1. Convert the web to a machine-readable (tool) format.
-2. Extract the desired code chunk.
+The wrapper script =notangle= has hardcoded paths to =markup= and the LIBEXEC of
+Noweb. The wrapper parses the arguments and constructs the pipeline.
+
+1. Convert the web to a machine-readable (tool) format using =markup=.
+2. Extract the desired code chunk with =/usr/libexec/noweb/nt=.
+
+=nt= therefore depends upon =markup=.
+
+#+name: notangle
+#+begin_src shell
+  #!/usr/bin/sh
+  # Copyright 1991 by Norman Ramsey.  All rights reserved.
+  # See file COPYRIGHT for more information.
+  LIB=/usr/libexec/noweb
+  markup=$LIB/markup opt= arg= markopt= filters=
+  while [ $# -gt 0 ]; do
+          case $1 in
+          -gitversion) echo "50840b12b87af91fe9aea6b4979ea7f71286b5be" ; exit ;;
+          -ml|-m3|-awk|-icn|-icon|-pascal|-c|-c++|-f77|-f90|-tex|-w[0-9][0-9]*) ;; 
+                                          # deliberately ignore nountangle args
+          -t)  ;; # this is default
+          -t*) markopt="$markopt -t" ; opt="$opt '$1'" ;;
+                  # copy tabs at markup, use width given in notangle
+          -filter) filters="$filters $2 | " ; shift ;;
+          -markup) markup="$2" ; shift ;;
+          -)   arg="$arg '$1'" ;;
+          -L*) opt="$opt -t '$1'" ; markopt="$markopt -t" ;;
+          -*)  opt="$opt '$1'" ;;
+          ,*)   arg="$arg '$1'" ;;
+          esac
+          shift
+  done
+  PATH="$PATH:$LIB" 
+  export PATH
+  eval "$markup $markopt $arg | $filters $LIB/nt $opt "'; rc=$?'
+  exit $rc
+#+end_src
 
 * The stages in the /noweave/ pipeline
 This is an example of a particular noweave pipeline which includes indexing C
@@ -386,8 +421,10 @@ code for identifiers and cross-references between chunks.
 5. Generate LaTeX.
 
 * The stages in the /whyse/ pipeline
+This is hypothetical.
+
 #+begin_src sh :var WEB="~/src/whyse/src/whyse.nw"
-  markup WEB | autdefs elisp | finduses | noidx
+  markup WEB | autdefs elisp | finduses -noquote | noidx
 #+end_src
 
 1. Convert the web to a machine-readable (tool) format: ~markup WEB~.
