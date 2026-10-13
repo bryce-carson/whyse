@@ -9,12 +9,12 @@ BUILD        ?= $(ROOT_DIR)build
 BUILDDIR     ?= $(BUILD)          # convenience alias
 SRC          ?= $(ROOT_DIR)src
 TEST         ?= $(ROOT_DIR)test
-PREFIX       ?= /usr/local
+PREFIX       ?= /usr
 DESTDIR      ?=
 
-# noweb locations  also overridable
+# noweb locations---also overridable
 # On Fedora the binaries are typically in /usr/bin and the filters in /usr/lib64/noweb
-NOWEB_LIB    ?= $(PREFIX)/lib/noweb
+NOWEB_LIB    ?= $(PREFIX)/lib64/noweb
 NOWEB_BIN    ?= $(PREFIX)/bin
 
 # derived tool paths (filters live in NOWEB_LIB)
@@ -32,8 +32,11 @@ log = $(BUILD)/whyse.log
 # ------------------------------------------------------------------
 # Packaging
 # ------------------------------------------------------------------
-whyse-$(VERSION).tar: whyse.el whyse-pkg.el LICENSE README.md | builddir
-	tar cf $@ --transform "s|^|whyse-$(VERSION)/|" $^
+# TODO: should LICENSE be included? Doubtful... README.md shouldn't be included,
+# in my taste.
+pkg ?= $(BUILD)/whyse-$(VERSION)
+$(pkg).tar: $(pkg)/whyse.el $(pkg)/whyse-pkg.el | builddir
+	tar cf $@ -C $(BUILD) $(notdir $(basename $@))
 
 # ------------------------------------------------------------------
 # Documentation
@@ -47,36 +50,21 @@ whyse.pdf: whyse.tex knoweb.sty
 # ------------------------------------------------------------------
 # Source extraction
 # ------------------------------------------------------------------
-%.el: | builddir
-	$(NOWEB_BIN)/notangle -R$@ $(SRC)/whyse.nw > $(BUILD)/$@
+$(pkg)/%.el: | builddir
+	-mkdir -p $(pkg)
+	$(NOWEB_BIN)/notangle -R$(notdir $@) $(SRC)/whyse.nw > $@
 
 # ------------------------------------------------------------------
 # knoweb support (style file + autodefs filter)
 # Everything related to knoweb lives under $(BUILD)
 # ------------------------------------------------------------------
 
-# Stamp file lives in the build directory
-$(BUILD)/knoweb.stamp: | builddir
-	git clone --depth 1 https://github.com/JoeRiel/knoweb.git $(BUILD)/knoweb
-	test -d $(BUILD)/knoweb
-	touch $@
-
-# Real installed location of the style file
-$(KNOWEB_STYLE_DEST)/knoweb.sty: $(BUILD)/knoweb.stamp
-	mkdir -p $(dir $@)
-	cp $(BUILD)/knoweb/knoweb.sty $@
-	# refresh TeX ls-R if we are installing into a system tree
+$(KNOWEB_STYLE_DEST)/knoweb.sty: $(BUILD)/knoweb/knoweb.stamp
+	$(install) $(SRC)/knoweb.sty $(dir $@)
+# Refresh the TeX ls -R database
 	-mktexlsr $(dir $(KNOWEB_STYLE_DEST)) 2>/dev/null || true
 
-# Convenience target so "make knoweb.sty" continues to work
-.PHONY: knoweb.sty
-knoweb.sty: $(KNOWEB_STYLE_DEST)/knoweb.sty
-
-# ------------------------------------------------------------------
-autodefs.elisp: $(BUILD)/knoweb.stamp | builddir
-	$(NOWEB_BIN)/notangle -R$@ $(BUILD)/knoweb/autodefs.nw | \
-		sed 's,#!/usr/bin/gawk --file,#!/usr/local/bin/gawk --file,' \
-		> $(BUILD)/autodefs.elisp
+autodefs.elisp:
 	mkdir -p $(DESTDIR)$(NOWEB_LIB)
 	cp -t $(DESTDIR)$(NOWEB_LIB) $(BUILD)/autodefs.elisp
 	chmod +x $(DESTDIR)$(NOWEB_LIB)/autodefs.elisp
@@ -84,14 +72,8 @@ autodefs.elisp: $(BUILD)/knoweb.stamp | builddir
 # ------------------------------------------------------------------
 # Docker-related targets (kept for completeness)
 # ------------------------------------------------------------------
-Dockerfile: dockerfile.nw
-	$(NOWEB_BIN)/notangle -R$@ $^ > $@
-
-Dockerfile.tex: autodefs.elisp | builddir
-	cd $(BUILD) && $(NOWEB_BIN)/noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
-
-Dockerfile.pdf: Dockerfile.tex knoweb.sty
-	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode $<
+Dockerfile: dockerfile.org
+	emacs -Q --batch --eval "(progn (require 'ob-tangle) (with-current-buffer (find-file-noselect $<) (org-babel-tangle)))"
 
 # ------------------------------------------------------------------
 # Utility / development targets
@@ -110,7 +92,7 @@ clean:
 		$(BUILD)/*.xdy $(BUILD)/*.xdv
 	$(RM) -rf $(BUILD)/whyse-*/ $(BUILD)/knoweb $(BUILD)/knoweb.stamp
 	$(RM) -f $(BUILD)/whyse-*.tar $(BUILD)/autodefs.elisp
-	# optional Emacs cache (ignore if absent)
+# optional Emacs cache (ignore if absent)
 	-$(RM) ~/.config/emacs/.cache/whyse.db 2>/dev/null || true
 
 # Development pipeline for peg-noweb (can be removed later)
@@ -121,8 +103,8 @@ tool-syntax: autodefs.elisp
 		| $(clean_docs) \
 		| $(noidx) -delay
 
-# Minimal install target  places the generated Elisp and style file
+# Minimal install target---places the generated Elisp and style file
 install: whyse.el knoweb.sty autodefs.elisp
 	mkdir -p $(DESTDIR)$(PREFIX)/share/emacs/site-lisp
 	cp -t $(DESTDIR)$(PREFIX)/share/emacs/site-lisp $(BUILD)/whyse.el
-	# knoweb.sty and autodefs.elisp are already installed by their rules
+# knoweb.sty and autodefs.elisp are already installed by their rules

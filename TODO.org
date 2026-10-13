@@ -38,102 +38,17 @@ themselves! The main idea is the display of indices and for these indices to be
 functional, and the SQL interaction. The display of windows otherwise and the
 narrowing of chunk text is secondary.
 
-* Old ideas about RefTeX and other advanced implementation details
-** TODO Use RefTeX's ~reftex-section-regexp~ to recognize arbitrary LaTeX sectioning commands
-- [[elisp:(load-library "reftex")][ ~(load-library "reftex")~ # before clicking the function link]]
-- [[help:reftex-section-regexp][reftex-section-regexp]]
-- navigate to the ~setq~ for that symbol.
-
-** Explore alternative implementations
-An implementation of something WHS-like in Org mode, rather than noweb-mode,
-would be interesting. It seems quite capable, and in fact is more featureful
-than noweb. Noweb may be outmoded, honestly, but it does have its place.
-
-*** TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
-Rather than using widget.el in the main Polymode buffer it would be prudent to
-use the Button package to make buttons out of pre-existing text.
-
-There are utilities for mapping over all "spans" in a polymode buffer, e.g.
-[[help:pm-map-over-spans][polymode map over spans]].
-
-#+begin_quote markdown
-`:head-mode` and `:tail-mode` specify the major mode which should be used for
-head and tail respectively. Special symbol `'host` means that the host mode is
-used for head or tail, if `'body` [then] the mode of the chunk's body. Head and
-tail modes default to `poly-head-tail-mode` which is a very basic prog mode with
-no special powers.
-#+end_quote
-
-I need to define a mode. The mode must have a keymap to navigate chunks:
-preferrably a transient map or hydra like Info mode.
-
-#+begin_src elisp :noweb yes :tangle noweb-navigation-mode.el
-  (define-minor-mode nwn-mode
-    "Noweb Narrowing minor mode provides alternative motion commands
-            between pages, defined by a buffer-local value of
-            `page-delimiter' appropriate for Noweb chunks."
-    :lighter " nWn "
-    :list '(fundamental-mode text-mode latex-mode noweb-mode poly-noweb-mode)
-    :keymap '(([next] . nwn--forward-page)
-              ([prior] . nwn--backward-page))
-    (if <<current buffer is a noweb file>>
-        (if nwn-mode
-            (progn (make-local-variable 'page-delimiter)
-                   <<customize page-delimiter regular expression for noweb>>
-                   (nwn-narrow-to-page))
-          (kill-local-variable 'page-delimiter)
-          (when (buffer-narrowed-p)
-            (widen)))
-        (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
-
-  (define-child-mode noweb-navigation-mode text-mode)
-  (defun noweb-navigation-mode (&rest mode-arguments)
-    "\[COMMAND] is exclusively for use as a :head-mode and :tail-mode with poly-noweb. It has no other purpose.
-
-  \{KEYMAP}
-
-  \<KEYMAP>"
-
-    (kill-all-local-variables)
-    (set-variable 'major-mode noweb-navigation-mode)
-    (use-local-map
-     (let ((map (make-sparse-keymap)))
-       ;; TODO: these dwim functions should be cyclic. Once at the last definition
-       ;; of a chunk continuing to the next should return the user to the first
-       ;; definition of the chunk.
-       (define-key map "n" #'next-noweb-chunk-definition-dwim)
-       (define-key map "p" #'previous-noweb-chunk-definition-dwim)
-
-       ;; TODO: these dwim functions should cycle through the next visible
-       ;; defintions of a chunk which is the sibling of the currently visited
-       ;; chunk.
-       (define-key map "S-n" #'next-noweb-chunk-sibling-definition-dwim)
-       (define-key map "S-p" #'previous-noweb-chunk-sibling-definition-dwim)
-
-       ;; TODO: these dwim functions should cycle through parents of the currently
-       ;; visited chunk.
-       (define-key map "M-n" #'next-noweb-chunk-parent-definition-dwim)
-       (define-key map "M-p" #'previous-noweb-chunk-parent-definition-dwim)
-       map)))
-#+end_src
-
-* Prosaic improvements
-- [[file:src/whyse.nw::simple. It is defined quickly, then explained briefly.][Ensure that the previous statement in-prose [not in the TODO summary] is still correct.]]
-- [[file:src/whyse.nw::to summarize: \[\[w-open-project-hook\]\] is run.][Describe initialization of the system after parsing.]]
-- [[file:src/whyse.nw::Every project should have a database file located somewhere within the][Finish the creation of a database. Use what I learned in the fall!]]
-- [[file:src/whyse.nw::Sometimes, however, the system will permit a chunk to be undefined and][Verify that this statement is true]]: "Usually Noweb will warn a user that a chunk was referenced but undefined, or that there was some other issue with chunks."
-- [[file:src/whyse.nw::<<functions to collapse text and newline tokens into their largest possible form>>][Place the insertion of the functions into the code chunk better.]]
-- [[file:src/whyse.nw::featureset of SQL). The history of SEQL statements compiled is treated like a][Make the number of entries in this history list]] customizable, limited to some given number or a default of one hundred.
-- [[https://www.gnu.org/software/emacs/manual/html_node/ert/][Adopt the ERT (Emacs Regression Tests)]] package to test WHYSE features as they
-  are developed and become featureful. When a feature is implemented a test
-  should be written which conforms to the current documentation so that
-  regressions can be caught when changes are made.
-- [[https://github.com/alphapapa/makem.sh][Adopt/use makem.sh]], by alphapapa.
-
-* Noweb Filters
+* Study knoweb.pdf to understand the Noweb LaTeX macros, page style, and more
+* TODO Distribute knoweb files alongside the Emacs Lisp package.
+- PDF
+- DVI
+- TeX
+- autodefs.elisp
+* Pipelines and filters
+** Noweb Filters
 This subtree exists because I needed to study how the =carboncopy= shell script emulates =tee=.
 
-** Carbon copies of the tool syntax
+*** Carbon copies of the tool syntax
 When conducting business on paper using a (carbon) copy pad is commonplace to
 produce a copy of a document---such as a form or a receipt---for both customer
 and business records. =carboncopy= is such a filter, which copies the tool
@@ -149,109 +64,16 @@ non-null and that noclobber is not set.
   }
   fi;
 #+end_src
-* TODO Study knoweb.pdf to understand the Noweb LaTeX macros, page style, and more
-* Utilize hyperbole or widget to introduce functionality to buffer text
-** Test Buffer
-This buffer text is useful for creating widgets and testing the hypermedia functionality of whyse.
-
-#+begin_src :noweb no :tangle test/test.nw
-  <<a>>=
-  a
-  b
-  c
-  @
-  is as easy as
-  <<a>>=
-  1
-  2
-  <<b>>
-  <<b>>=
-  3
-  <<c>>=
-  <<a>>
-  @
-#+end_src
-
-The expected contents of ~c~ are:
-
-#+begin_example
-a
-b
-c
-is as easy as
-1
-2
-3
-#+end_example
-
-The following widget.el-related code inserts a code chunk header with navigation
-buttons between previous and proceeding chunk definitions (continuations).
-
-Perhaps I should use a minor mode to control narrowing. When narrowed only the
-current chunk would be visible. Adding text prior to the chunk header would
-append the new documentation to an existing documentation chunk or insert one.
-Terminating the code chunk with an =@= would work similarly and documentation
-proceeding the code chunk would be prepended to an existing documentation chunk
-following the code chunk or insert one. These mentions of appending, inserting,
-and preprending relate to a narrowed view, when the buffer text is narrowed to
-display /only a given code chunk/; when not narrowed this would be natural and
-manual... perhaps a virtual buffer would be the correct choice. Multiple
-buffers?
-
-#+begin_src emacs-lisp
-  (define-widget 'noweb-definition 'group
-    "A group of widgets giving the appearance of a chunk definition and the navigation between prior and proceeding definitions of the same chunk name.
-
-  Example:\n<<a-chunk-definition>>= [prev][next][both]")
-
-  ;; TODO: collect the widgets into a compound widget created with
-  ;; `define-widget'.
-  (defun whyse--create-defn-widget (chunk-name lines)
-    "Create a widget linking to earlier and later (if any) definitions of the
-  same CHUNK-NAME on the LINES of the original web buffer text."
-    ;; TODO: this widget should be followed by two buttons, each which will cause
-    ;; point to move to a position returned from the top of a `prev' or `next'
-    ;; stack of buffer positions.
-    (widget-create 'link
-                   :format "<<%v>>="
-                   :value chunk-name)
-
-    ;; Previous definitions (if any). `ctrl+enter' should go to the first.
-    (widget-insert "\t")
-    (widget-create 'button
-                   :format "%t [%v]"
-                   :tag "🧭"
-                   :value "prev")
-
-    ;; Next definitions (if any). `ctrl+enter' should go to the last.
-    (widget-create 'button
-                   :format "[%v]"
-                   :value "next")
-
-    (widget-insert "\t")
-    (widget-create 'button
-                   :format "%t [%v]"
-                   :tag "📜"
-                   :value "above|below|both"))
-
-  (whyse--create-defn-widget "a" lines)
-#+end_src
-
-The button-label string "above|below|both" in the example of the widget
-definition code above refers to a button whose label changes based upon what is
-currently toggled for the code chunk behaviour. When "both" is displayed, both
-prior and proceeding documentation chunks (if any) will be displayed while
-narrowing is in effect. 'Above' and 'below' are chosen to differentiate this
-button from the text 'prev' and 'next'.
-
-* The stages in the /notangle/ pipeline
-The wrapper script =notangle= has hardcoded paths to =markup= and the LIBEXEC of
-Noweb. The wrapper parses the arguments and constructs the pipeline.
+** The stages in the /notangle/ pipeline
+The wrapper script =notangle= has hardcoded paths to =markup= in the =LIBEXEC=
+of Noweb, set at build time. The wrapper parses the arguments and constructs the
+pipeline.
 
 1. Convert the web to a machine-readable (tool) format using =markup=.
 2. Extract the desired code chunk with =/usr/libexec/noweb/nt=.
 
-=nt= therefore depends upon =markup=.
+=nt= is the binary backend serving the =notangle= shell script. =nt= therefore
+depends upon =markup=. =markup= is also a binary.
 
 #+name: notangle
 #+begin_src shell
@@ -283,9 +105,10 @@ Noweb. The wrapper parses the arguments and constructs the pipeline.
   exit $rc
 #+end_src
 
-* The stages in the /noweave/ pipeline
-This is an example of a particular noweave pipeline which includes indexing C
-code for identifiers and cross-references between chunks.
+** The stages in the /noweave/ pipeline
+This is an example of a particular noweave pipeline which includes
+indexing of code in the C language for identifiers and
+cross-references between chunks.
 
 1. Convert the web to a machine-readable (tool) format.
 2. Identify definitions of identifiers.
@@ -293,7 +116,7 @@ code for identifiers and cross-references between chunks.
 4. Create an index of identifiers and cross-references.
 5. Generate LaTeX.
 
-* The stages in the /whyse/ pipeline
+** The stages in the /whyse/ pipeline
 This is hypothetical.
 
 #+begin_src sh :var WEB="~/src/whyse/src/whyse.nw"
@@ -317,8 +140,8 @@ This is hypothetical.
    2. Save the buffer to a file.
 9. Repeat steps 1--8 until the program and its documentation is complete.
 
-* Survey of the LaTeX commands generated by =totex=
-** GROUP ONE
+** /totex/, and a survey of the LaTeX commands generated by it
+*** GROUP ONE
 :PROPERTIES:
 :CUSTOM_ID: group-one
 :END:
@@ -380,7 +203,7 @@ macros appropriate to the selected package options.
 - hyperquotedidents;
 - nohyperquotedidents.
 
-** GROUP TWO
+*** GROUP TWO
 :PROPERTIES:
 :CUSTOM_ID: group-two
 :END:
@@ -540,3 +363,1698 @@ three arguments.
 
 =nwlinkedidentc= is a cross-reference to an identifier. It takes two
 arguments.
+* "Keep it simple, stupid!"
+I've been overcomplicating this application for a long time.
+
+Tool syntax goes in to my black box and modified tool syntax comes out! What
+does the black box do? The black box either filters, modifies, or adds lines to
+the tool syntax (or a combination thereof); that's all that should happen!
+
+** Useful packages for visualization
+- dag-draw :: VERY EASY
+- ctable
+- graph-fa2
+
+** Module trees
+What is WHYSE? What am I doing? I am working on a lisp program that will allow
+navigation between modules, which are represented as vertices in a directed
+graph. These vertices and their adjacent edges can be represented in a number of
+ways, but I should follow something proven. I will need to establish the
+polyforest. A polyforest is just a list of forests. A forest is just a tree with
+multiple roots. On representations of graphs in computer science:
+https://en.wikipedia.org/wiki/Adjacency_list;
+https://github.com/Nolan-lpr/Graphes_en_C.
+
+*** Filter and hack
+
+#+begin_src elisp
+  (load-file "~/src/peg-noweb/build/peg-noweb-0.1/peg-noweb.el")
+  (setq whyse-web "~/src/whyse/src/whyse.nw"
+        whyse-web-parsed (peg-noweb-parse-files whyse-web)
+        whyse-document (peg-noweb-document 0 whyse-web-parsed))
+
+  (cl-loop for (k v) in chunk by (n type) in (cdr document); ignore filename
+           )
+  (map-filter (lambda (keyword value) (or (string= keyword "@defn")
+                                          (string= keyword "@use")))
+              whyse-web-parsed)
+
+  for file in parsed-web
+  let file-name be (car file)
+  for chunk in (cdr file)
+
+  ;; TODO: swap the positioning of the chunk type and the chunk number in chunk
+  ;; lists to parallel "@begin kind n" in tool syntax; the first element of a
+  ;; chunk list being (docs . n) or (code . n) is suitable and matches the sense
+  ;; of "begin kind n", being the first element of the list.
+
+  ;; FIXME: remove the trailing, explicit nil at the end of the parse-list for a
+  ;; file ((file-name chunks... nil)); do recall the ultimate parsing is a list of
+  ;; files (files...), hence ((file-name chunks... nil) (file-name-1 chunks...
+  ;; nil)).
+
+  (("/home/bryce/src/whyse/src/whyse.nw" ((0 . docs) (text . "%% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-") (nl . "
+  ") (text . "% Copyright © 2023 Bryce Carson") (nl . "
+  ") (text . "% Codename \"Wise Eel\"") (nl . "
+  ") (text . "\\documentclass[draft, oldfontcommands]{memoir}") (nl . "
+  ") (text . "\\leavespergathering{8}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\title{\"The Implementation of \\textsc{WHYSE}\"}") (nl . "
+  ") (text . "\\author{\"Bryce Carson\"}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\newcommand{\\whyse}{\\textsc{WHYSE}}") (nl . "
+  ") (text . "\\newcommand{\\whyseel}{\\texttt{whyse.el}}") (nl . "
+  ") (text . "\\newcommand{\\whysenw}{\\texttt{whyse.nw}}") (nl . "
+  ") (text . "\\newcommand{\\elisp}{\\textsc{Emacs LISP}}") (nl . "
+  ") (text . "\\newcommand{\\lisp}{\\textsc{LISP}}") (nl . "
+  ") (text . "\\newcommand{\\sql}{SQL}") (nl . "
+  ") (text . "\\newcommand{\\sequel}{SQL}") (nl . "
+  ") (text . "\\newcommand{\\noweb}{\\textsc{noweb}}") (nl . "
+  ") (text . "\\newcommand{\\notangle}{\\texttt{notangle}}") (nl . "
+  ") (text . "\\newcommand{\\noweave}{\\texttt{noweave}}") (nl . "
+  ") (text . "\\newcommand{\\emacs}{\\textsc{GNU Emacs}}") (nl . "
+  ") (text . "\\newcommand{\\auctex}{AUC\\TeX{}}") (nl . "
+  ") (text . "\\newcommand{\\reftex}{Ref\\TeX{}}") (nl . "
+  ") (text . "\\newcommand{\\texinfo}{\\TeX{}info}") (nl . "
+  ") (text . "\\newcommand{\\html}{\\textsc{HTML}}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\usepackage{standalone}") (nl . "
+  ") (text . "\\usepackage[rm]{roboto}") (nl . "
+  ") (text . "\\usepackage[T1]{fontenc}") (nl . "
+  ") (text . "\\usepackage{fontspec}") (nl . "
+  ") (text . "\\setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]") (nl . "
+  ") (text . "\\usepackage{geometry}") (nl . "
+  ") (text . "\\geometry{") (nl . "
+  ") (text . "  top=0.625in,") (nl . "
+  ") (text . "  bottom=0.625in,") (nl . "
+  ") (text . "  left=0.625in,") (nl . "
+  ") (text . "  right=0.625in,") (nl . "
+  ") (text . "  papersize={6in, 9in}") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "\\usepackage{mparhack}") (nl . "
+  ") (text . "\\usepackage{mathptmx}") (nl . "
+  ") (text . "\\usepackage{listings}") (nl . "
+  ") (text . "\\usepackage{framed}") (nl . "
+  ") (text . "\\usepackage[breakcode,footnotesizecode]{knoweb}") (nl . "
+  ") (text . "\\usepackage[colorlinks,backref=page]{hyperref}") (nl . "
+  ") (text . "\\usepackage{verbatim}") (nl . "
+  ") (text . "\\usepackage{syntax}") (nl . "
+  ") (text . "\\usepackage{xspace}") (nl . "
+  ") (text . "\\usepackage{paralist}") (nl . "
+  ") (text . "\\usepackage{color}") (nl . "
+  ") (text . "\\usepackage{fancyvrb}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "% NOTE (from the knoweb package documentation): Headers contain file") (nl . "
+  ") (text . "% name, date, and page number. noweave emits \\nwfilename{name} for each") (nl . "
+  ") (text . "% new file. In the noweb page style, new files cause page breaks;") (nl . "
+  ") (text . "% otherwise they are ignored.") (nl . "
+  ") (text . "\\pagestyle{noweb}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{document}") (nl . "
+  ") (text . "%% \\frontmatter%% FIXME: what did this do and why did I disable it?") (nl . "
+  ") (text . "\\maketitle") (nl . "
+  ") (text . "%% \\tableofcontents") (nl . "
+  ") (text . "%% \\mainmatter%% FIXME: what did this do and why did I disable it?") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the") (nl . "
+  ") (text . "%% quotations should be guarded with at-signs, like ") (quotation . "@text <<name>>
+  ") (text . ". The") (nl . "
+  ") (text . "%% Emacs poly-noweb mode should have syntax highlighting that does not") (nl . "
+  ") (text . "%% hightlight noweb quotations within LaTeX comments. The font-locking") (nl . "
+  ") (text . "%% should be aware that this is a comment, so that the proper syntax") (nl . "
+  ") (text . "%% highlighting is applied (i.e. none is applied to the quotation, or at") (nl . "
+  ") (text . "%% least it is another shade of the comment syntax colouring, rather") (nl . "
+  ") (text . "%% than pure white like body text).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{abstract}") (nl . "
+  ") (text . "\\whyse~\\textsc{((no)Web~HYpertext~System~in~Emacs)} is an integrated") (nl . "
+  ") (text . "development environment for Noweb-based hypertexts within Emacs, similar") (nl . "
+  ") (text . "to EDE but not sharing development principles. It is based off of an") (nl . "
+  ") (text . "academic paper written in CITE brown1991.% \\cite[1991 by Brown and Czejdo]{brown1991}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "A paper describing this implementation---written in Noweb and browsable,") (nl . "
+  ") (text . "editable, and auditable with \\whyse{}, or readable in the printed") (nl . "
+  ") (text . "form---is hoped to be submitted to \\textit{The Journal of") (nl . "
+  ") (text . "  Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper") (nl . "
+  ") (text . "will include historical information about literate programming, and") (nl . "
+  ") (text . "citations (especially of those given credit in the ") (quotation . "@text <<Commentary>>
+  ") (text . "") (nl . "
+  ") (text . "for ideating \\whyse{} itself).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Users of \\whyse{} in Emacs are expected to be familiar with Noweb; this does not") (nl . "
+  ") (text . "include how Noweb is built from source (that is arcane, supposedly). It may,") (nl . "
+  ") (text . "however, include the writing of filters implemented with Sed, AWK, or other") (nl . "
+  ") (text . "languages. Users must know how to write a custom command-line for noweave") (nl . "
+  ") (text . "(read the manual section regarding the \\texttt{-v} option). If you only know") (nl . "
+  ") (text . "how to call the noweave command you're reading the wrong document. Read the") (nl . "
+  ") (text . "Noweb manual first, please. Developers of \\whyse{} extensions should read the") (nl . "
+  ") (text . "Noweb Hacker's Guide until they understand it, afterwards reading this") (nl . "
+  ") (text . "documentation several times until the full implementation is understood. I") (nl . "
+  ") (text . "recommend modifying the system using itself to keep organized, and writing") (nl . "
+  ") (text . "literately; you'll thank yourself later for doing so.") (nl . "
+  ") (text . "\\end{abstract}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\part{What is \\whyse{}?}") (nl . "
+  ") (text . "\\label{part:what-is-whyse}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Preface}\\label{Preface}") (nl . "
+  ") (text . "The organization of this literate program is (more or less) linear:") (nl . "
+  ") (text . "implementation of the components of the program are explained as they") (nl . "
+  ") (text . "enter scope while discussing how a user would encounter various \\whyse{}") (nl . "
+  ") (text . "features as in the \\textit{user documenation}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{\\whyse{} Projects}\\label{Projects}") (nl . "
+  ") (text . "A user will read from \\textit{the package description} that they should") (nl . "
+  ") (text . "call an interactive command to create a project. The \\whyse{} application") (nl . "
+  ") (text . "is started with the interactive command: ") (quotation . "@text whyse
+  ") (text . ". The command loads") (nl . "
+  ") (text . "the first element of the customization variable") (nl . "
+  ") (quotation . "@text w-registered-projects
+  ") (text . ", considering that the default project, or it") (nl . "
+  ") (text . "opens the ``Easy Customization Interface'' for the application's") (nl . "
+  ") (text . "customization group (") (quotation . "@text M-x~customize-group~whyse
+  ") (text . "): an effective prompt") (nl . "
+  ") (text . "for the user to enter the necessary information. If user's dislike this,") (nl . "
+  ") (text . "they can disable it.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "A customization group for \\whyse{} is defined to organize its") (nl . "
+  ") (text . "customization variables, and these details are explained before moving") (nl . "
+  ") (text . "on to explain the struct used during runtime.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((1 . code) (chunk . "Customization and global variables") (nl . "
+  ") (text . "(defgroup whyse nil") (nl . "
+  ") (text . "  \"noWeb HYpertext System in Emacs\"") (nl . "
+  ") (text . "  :tag \"WHYSE\"") (nl . "
+  ") (text . "  :group 'applications)") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defcustom w-registered-projects nil") (nl . "
+  ") (text . "  \"This variable stores all of the projects that are known to WHYSE.\"") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :type '(repeat w--project-widget)") (nl . "
+  ") (text . "  :require 'widget") (nl . "
+  ") (text . "  :tag \"WHYSE Registered Projects\")") (nl . "
+  ") (text . "") (nl . "
+  ")) ((2 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% NOTE: The Widget feature is required by the registered projects") (nl . "
+  ") (text . "%% variable, but may be redundant because the Easy Customization") (nl . "
+  ") (text . "%% Interface is itself implemented with The Emacs Widget Library.") (nl . "
+  ") (text . "%% Requiring the library may be undesirable, as @[@[(require 'widget)]]") (nl . "
+  ") (text . "%% will be eagerly evaluated upon Emacs' initialization when") (nl . "
+  ") (text . "%% @[@[w-registered-projects]] is set to its saved custom value.") (nl . "
+  ") (text . "%% However, there may be a good reason to eagerly evaluate that form:") (nl . "
+  ") (text . "%% the Widget feature will be available immediately, and widgets will be") (nl . "
+  ") (text . "%% used in buffers to provide TUI buttons for navigation between modules") (nl . "
+  ") (text . "%% of a literate program (at least, that is the design of the program at") (nl . "
+  ") (text . "%% this point in development), so having this feature available sooner") (nl . "
+  ") (text . "%% than later is okay. The feature is required by the package") (nl . "
+  ") (text . "%% regardless.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The ") (quotation . "@text w--project-widget
+  ") (text . " type used for the registered projects variable") (nl . "
+  ") (text . "is a simple list widget containing the name of the project and a path to") (nl . "
+  ") (text . "its Noweb source file, along with a shell command which generates the") (nl . "
+  ") (text . "Noweb tool syntax for this project. Each Noweb project has a different") (nl . "
+  ") (text . "command-line, and some are complex enough to have a makefile, or") (nl . "
+  ") (text . "multiple makefiles! Noweb itself is an example of that level of") (nl . "
+  ") (text . "complexity. The shell command is executed by \\whyse{} upon loading the") (nl . "
+  ") (text . "project, and the standard output captured for parsing by a PEG parser") (nl . "
+  ") (text . "defined in ") (quotation . "@text <<PEG rules>>
+  ") (text . ".") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The widget itself is explained in \\ref{widgetry}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Widgetry}\\label{widgetry}") (nl . "
+  ")) ((3 . code) (chunk . "Widgets") (nl . "
+  ") (text . "(define-widget 'w--project-widget 'list") (nl . "
+  ") (text . "  \"The WHYSE project widget type.\"") (nl . "
+  ") (text . "  :format \"\\n%v\\n\"") (nl . "
+  ") (text . "  :offset 0") (nl . "
+  ") (text . "  :indent 0") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "  ;; NOTE: the convert-widget keyword with the argument") (nl . "
+  ") (text . "  ;; 'widget-types-convert-widget is absolutely necessary for ARGS to be") (nl . "
+  ") (text . "  ;; converted to widgets.") (nl . "
+  ") (text . "  :convert-widget 'widget-types-convert-widget") (nl . "
+  ") (text . "  :args '((editable-field") (nl . "
+  ") (text . "           :format \"%t: %v\"") (nl . "
+  ") (text . "           :tag \"Name\"") (nl . "
+  ") (text . "           :value \"\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          (file") (nl . "
+  ") (text . "           :tag \"Noweb source file (*.nw)\"") (nl . "
+  ") (text . "           :format \"%t: %v\"") (nl . "
+  ") (text . "           :valid-regexp \".*\\\\.nw$\"") (nl . "
+  ") (text . "           :value \"\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          (string") (nl . "
+  ") (text . "           :tag \"A shell command to run a shell script to generates Noweb tool syntax\"") (nl . "
+  ") (text . "           :format \"%t: %v\"") (nl . "
+  ") (text . "           :documentation \"A shell script which will produce the") (nl . "
+  ") (text . "           Noweb tool syntax. Any shell commands involved with") (nl . "
+  ") (text . "           noweave should be included, but totex should of course") (nl . "
+  ") (text . "           be excluded from this script. The script should output") (nl . "
+  ") (text . "           the full syntax to standard output. See the Noweb") (nl . "
+  ") (text . "           implementation of WHYSE for explanation.\"") (nl . "
+  ") (text . "           :value \"\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          (editable-list") (nl . "
+  ") (text . "           :tag \"LaTeX sectioning commands\"") (nl . "
+  ") (text . "           :format \"%t\\n%v%i\\n\"") (nl . "
+  ") (text . "           :documentation \"The strings here should be the maximum length of the command") (nl . "
+  ") (text . "                  possible, because substrings like 'section' will not match the") (nl . "
+  ") (text . "                  sectioning command only. It is likely that these will have false") (nl . "
+  ") (text . "                  positive matches (Sectioning command might be called like") (nl . "
+  ") (text . "                  '\\\\section{}' or '\\\\mySectionCommand[bold]{name}'.)\"") (nl . "
+  ") (text . "           :args ((string :tag \"Sectioning command\"") (nl . "
+  ") (text . "                          :format \"%t: %v\"") (nl . "
+  ") (text . "                          :value \"\\\\section{\"") (nl . "
+  ") (text . "                          ;; FIXME: even with regex-builder I can't seem") (nl . "
+  ") (text . "                          ;; to write a regular expression that doesn't") (nl . "
+  ") (text . "                          ;; reject seemingly valid strings.") (nl . "
+  ") (text . "                          ;; :valid-regexp \"\\\\.*\\\\(\\\\[.*\\\\]\\\\)?{?\"") (nl . "
+  ") (text . "                          :documentation \"More than simply 'section', use '\\\\section{' or '\\mySection[]{' at least.\"") (nl . "
+  ") (text . "                          )))") (nl . "
+  ") (text . "          ))") (nl . "
+  ") (text . "") (nl . "
+  ")) ((4 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The definition of ") (quotation . "@use module-header top-level
+  ") (text . " is saved for later,") (nl . "
+  ") (text . "because the organization of the editing buffer is experimental and") (nl . "
+  ") (text . "therefore kept in the developer-oriented miscellany section \\ref{misc}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% NOTE: Comments may be superfluous in a literate document like this,") (nl . "
+  ") (text . "%% but some effort was made to produce a readable source file regardless") (nl . "
+  ") (text . "%% of the conventions other literate programmers follow; other authors") (nl . "
+  ") (text . "%% write warnings into their tangled source files like, ``Don't read") (nl . "
+  ") (text . "%% this file! Read the Noweb source only!''. I don't say that,") (nl . "
+  ") (text . "%% especially for an Emacs application, which should always be") (nl . "
+  ") (text . "%% self-documenting whatever format it was distributed in: a Noweb") (nl . "
+  ") (text . "%% source or printed literate program, or a tangled source tarball for") (nl . "
+  ") (text . "%% installation on a user's machine.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% TODO: include a customization variable that allows users to trigger") (nl . "
+  ") (text . "%% an error or a warning rather than opening Customize when no default") (nl . "
+  ") (text . "%% project is available.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "An example of what the list generated from the information entered into") (nl . "
+  ") (text . "Customize would look like is given here for elucidation (as it would") (nl . "
+  ") (text . "exist in a ") (quotation . "@text custom-set-variables
+  ") (text . " form).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "'(w-registered-projects") (nl . "
+  ") (text . "  '((\"noWeb HYpertext System in Emacs\"") (nl . "
+  ") (text . "     \"~/Desktop/whyse.nw\"") (nl . "
+  ") (text . "     \"make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax\"))") (nl . "
+  ") (text . "  nil") (nl . "
+  ") (text . "  (widget))") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The function documentation string should be expalnatory enough for the") (nl . "
+  ") (text . "behaviour of the ") (quotation . "@text whyse
+  ") (text . " command.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((5 . code) (chunk . "\\whyse{}") (nl . "
+  ") (text . "(defun whyse ()") (nl . "
+  ") (text . "  \"Opens the default whyse project, conditionally running hooks.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Hooks are only run if a project is actually opened. If") (nl . "
+  ") (text . "`w-load-default-project?' and") (nl . "
+  ") (text . "`w-open-customize-when-no-project-defined?' are both nil then a") (nl . "
+  ") (text . "warning is given and hooks are not run.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "When both customization variables are non-nil, or if only") (nl . "
+  ") (text . "`w-load-default-project?' is nil, then Customize is opened to the") (nl . "
+  ") (text . "whyse group.\"") (nl . "
+  ") (text . "  (interactive)") (nl . "
+  ") (text . "  ;; Warn the user that their customization options have made `whyse' a") (nl . "
+  ") (text . "  ;; no-op function.") (nl . "
+  ") (text . "  (when (and (not w-load-default-project?)") (nl . "
+  ") (text . "             (not w-open-customize-when-no-projects-defined?))") (nl . "
+  ") (text . "    (warn \"The current customization options for `whyse' have effectively disabled the `whyse' command.\"))") (nl . "
+  ") (text . "  (if-let ((w-load-default-project?)") (nl . "
+  ") (text . "           (default-project (cl-first w-registered-projects))") (nl . "
+  ") (text . "           (project (make-w-project :name (cl-first default-project)") (nl . "
+  ") (text . "                                    :noweb (cl-second default-project)") (nl . "
+  ") (text . "                                    :script (cl-third default-project)))") (nl . "
+  ") (text . "           (parse-tree (peg-noweb-parse-file (cl-second default-project))))") (nl . "
+  ") (text . "      (progn") (nl . "
+  ") (text . "        ") (use . "setup project database") (text . "") (nl . "
+  ") (text . "        (run-hooks 'w-open-project-hook)") (nl . "
+  ") (text . "        ;; TODO: the connection closure should be on a timer that,") (nl . "
+  ") (text . "        ;; perhaps, should be reset everytime a `w'-prefixed function is") (nl . "
+  ") (text . "        ;; called.") (nl . "
+  ") (text . "        (emacsql-close (w-project-database-connection project)))") (nl . "
+  ") (text . "    (unless (not w-open-customize-when-no-projects-defined?)") (nl . "
+  ") (text . "      (customize-group 'whyse))))") (nl . "
+  ") (text . "") (nl . "
+  ")) ((6 . code) (chunk . "Customization and global variables") (nl . "
+  ") (text . "(defcustom w-load-default-project? t") (nl . "
+  ") (text . "  \"Non-nil values mean the system will load the default project.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "nil will cause the interactive command `whyse' to open Customize on") (nl . "
+  ") (text . "its group of variables.\"") (nl . "
+  ") (text . "  :type 'boolean") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :tag \"Load default project when `whyse' is invoked?\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defcustom w-open-customize-when-no-projects-defined? t") (nl . "
+  ") (text . "  \"Non-nil values mean the system will open Customize as necessary.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "nil will cause `whyse' to simply do nothing when no project is") (nl . "
+  ") (text . "defined.\"") (nl . "
+  ") (text . "  :type 'boolean") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :tag \"Open Customize to the whyse group when `whyse' is invoked and no projects are defined?\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defcustom w-sql-commands-history? t") (nl . "
+  ") (text . "  \"nil disables the SQL command history list.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "This is also the default for new projets.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "`w-sql-commands-history-maximum-conses' limits the list length.\"") (nl . "
+  ") (text . "  :type 'boolean") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :tag \"Enable the SQL command history\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defcustom w-sql-commands-history-maximum-conses 0") (nl . "
+  ") (text . "  \"Limit the number of conses in the `w-sql-commands-history' list.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "This is also the default for new projects.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The default of `0' allows a list of infinite size. To disable history") (nl . "
+  ") (text . "set the customization variable `w-sql-commands-history?'\"") (nl . "
+  ") (text . "  :type 'natnum") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :tag \"Limit of conses in the `w-sql-commands-history' list.\")") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defcustom w-latex-sectioning-command-regexes nil") (nl . "
+  ") (text . "  \"A list of regular expressions matching LaTeX sectioning commands.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "This is the default for new projects.\"") (nl . "
+  ") (text . "  :type (list :regex)") (nl . "
+  ") (text . "  :group 'whyse") (nl . "
+  ") (text . "  :tag \"Regular Expressions matching LaTeX sectioning commands.\")") (nl . "
+  ")) ((7 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The structure accessed in the namesake command of the package is rather") (nl . "
+  ") (text . "simple. It is defined quickly, then explained briefly.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((8 . code) (chunk . "\\whyse{} project structure") (nl . "
+  ") (text . "(cl-defstruct w-project") (nl . "
+  ") (text . "  \"A WHYSE project\"") (nl . "
+  ") (text . "  ;; Fundamental") (nl . "
+  ") (text . "  name") (nl . "
+  ") (text . "  noweb") (nl . "
+  ") (text . "  script") (nl . "
+  ") (text . "  ;; TODO: document the interaction between this and the default") (nl . "
+  ") (text . "  ;; `w-latex-sectioning-command-regexes'. Override? Merge &rest and use") (nl . "
+  ") (text . "  ;; :disabled to disable specific regexes?") (nl . "
+  ") (text . "  sectioning-commands-regexs") (nl . "
+  ") (text . "  database-file") (nl . "
+  ") (text . "  database-connection") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "  ;; Usage") (nl . "
+  ") (text . "  frame") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "  ;; Metadata") (nl . "
+  ") (text . "  (date-created (current-time-string))") (nl . "
+  ") (text . "  date-last-edited") (nl . "
+  ") (text . "  date-last-exported") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "  ;; TODO: document that this overrides the default.") (nl . "
+  ") (text . "  w-sql-commands-history-maximum-conses)") (nl . "
+  ")) ((9 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Instances of this struct are only initialized with a few values:") (nl . "
+  ") (quotation . "@text name
+  ") (text . ", ") (quotation . "@text noweb
+  ") (text . ", and ") (quotation . "@text script
+  ") (text . ". The rest of the fields either have") (nl . "
+  ") (text . "default values dependent upon the input data (like the database-file,") (nl . "
+  ") (text . "database-connection, and date-created), or are given values when") (nl . "
+  ") (text . "appropriate later in operation (such as ") (quotation . "@text date-last-exported
+  ") (text . ") or upon") (nl . "
+  ") (text . "initialization (") (quotation . "@text frame
+  ") (text . ").") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Initialization when the interactive command is called is covered next;") (nl . "
+  ") (text . "to summarize: ") (quotation . "@text w-open-project-hook
+  ") (text . " is run.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Database initialization}") (nl . "
+  ") (text . "Every project should have a database file located somewhere within the") (nl . "
+  ") (text . "user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'") (nl . "
+  ") (text . "cache directory is used, otherwise the database is made in the user's") (nl . "
+  ") (text . "Emacs directory and not a sub-directory thereof.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The") (nl . "
+  ") (text . "form %% LISP form? Yes.") (nl . "
+  ") (text . "used to create the absolute path for the location of the") (nl . "
+  ") (text . "database joins three things: the user's Emacs directory, \\texttt{nil} or") (nl . "
+  ") (text . "Spacemacs' cache directory, and the name of the project with ``.db''") (nl . "
+  ") (text . "appended. Note that concatenating \\texttt{nil} with a string is the same") (nl . "
+  ") (text . "as returning the string unchanged.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((10 . code) (chunk . "return a filename for the project database") (nl . "
+  ") (text . "(file-name-concat") (nl . "
+  ") (text . " ;; Usually ~/.emacs.d/") (nl . "
+  ") (text . " user-emacs-directory") (nl . "
+  ") (text . " ;; `nil' or the Spacemacs cache directory.") (nl . "
+  ") (text . " (when (file-directory-p (expand-file-name \".cache\" user-emacs-directory))") (nl . "
+  ") (text . "   \".cache\")") (nl . "
+  ") (text . " ;; PROJECT-NAME.db") (nl . "
+  ") (text . " (concat (w-project-name project)") (nl . "
+  ") (text . "         \".db\"))") (nl . "
+  ")) ((11 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "For \\textsc{SQLite}, the path name of the database to connect to or") (nl . "
+  ") (text . "create is sufficient to establish a connection, so the next step is to") (nl . "
+  ") (text . "connect to the database and store the connection object in the") (nl . "
+  ") (text . "appropriate slot of the project struct.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((12 . code) (chunk . "setup project database") (nl . "
+  ") (use . "create a database connection") (text . "") (nl . "
+  ") (use . "map over SQL s-expressions, creating the tables") (text . "") (nl . "
+  ")) ((13 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((14 . code) (chunk . "create a database connection") (nl . "
+  ") (text . "(setf (w-project-database-connection project)") (nl . "
+  ") (text . "      (emacsql-sqlite ") (use . "return a filename for the project database") (text . "") (nl . "
+  ") (text . "                      ;; TODO: make this debug log buffer into a package") (nl . "
+  ") (text . "                      ;; customization. NOTE: this erases the contents") (nl . "
+  ") (text . "                      ;; of the named buffer and then returns the buffer") (nl . "
+  ") (text . "                      ;; object for that buffer.") (nl . "
+  ") (text . "                      :debug (with-current-buffer") (nl . "
+  ") (text . "                                 (get-buffer-create \"emacsql-sqlite-debug-log\")") (nl . "
+  ") (text . "                               (erase-buffer)") (nl . "
+  ") (text . "                               (current-buffer))))") (nl . "
+  ")) ((15 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The only thing left to do is establish the schema of the tables, which") (nl . "
+  ") (text . "is done by mapping over several \\textsc{EmacSQL} s-expressions.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% To create an (SQLite) database from scratch for use with WHYSE, the schema") (nl . "
+  ") (text . "%% must be applied to the database using data definition language (DDL).") (nl . "
+  ") (text . "%% With the four tables created, data is provided to the database after the") (nl . "
+  ") (text . "%% parsing expression grammar (PEG) has finished its work on the tool") (nl . "
+  ") (text . "%% syntax produced by Noweave's \\texttt{markup} program. The PEG and the") (nl . "
+  ") (text . "%% tool syntax are dealt with in \\ref{PEG}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% TODO: ensure that this database is in 3NF and make a nice database") (nl . "
+  ") (text . "%% planning documents for it.") (nl . "
+  ")) ((16 . code) (chunk . "map over SQL s-expressions, creating the tables") (nl . "
+  ") (text . "(mapcar (lambda (expression)") (nl . "
+  ") (text . "          (emacsql (w-project-database-connection project) expression))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "        ;; A list of SQL s-expressions to create the tables.") (nl . "
+  ") (text . "        '([:create-table :if-not-exists module") (nl . "
+  ") (text . "                         ([modulename content filename sectionname displacement") (nl . "
+  ") (text . "                                      modulenumber]") (nl . "
+  ") (text . "                          (:primary-key [modulenumber modulename filename]))]") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          [:create-table :if-not-exists parentchild") (nl . "
+  ") (text . "                         ([parent child]") (nl . "
+  ") (text . "                          (:primary-key [parent child]))]") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          ;; NOTE: Identifier_used_in_module is a relation with the") (nl . "
+  ") (text . "          ;; attributes identifier_name and module_number. An identifier") (nl . "
+  ") (text . "          ;; can be used several different ways in each module that it") (nl . "
+  ") (text . "          ;; is in. It can be defined, referenced or modified. Each of") (nl . "
+  ") (text . "          ;; this functions correspond to different value of the") (nl . "
+  ") (text . "          ;; attribute type_of_usage. The type_of_usage attribute can") (nl . "
+  ") (text . "          ;; have three values: modified, referenced, and defined.") (nl . "
+  ") (text . "          ;; Line_number is an attribute of each relationship. All") (nl . "
+  ") (text . "          ;; attributes are included in the key.") (nl . "
+  ") (text . "          [:create-table :if-not-exists identifierusedinmodule") (nl . "
+  ") (text . "                         ([identifiername modulenumber linenumber typeofusage]") (nl . "
+  ") (text . "                          (:primary-key [identifiername modulenumber typeofusage]))]") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "          ;;; HOLD: the concept of \"topic\" is not present in Noweb, but") (nl . "
+  ") (text . "          ;;; is present in WEB. Consult CWEB documentation and the") (nl . "
+  ") (text . "          ;;; original WEB documenation to see the meaning of this") (nl . "
+  ") (text . "          ;;; table.") (nl . "
+  ") (text . "          ;; NOTE: topic_referenced_in_module is a relation with") (nl . "
+  ") (text . "          ;; attributes topic_name and module_number. The same topic may") (nl . "
+  ") (text . "          ;; be in several modules and each module can contain several") (nl . "
+  ") (text . "          ;; topics. Both attributes compose the primary key.") (nl . "
+  ") (text . "          [:create-table :if-not-exists topicreferencedinmodule") (nl . "
+  ") (text . "                         ([topicname modulenumber]") (nl . "
+  ") (text . "                          (:primary-key [topicname modulenumber]))]))") (nl . "
+  ")) ((17 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Customizing the behaviour of \\whyse{} with hooks}") (nl . "
+  ") (text . "\\whyse{} is meant to be customizable, defining as little as necessary to") (nl . "
+  ") (text . "implement a development environment for Noweb as described by") (nl . "
+  ") (text . "CITE brown1991.") (nl . "
+  ") (text . "% \\cite[Brown and Czejdo]{brown1991}") (nl . "
+  ") (text . ".") (nl . "
+  ") (text . "") (nl . "
+  ")) ((18 . code) (chunk . "open-project-hook") (nl . "
+  ") (text . "(defvar w-open-project-hook '()") (nl . "
+  ") (text . "  \"Hooks to run when `whyse' has opened a project.\")") (nl . "
+  ")) ((19 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The default behaviour of \\whyse{} is to insert all the chunks of the parsed") (nl . "
+  ") (text . "document into a database. Before it does that it works upon the parse") (nl . "
+  ") (text . "tree, preparing it into a suitable format usable with EmacSQL (which the") (nl . "
+  ") (text . "author is aware he's stated elsewhere).") (nl . "
+  ") (text . "") (nl . "
+  ")) ((20 . code) (chunk . "default hook functions") (nl . "
+  ") (text . "(add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)") (nl . "
+  ") (text . "") (nl . "
+  ")) ((21 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% NOTE: peg-noweb.nw was excised from this location.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\part{Implementing WHYSE core featureset}") (nl . "
+  ") (text . "\\label{part:mystery-meat}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "What are the steps to follow to implement \\whyse{}? What is the meat of") (nl . "
+  ") (text . "the application? This is not a question different from") (nl . "
+  ") (text . "~\\Ref{part:what-is-whyse}. That section focused on explaining the") (nl . "
+  ") (text . "purpose of \\whyse{} to discover what it is and what comprises it, rather") (nl . "
+  ") (text . "than how to implement those things which comprise WHYSE.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The application has been in development for a little over two years and") (nl . "
+  ") (text . "I haven't made any progress in nearly the same amount of time. I know") (nl . "
+  ") (text . "that I need {an~event~loop~\\ref{event-hook-loop}}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "What are the individual events that take place in a system such as") (nl . "
+  ") (text . "\\whyse{}? What takes place between the input of a file in \\noweb{} format") (nl . "
+  ") (text . "into an application that either extends the mode(s) suitable for that") (nl . "
+  ") (text . "format or extends the mode(s) suitable for the resulting \\LaTeX{}-format") (nl . "
+  ") (text . "file?") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The standard steps in the usage of \\noweb{} are as follows:") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{itemize}[noweb-to-latex]") (nl . "
+  ") (text . "  \\item Write a \\noweb{}-formatted file, and") (nl . "
+  ") (text . "  \\item Call \\notangle on the file, with various options, OR") (nl . "
+  ") (text . "  \\item Call \\noweave on the file, with various options.") (nl . "
+  ") (text . "\\end{itemize}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "with not much else to it. Except in expert cases, like the writing of a") (nl . "
+  ") (text . "large book or the development of an application like \\whyse{}, or") (nl . "
+  ") (text . "noweb itself, or the Physically-based Rendering book (which uses a") (nl . "
+  ") (text . "different program yet similar to and inspired by noweb).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Developing an application like this, even when a rudimentary design is") (nl . "
+  ") (text . "available in \\cite[A Hypertext System for Literate") (nl . "
+  ") (text . "Programming]{brown1991}, is not easy. I haven't fully designed the") (nl . "
+  ") (text . "program, and over the course of two years I've sat down for a few hours") (nl . "
+  ") (text . "or a few days and obsessed over how to finish this damned application.") (nl . "
+  ") (text . "It's certainly not ``test-driven'' or following a traditional software") (nl . "
+  ") (text . "development lifecycle (SDLC); it's the worst form of literate") (nl . "
+  ") (text . "programming, rambling!") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The following quotation examples the output of \\noweave. The in-line") (nl . "
+  ") (text . "forms ") (quotation . "@text <<chunk-name>>
+  ") (text . " and ") (quotation . "@text some prose with a [[quotation]]
+  ") (text . " are") (nl . "
+  ") (text . "not exampled below, only a code chunk. Documentation chunks are literal") (nl . "
+  ") (text . "\\LaTeX{}, with minimal embracement by \\noweb{} macros (just") (nl . "
+  ") (text . "\\texttt{\\\\nwbegindocs{*}}).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{Verbatim}") (nl . "
+  ") (text . "\\nwbegincode{97}") (nl . "
+  ") (text . "  \\sublabel{NW43JrUv-3RJbFb-1}") (nl . "
+  ") (text . "  \\nwmargintag{{\\nwtagstyle{}\\subpageref{NW43JrUv-3RJbFb-1}}}") (nl . "
+  ") (text . "  \\moddef{Commentary~{\\nwtagstyle{}\\subpageref{NW43JrUv-3RJbFb-1}}}\\endmoddef") (nl . "
+  ") (text . "  \\nwstartdeflinemarkup") (nl . "
+  ") (text . "    \\nwusesondefline{\\\\{NW43JrUv-1gS5zu-1}}") (nl . "
+  ") (text . "  \\nwenddeflinemarkup") (nl . "
+  ") (text . ";;; Commentary:") (nl . "
+  ") (text . ";; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate") (nl . "
+  ") (text . ";; Programming_ (1991).") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,") (nl . "
+  ") (text . ";;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and") (nl . "
+  ") (text . ";;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol") (nl . "
+  ") (text . ";;    468. Springer, Berlin, Heidelberg.") (nl . "
+  ") (text . ";;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; A paper describing this implementation---written in Noweb and browsable,") (nl . "
+  ") (text . ";; editable, and auditable with WHYSE, or readable in the printed form---is") (nl . "
+  ") (text . ";; hoped to be submitted to The Journal of Open Source Software (JOSS) before") (nl . "
+  ") (text . ";; the year 2024. N.B.: the paper will include historical information about") (nl . "
+  ") (text . ";; literate programming, and citations (especially of those given credit here") (nl . "
+  ") (text . ";; for ideating WHYSE itself).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\nwused{\\\\{NW43JrUv-1gS5zu-1}}") (nl . "
+  ") (text . "\\nwendcode{}") (nl . "
+  ") (text . "\\end{Verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The fact that \\noweb{} users usually author documents with LaTeX") (nl . "
+  ") (text . "documentation, rather than nroff or HTML, gives quarter to the existing") (nl . "
+  ") (text . "\\LaTeX{} support in \\emacs{}. \\reftex and \\auctex support extensions as") (nl . "
+  ") (text . "a matter of course because they're written in \\elisp{}; it's part of") (nl . "
+  ") (text . "what they are. Could I be rid of the \\whyse{} project (at least a first") (nl . "
+  ") (text . "implementation) by beginning with adding support for the \\noweb{}") (nl . "
+  ") (text . "cross-reference, label, and index macros? Years of stalled development") (nl . "
+  ") (text . "and failed attempts to pick the project back up have answered that") (nl . "
+  ") (text . "question: no. I struggled with writing a \\reftex extension for a week or") (nl . "
+  ") (text . "so years ago and the project has been in my sources folder since,") (nl . "
+  ") (text . "gathering cobwebs.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "A pipelined architecture is more appropriate to noweb (and also very") (nl . "
+  ") (text . "welcome in Emacs) and will lend to immediate resolution of the project") (nl . "
+  ") (text . "if I can simply focus on the \"event loop\" or core application") (nl . "
+  ") (text . "logic/algorithm.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Pipeline Architecture}") (nl . "
+  ") (text . "\\label{chap:pipe}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "I want to keep things very fucking simple now, because perfect and") (nl . "
+  ") (text . "documented has become the enemy of the good and implemented.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((22 . code) (chunk . "index-keywords.sh") (nl . "
+  ") (text . "#!/usr/bin/sh") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "awk '/^@index/ { print $0 }' < /dev/stdin") (nl . "
+  ")) ((23 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The prior filter will remove all keywords that aren't indexing keywords.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((24 . code) (chunk . "definitions.sh") (nl . "
+  ") (text . "#!/usr/bin/sh") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "awk '/^@index defn (.*)/ {") (nl . "
+  ") (text . "if (match($0, /^@index defn (.*)/)) {") (nl . "
+  ") (text . " print(substr($0, match($0, /^@index defn (.*)/)))") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "}' < /dev/stdin") (nl . "
+  ") (text . "") (nl . "
+  ")) ((25 . code) (chunk . "example.sh") (nl . "
+  ") (text . "#!/usr/bin/sh") (nl . "
+  ") (text . "awk '") (use . "example.sh awk script") (text . "' < /dev/stdin") (nl . "
+  ") (text . "") (nl . "
+  ") (use . "example.sh awk script") (text . "= (awk)") (nl . "
+  ") (text . "BEGIN {") (nl . "
+  ") (text . "    # idefnrx = /^@index defn (.*)/") (nl . "
+  ") (text . "    FS=\" \"") (nl . "
+  ") (text . "    nwnl=1") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "# idefnrx {") (nl . "
+  ") (text . "#     if (match($0, idefnrx)) {") (nl . "
+  ") (text . "#         print(substr($0, match($0, idefnrx)))") (nl . "
+  ") (text . "#     }") (nl . "
+  ") (text . "# }") (nl . "
+  ") (text . "/^@nl/ {") (nl . "
+  ") (text . "    nwnl=nwnl+1") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "/^@defn/ {") (nl . "
+  ") (text . "    module_name = substr($0, 7)") (nl . "
+  ") (text . "    #print(substr($0, 6))# skip \"@defn \"") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "$1 == \"@index\" && $2 == \"defn\" {") (nl . "
+  ") (text . "        id = substr($0, 13)# skip \"@index defn \", print the rest of the line.") (nl . "
+  ") (text . "        print(sprintf(\"%s\\x1C%s\\x1C%d\", id, module_name, nwnl))") (nl . "
+  ") (text . "}") (nl . "
+  ") (text . "") (nl . "
+  ")) ((26 . code) (chunk . "very nice.el") (nl . "
+  ") (text . "(defun w--module-navigate (widget direction widget-number)") (nl . "
+  ") (text . "  \"Navigate to another module.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Navigate to a module, previous or next, from the current module's action") (nl . "
+  ") (text . "button.\"") (nl . "
+  ") (text . "  (let ((widget-number (widget-get widget :module-number)))") (nl . "
+  ") (text . "    (if (and (stringp direction)") (nl . "
+  ") (text . "             (string= direction \"prev\"))") (nl . "
+  ") (text . "        (while; not at the beginning or end of the buffer, nor at the desired widget") (nl . "
+  ") (text . "            (or (not (bobp))") (nl . "
+  ") (text . "                (not (and (widget-at)") (nl . "
+  ") (text . "                          (widget-member (widget-at) :module-number)") (nl . "
+  ") (text . "                          (= (widget-member (widget-at) :module-number)") (nl . "
+  ") (text . "                             (1- widget-number)))))") (nl . "
+  ") (text . "          (backward-line))") (nl . "
+  ") (text . "      (while; not at the beginning or end of the buffer, nor at the desired widget") (nl . "
+  ") (text . "          (or (not (eobp))") (nl . "
+  ") (text . "              (not (and (widget-at)") (nl . "
+  ") (text . "                        (widget-member (widget-at) :module-number)") (nl . "
+  ") (text . "                        (= (widget-member (widget-at) :module-number)") (nl . "
+  ") (text . "                           (1+ widget-number)))))") (nl . "
+  ") (text . "        (forward-line)))))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(widget-create 'push-button") (nl . "
+  ") (text . "               :format \"%[prev%]\"") (nl . "
+  ") (text . "               :button-face custom-button") (nl . "
+  ") (text . "               :module-navigate #'w--module-navigate") (nl . "
+  ") (text . "               :action (lambda (widget value)") (nl . "
+  ") (text . "                         (widget-apply widget :module-navigate") (nl . "
+  ") (text . "                                       value") (nl . "
+  ") (text . "                                       (widget-get widget :module-number))))") (nl . "
+  ")) ((27 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "My development plan is to add support for \\noweb{}'s macros to \\reftex and") (nl . "
+  ") (text . "\\auctex then use the information gleaned from these packages to") (nl . "
+  ") (text . "buttonize and markup (with overlays) the chunk headers and") (nl . "
+  ") (text . "cross-references in poly-noweb buffers. \\texttt{diff}s of the") (nl . "
+  ") (text . "continually watched product of the \\noweb{}-formatted source file and the") (nl . "
+  ") (text . "user-modified \\LaTeX{}-formatted document (which is a derivation of the") (nl . "
+  ") (text . "former), and suggestions for filters could conceivably allow two-way") (nl . "
+  ") (text . "communication between \\noweb{} and \\auctex. Would that be \\whyse{}? I don't") (nl . "
+  ") (text . "think it would be wise to call it \\whyse{}---the \\textsc{WHS} implemented") (nl . "
+  ") (text . "in \\emacs{}---but it would still be \\whyse{}: \\emph{a particular}") (nl . "
+  ") (text . "\\textsc{((no)Web~HYpertext~System~in~Emacs)}. It may still be a stepping") (nl . "
+  ") (text . "stone to the original notion, which would be interesting to explore, but") (nl . "
+  ") (text . "I think it would be better than that original goal as well; it wouldn't") (nl . "
+  ") (text . "be as flexible as the \\noweb{} system is, however, as it would only") (nl . "
+  ") (text . "support \\LaTeX{} documentation, whereas \\noweb{} supports other backends.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{quote}") (nl . "
+  ") (text . "  \\reftex has been bundled and pre-installed with \\emacs{} since version") (nl . "
+  ") (text . "  20.2.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "  --- the \\reftex \\texinfo manual, ``with typographic editions''.") (nl . "
+  ") (text . "\\end{quote}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Given \\reftex has been a part of \\emacs{} for so long it makes sense to") (nl . "
+  ") (text . "simply defer to its featureset where it provides something useful,") (nl . "
+  ") (text . "rather than replacing it with new functionality in Emacs; I haven't") (nl . "
+  ") (text . "surpassed the featureset or implementation of \\reftex, certainly not, so") (nl . "
+  ") (text . "rather than replacing that I'll add to it.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Ideas for future RefTeX support}") (nl . "
+  ") (text . "% November 8, 2025") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The following diagram shows which lines, in a Noweb document, need") (nl . "
+  ") (text . "RefTeX support and what kind. Within a chunk there are cross-references") (nl . "
+  ") (text . "to labels defined elsewhere as well as index entry definitions and") (nl . "
+  ") (text . "cross-references to labels identically-defined.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((28 . code) (chunk . "") (nl . "
+  ") (text . "*") (nl . "
+  ") (text . "+-------------------+") (nl . "
+  ") (text . "|                   |") (nl . "
+  ") (text . "| ") (use . "example.c") (text . "=    |") (nl . "
+  ") (text . "|i#define A foo     | i Index \"A\".") (nl . "
+  ") (text . "| int main() {      |") (nl . "
+  ") (text . "|x  printf(<<S>>); | x Cross-reference \"S\".") (nl . "
+  ") (text . "| }                 |") (nl . "
+  ") (text . "|                   |") (nl . "
+  ") (text . "|l<<S>>=           | l Label \"S\".") (nl . "
+  ") (text . "| \"Hello, world!\"   |") (nl . "
+  ") (text . "| @                 |") (nl . "
+  ") (text . "|                   |") (nl . "
+  ") (text . "|x[[<<S>>]] is a   | x Cross-reference \"S\".") (nl . "
+  ") (text . "| new chunk label.  |") (nl . "
+  ") (text . "+-------------------+") (nl . "
+  ")) ((29 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "In the verbatim text above, \\texttt{*} indicates that the first column") (nl . "
+  ") (text . "is markup/gutter content not part of the normal buffer contents.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Configuring \\reftex to support the \\noweb through knoweb} \\label{cha:conf-reft-recogn}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{quotation}") (nl . "
+  ") (text . "  Support for RefTeX in such a style file is useful when the LaTeX style") (nl . "
+  ") (text . "  defines macros or environments connected with labels, citations, or") (nl . "
+  ") (text . "  the index.") (nl . "
+  ") (text . "\\end{quotation}") (nl . "
+  ") (text . "") (nl . "
+  ")) ((30 . code) (chunk . "knoweb.el") (nl . "
+  ") (text . ";;; This is knoweb.el --- an Emacs LISP style file for AUCTeX and RefTeX. -*- mode: emacs-lisp -*-") (nl . "
+  ")) ((31 . code) (chunk . "knoweb.el") (nl . "
+  ") (text . ";; AUCTeX customization: support for knoweb label environments.") (nl . "
+  ") (text . ";; Conditionally supporting RefTeX.") (nl . "
+  ") (text . "(TeX-add-style-hook \"knoweb\"") (nl . "
+  ") (text . " (lambda ()") (nl . "
+  ") (text . "   (if (fboundp 'reftex-add-label-environments)") (nl . "
+  ") (text . "       ;; Provide the symbol for the knoweb label environments.") (nl . "
+  ") (text . "       (reftex-add-label-environments '(webcode moddef nwtypesetcomment thenowebchunks thenowebindex)))))") (nl . "
+  ")) ((32 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "For example, the ") (quotation . "@text webcode
+  ") (text . " environment is defined with:") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "\\newenvironment{webcode}{%") (nl . "
+  ") (text . "  \\@begincode") (nl . "
+  ") (text . "}{%") (nl . "
+  ") (text . "  \\endtrivlist}") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "It looks like the ") (quotation . "@text webcode
+  ") (text . " environment starts processing with an") (nl . "
+  ") (text . "at-command and ends it with ") (quotation . "@text \\\\endtrivlist
+  ") (text . ", which ends a trivial list.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((33 . code) (chunk . "knoweb.el") (nl . "
+  ") (text . "(TeX-add-symbols") (nl . "
+  ") (text . " '(\"nwbegincode\" TeX-arg-define-macro)") (nl . "
+  ") (text . " '(\"nwendcode\" TeX-arg-define-macro))") (nl . "
+  ") (text . ";; \\newcommand{\\nwbegincode}[1]{%") (nl . "
+  ") (text . ";;   \\begingroup") (nl . "
+  ") (text . ";;   \\setlength{\\topsep}{\\nwcodetopsep}") (nl . "
+  ") (text . ";;   \\@beginparpenalty=\\@highpenalty") (nl . "
+  ") (text . ";;   \\@endparpenalty=-\\@highpenalty") (nl . "
+  ") (text . ";;   \\@begincode }") (nl . "
+  ")) ((34 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{\\auctex Folding Support}") (nl . "
+  ") (text . "To enable folding of noweb macros they must be present in the variable") (nl . "
+  ") (text . "\\texttt{TeX-fold-macro-spec-list}. Folding of noweb environment would be") (nl . "
+  ") (text . "supported by adding these to \\texttt{TeX-fold-env-spec-list}. These will") (nl . "
+  ") (text . "apply to all \\auctex modes unless the mode-specific spec-list variable") (nl . "
+  ") (text . "is used instead (e.g. \\texttt{LaTeX-fold-env-spec-list} would limit the") (nl . "
+  ") (text . "folding support for noweb environments to \\LaTeX{}-specific modes enhanced") (nl . "
+  ") (text . "by \\auctex).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{\\reftex Label Support}") (nl . "
+  ") (text . "\\label{sec:label support}") (nl . "
+  ")) ((35 . code) (chunk . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((36 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The \\reftex manual states that ") (quotation . "@text reftex-label-alist
+  ") (text . " is bound to an") (nl . "
+  ") (text . "association list with infromation about the label and reference commands") (nl . "
+  ") (text . "used to refer to sections (and environments). Seeing the") (nl . "
+  ") (quotation . "@text reftex-label-alist-builtin
+  ") (text . " below, I can understand that there is") (nl . "
+  ") (text . "support for implicit and explicit environments: with an implicit") (nl . "
+  ") (text . "environment being a section (\\`{a} la \\html; ``implicit") (nl . "
+  ") (text . "environments'' may not be a concept in \\LaTeX{}, but such nesting is how I") (nl . "
+  ") (text . "conceive of hierarchical structuring in \\LaTeX{} as it actually is in") (nl . "
+  ") (text . "\\html).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{Verbatim}") (nl . "
+  ") (text . "(minted \"The minted package\"") (nl . "
+  ") (text . "         ((\"listing\" 108 \"lst:\" \"~\\\\ref{%s}\" nil (regexp \"[Ll]isting\"))))") (nl . "
+  ") (text . " (LaTeX \"LaTeX default environments\"") (nl . "
+  ") (text . "        ((\"section\" 115 \"%S\" \"~\\\\ref{%s}\" (nil . t)") (nl . "
+  ") (text . "          (regexp \"parts?\" \"chapters?\" \"chap\\\\.\" \"sections?\" \"sect?\\\\.\"") (nl . "
+  ") (text . "                  \"paragraphs?\" \"par\\\\.\" \"\\\\\\\\S\" \"\\247\" \"Teile?\" \"Kapitel\"") (nl . "
+  ") (text . "                  \"Kap\\\\.\" \"Abschnitte?\" \"appendi\\\\(x\\\\|ces\\\\)\" \"App\\\\.\"") (nl . "
+  ") (text . "                  \"Anh\\\"?ange?\" \"Anh\\\\.\"))") (nl . "
+  ") (text . "         (\"enumerate\" 105 \"item:\" \"~\\\\ref{%s}\" item (regexp \"items?\" \"Punkte?\"))") (nl . "
+  ") (text . "         (\"equation\" 101 \"eq:\" \"~(\\\\ref{%s})\" t") (nl . "
+  ") (text . "          (regexp \"equations?\" \"eqs?\\\\.\" \"eqn\\\\.\" \"Gleichung\\\\(en\\\\)?\" \"Gl\\\\.\"))") (nl . "
+  ") (text . "         (\"eqnarray\" 101 \"eq:\" nil eqnarray-like)") (nl . "
+  ") (text . "         (\"figure\" 102 \"fig:\" \"~\\\\ref{%s}\" caption") (nl . "
+  ") (text . "          (regexp \"figure?[sn]?\" \"figs?\\\\.\" \"Abbildung\\\\(en\\\\)?\" \"Abb\\\\.\"))") (nl . "
+  ") (text . "         (\"figure*\" 102 nil nil caption)") (nl . "
+  ") (text . "         (\"table\" 116 \"tab:\" \"~\\\\ref{%s}\" caption") (nl . "
+  ") (text . "          (regexp \"tables?\" \"tab\\\\.\" \"Tabellen?\"))") (nl . "
+  ") (text . "         (\"table*\" 116 nil nil caption)") (nl . "
+  ") (text . "         (\"\\\\footnote[]{}\" 110 \"fn:\" \"~\\\\footref{%s}\" 2") (nl . "
+  ") (text . "          (regexp \"footnotes?\" \"Fussnoten?\"))") (nl . "
+  ") (text . "         (\"any\" 32 \" \" \"~\\\\ref{%s}\" nil)))") (nl . "
+  ") (text . "\\end{Verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{\\reftex Index Support}") (nl . "
+  ") (text . "\\label{sec:Index Support}") (nl . "
+  ") (text . "") (nl . "
+  ")) ((37 . code) (chunk . "knoweb.el") (nl . "
+  ") (text . "") (nl . "
+  ")) ((38 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\reftex can also be configured to recognize index macros from packages") (nl . "
+  ") (text . "(i.e. it can work with index entries apart from those defined with the") (nl . "
+  ") (text . "built-in index commands).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{Verbatim}") (nl . "
+  ") (text . "  To make your own LaTeX macro definitions known to RefTeX, customize") (nl . "
+  ") (text . "  the variables") (nl . "
+  ") (text . "       reftex-label-alist          (for label macros/environments)") (nl . "
+  ") (text . "       reftex-section-levels       (for sectioning commands)") (nl . "
+  ") (text . "       reftex-cite-format          (for ‘\\cite’-like macros)") (nl . "
+  ") (text . "       reftex-index-macros         (for ‘\\index’-like macros)") (nl . "
+  ") (text . "       reftex-index-default-macro  (to set the default macro)") (nl . "
+  ") (text . "  If you have a large number of macros defined, you may want to write") (nl . "
+  ") (text . "  an AUCTeX style file to support them with both AUCTeX and RefTeX.") (nl . "
+  ") (text . "\\end{Verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\input{../src/survey-of-woven-whyse-LaTeX-commands.tex}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Event-hook Loop}\\label{event-hook-loop}") (nl . "
+  ") (text . "There has always been some confusion in my mind as to how the system") (nl . "
+  ") (text . "will work. Reading a noweb file is no issue, neither is parsing the tool") (nl . "
+  ") (text . "syntax of that file, but when these operations should take place in the") (nl . "
+  ") (text . "editing cycle has been elusive.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "Implementing the \\textsc{WHS} using the UNIX toolbox philosophy---many small") (nl . "
+  ") (text . "tools chained together to create solutions and systems---honours the") (nl . "
+  ") (text . "noweb architecture itself, but I won't be calling ") (quotation . "@text shell-command
+  ") (text . " too") (nl . "
+  ") (text . "much. The original inspiration when I began writing WHYSE's literate") (nl . "
+  ") (text . "program was correct: I need to gather from the user a ") (quotation . "@text shell-command
+  ") (text . "") (nl . "
+  ") (text . "to work with the project sources as they are. Users may be adopting") (nl . "
+  ") (text . "\\whyse after already working on their projects for some time, and with") (nl . "
+  ") (text . "some filters and other advanced modes of operation in play (for") (nl . "
+  ") (text . "instance, not using the default shell wrappers to call the C backends or") (nl . "
+  ") (text . "the Icon filters).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "My own document currently builds with a simple Make rule, but I do use") (nl . "
+  ") (text . "options! I'm not simply calling ") (quotation . "@text noweave
+  ") (text . ".") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "whyse.tex: autodefs.elisp | builddir") (nl . "
+  ") (text . "        cd $(BUILD) && $(NOWEB_BIN)/noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Algorithm}") (nl . "
+  ") (text . "\\begin{enumerate}") (nl . "
+  ") (text . "  \\item{parse project noweb into tool syntax}") (nl . "
+  ") (text . "  \\item{autoidentify definitions in code chunks}") (nl . "
+  ") (text . "  \\item{index chunks and usages}") (nl . "
+  ") (text . "\\end{enumerate}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Processing parsed nowebs into SQL}\\label{processing lists}") (nl . "
+  ") (text . "This chapter covers how the parsed text, generating the tool syntax, is") (nl . "
+  ") (text . "used to create a series of \\sql{} statements that will be executed by") (nl . "
+  ") (text . "SQLite.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\section{Processing}") (nl . "
+  ") (text . "First, the overall structure of the parsed text should be diagrammed") (nl . "
+  ") (text . "(\\ref{parsed-text-lisp}). The parse tree is a list of noweb documents,") (nl . "
+  ") (text . "each being a list themselves. The first atom of an inner list,") (nl . "
+  ") (text . "corresonding to a document, is the filename of that document (hopefully") (nl . "
+  ") (text . "the same filename as passed on the commmand-line elsewhere when the") (nl . "
+  ") (text . "document is used). Deeper, each document-list contains as the second") (nl . "
+  ") (text . "atom a list of its contents, which is an association list thereof. Each") (nl . "
+  ") (text . "association in the alist is bewteen the symbol relating to the rule that") (nl . "
+  ") (text . "generated the cons cell, and the contents appropriate to the symbol.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "There are many steps to compiling the parse tree into \\sequel{}. The first") (nl . "
+  ") (text . "step is to ensure the association lists in the parse tree are in a") (nl . "
+  ") (text . "format that is acceptable to built-in Emacs Lisp functions; this will") (nl . "
+  ") (text . "make it easier to navigate the tree and transform it.") (nl . "
+  ") (text . "%% FIXME: is it really true, and does it make sense for") (nl . "
+  ") (text . "%% what I'm actually doing, or am I using the concept/name wrong?") (nl . "
+  ") (text . "Other texts call this manipulation of the parse tree ``list") (nl . "
+  ") (text . "destructuring'';") (nl . "
+  ") (text . "%%") (nl . "
+  ") (text . "it could be thought of as code generation, since the data is used to") (nl . "
+  ") (text . "generate DML which is partly code and partly data.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% FIXME 2024-08-10 what the fuck am I saying here?") (nl . "
+  ") (text . "Some associations are reductions from the initial parse tree,") (nl . "
+  ") (text . "which---thanks to the \\textsc{peg} package and \\textit{PEG parsing in") (nl . "
+  ") (text . "  general}---are not reduced in a second step. Modifications to the") (nl . "
+  ") (text . "parsing procedure can occur directly without losing information, and") (nl . "
+  ") (text . "thanks to literate programming should be easy for advanced users.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The initial parse tree begins like the one below. This tree is") (nl . "
+  ") (text . "purposefully small omits everything but the \\texttt{docs},") (nl . "
+  ") (text . "\\texttt{text}, and \\texttt{code} symbols.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}\\label{parsed-text-lisp}") (nl . "
+  ") (text . "'((noweb-document-one") (nl . "
+  ") (text . "   ((docs . 0)") (nl . "
+  ") (text . "    (text . \"\\tex{} is cool!\"))") (nl . "
+  ") (text . "   ((code . 1)") (nl . "
+  ") (text . "    (text . \"(message \\\"LISP is awesome!\\\")\")))") (nl . "
+  ") (text . "  (noweb-document-two") (nl . "
+  ") (text . "   ((code . 0)") (nl . "
+  ") (text . "    (text . \"asdf is a system definition format in Common LISP,\"))") (nl . "
+  ") (text . "   (nwnl . \"\\n\")") (nl . "
+  ") (text . "   (text . \"and I like to use it.\")") (nl . "
+  ") (text . "   ((code . 1)") (nl . "
+  ") (text . "    (text . \"jkl; is the right-handed corollary of asdf.\"))") (nl . "
+  ") (text . "   ((docs . 2)") (nl . "
+  ") (text . "    (text . \"\\LaTeX{} is great!\"))") (nl . "
+  ") (text . "   ((docs . 3)") (nl . "
+  ") (text . "    (text . \"Noweb, written by Norman Ramsey is sweet!\"))))") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The reductions which occur during parsing make chunk zero of the second") (nl . "
+  ") (text . "noweb document look like this in the final result.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "((code . 0)") (nl . "
+  ") (text . " (text . \"asdf is a system definition format in Common LISP,") (nl . "
+  ") (text . "and I like to use it.\"))") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The new result is much easier to use as data for other programs (SQL in") (nl . "
+  ") (text . "this case). In the verbatim text a literal newline was inserted rather") (nl . "
+  ") (text . "than retaining the escape sequence, which is exactly what happens in the") (nl . "
+  ") (text . "reduction step as well. The next subsection discusses the details of how") (nl . "
+  ") (text . "the reduction in complexity exampled above is achieved.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{Reducing complexity in the alist}") (nl . "
+  ") (text . "The first step in making the parse tree navigable for other programs is") (nl . "
+  ") (text . "collapsing adjacent ``stringy'' tokens into single ") (quotation . "@text text
+  ") (text . " tokens. The") (nl . "
+  ") (text . "output tool syntax of notangle, and the parse tree resulting from the") (nl . "
+  ") (text . "PEG, (breifly) contain individual text tokens for fragments of whole") (nl . "
+  ") (text . "text lines and form feed characters. These tokens exist because the") (nl . "
+  ") (text . "cross-referencing tokens fragment the text lines, and new lines in the") (nl . "
+  ") (text . "noweb document are treated specially to facilitate this fragmentation.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "A small quote from the tool syntax of a development version of \\whyse{} is") (nl . "
+  ") (text . "shown in this example in its parsed form. However, during actual parsing") (nl . "
+  ") (text . "these adjacent tokens are \\textit{immediately collapsed} into singular") (nl . "
+  ") (text . "tokens.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "(text . \"  and \\textsc{Noweb}'s \\texttt{finduses.nw}!\")") (nl . "
+  ") (text . "(nwnl . \"@nl\")") (nl . "
+  ") (text . "(text . \"\\end{enumerate}\")") (nl . "
+  ") (text . "(nwnl . \"@nl\")") (nl . "
+  ") (text . "(text . \"\")") (nl . "
+  ") (text . "(nwnl . \"@nl\")") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "To collapse these tokens into a single text token the ") (quotation . "@text peg--stack
+  ") (text . "") (nl . "
+  ") (text . "must be manipulated carefully. It isn't advisable to manipulate this") (nl . "
+  ") (text . "variable in the course of a PEG grammar's actions. There is a use case") (nl . "
+  ") (text . "for it when the previous rules and actions won't accommodate the") (nl . "
+  ") (text . "necessary action without refactoring a larger part of the grammar. In") (nl . "
+  ") (text . "this development version that is not a goal; basic functionality is") (nl . "
+  ") (text . "sought after, not robustness or beauty, so hacking the desired behaviour") (nl . "
+  ") (text . "together quickly is better.") (nl . "
+  ") (text . "") (nl . "
+  ") (quotation . "@text w--nth-chunk-of-nth-noweb-document
+  ") (text . " retrieves the parse tree for the nth") (nl . "
+  ") (text . "noweb document, which in the case of ") (quotation . "@text whyse.nw
+  ") (text . " is the parse tree of") (nl . "
+  ") (text . "the zeroth-indexed document. It's quite a simple function. To obtain a") (nl . "
+  ") (text . "given chunk of this document from the parse tree the result of the") (nl . "
+  ") (text . "function is called with ") (quotation . "@text nth
+  ") (text . " and the index of the chunk.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((39 . code) (chunk . "functions for navigating \\whyse{} parse trees") (nl . "
+  ") (text . "(defun w--nth-document-file-name (nth-document parse-tree)") (nl . "
+  ") (text . "  \"Return the file name of the nth-indexed document in the parse tree.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "For the first document in the parse tree, that is the") (nl . "
+  ") (text . "zeroth-indexed document.\"") (nl . "
+  ") (text . "  (cl-first (nth nth-document parse-tree)))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--nth-document (nth-document parse-tree)") (nl . "
+  ") (text . "  \"Return the subtree of the nth-indexed document in the parse tree.\"") (nl . "
+  ") (text . "  (cl-second (nth nth-document parse-tree)))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--nth-chunk-of-document (n document)") (nl . "
+  ") (text . "  \"Return the subtree for the Nth chunk of a noweb document parse subtree.\"") (nl . "
+  ") (text . "  (nth n document))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--chunk-number (chunk)") (nl . "
+  ") (text . "  \"Return the chunk number of CHUNK.\"") (nl . "
+  ") (text . "  (or (cdr (assq 'code chunk))") (nl . "
+  ") (text . "      (cdr (assq 'docs chunk))))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--nth-chunk-of-nth-noweb-document (nth-chunk nth-document parse-tree)") (nl . "
+  ") (text . "  (w--nth-chunk-of-document nth-chunk (w--nth-document nth-document parse-tree)))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--chunk-text (chunk)") (nl . "
+  ") (text . "  \"Join all the strings returned from the collection in the loop,") (nl . "
+  ") (text . "and return the single string.\"") (nl . "
+  ") (text . "  (string-join") (nl . "
+  ") (text . "   (cl-loop for elt in chunk collect") (nl . "
+  ") (text . "            (when (and (listp elt) (equal 'text (car elt)))") (nl . "
+  ") (text . "              (cdr elt)))") (nl . "
+  ") (text . "   \"\"))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--chunk-name (chunk)") (nl . "
+  ") (text . "  \"Return non-nil if CHUNK is a code chunk, and thereby has a name.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The return value, if non-nil, is actually the name of the chunk.\"") (nl . "
+  ") (text . "  (if-let ((name (assq 'chunk chunk)))") (nl . "
+  ") (text . "      (cdr name)))") (nl . "
+  ") (text . "") (nl . "
+  ")) ((40 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((41 . code) (chunk . "Package Code") (nl . "
+  ") (use . "functions for navigating \\whyse{} parse trees") (text . "") (nl . "
+  ") (use . "functions to collapse text and newline tokens into their largest possible form") (text . "") (nl . "
+  ")) ((42 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((43 . code) (chunk . "functions to collapse text and newline tokens into their largest possible form") (nl . "
+  ") (text . "(defun w--concatenate-text-tokens (new-token)") (nl . "
+  ") (text . "  \"Join the values of two text token associations in a two-element token alist.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "If the two associations shouldn't be joined, return them to the stack.\"") (nl . "
+  ") (text . "  (prog1") (nl . "
+  ") (text . "      ;; Concatenation only occurs when the previous token examined was") (nl . "
+  ") (text . "      ;; a text or nwnl token, ergo there must have been a text or nwnl") (nl . "
+  ") (text . "      ;; token previously examined for any concatenation to occur. When") (nl . "
+  ") (text . "      ;; no such token has been examined immediately return the") (nl . "
+  ") (text . "      ;; (stringy) token recieved and indicate it must have been a") (nl . "
+  ") (text . "      ;; stringy token by chaning the value of `w--first-stringy-token?'") (nl . "
+  ") (text . "      ;; accordingly. Subsequent runs will then operate on potential") (nl . "
+  ") (text . "      ;; pairs of stringy tokens.") (nl . "
+  ") (text . "      (if-let ((not-first-stringy-token? (not w--first-stringy-token?))") (nl . "
+  ") (text . "               (previous-token  (pop peg--stack))") (nl . "
+  ") (text . "               ;; The previous token cannot be a text or nwnl token if") (nl . "
+  ") (text . "               ;; it is not a list, and checking prevents causing an") (nl . "
+  ") (text . "               ;; error by taking the `car' of a non-list token, e.g. the") (nl . "
+  ") (text . "               ;; filename token.") (nl . "
+  ") (text . "               (previous-token-is-alist?") (nl . "
+  ") (text . "                (prog1 (and (listp previous-token)") (nl . "
+  ") (text . "                            (listp new-token)") (nl . "
+  ") (text . "                            (or (assoc 'text `(,new-token))") (nl . "
+  ") (text . "                                (assoc 'nl `(,new-token)))") (nl . "
+  ") (text . "                            (or (assoc 'text `(,previous-token))") (nl . "
+  ") (text . "                                (assoc 'nl `(,previous-token)))))))") (nl . "
+  ") (text . "          ;; Join the association's values and let the caller push a single") (nl . "
+  ") (text . "          ;; token back onto the `peg--stack'.") (nl . "
+  ") (text . "          (cons 'text (format \"%s%s\" (cdr previous-token)") (nl . "
+  ") (text . "                              (cdr new-token)))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "        ;; Push the previous token back to the `peg--stack', and let the") (nl . "
+  ") (text . "        ;; caller push the new token to that stack.") (nl . "
+  ") (text . "        (push previous-token peg--stack)") (nl . "
+  ") (text . "        new-token)") (nl . "
+  ") (text . "    (when w--first-stringy-token? (setq w--first-stringy-token? nil))))") (nl . "
+  ") (text . "") (nl . "
+  ")) ((44 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The `parse-tree' from the lexical environment (or scope, given that") (nl . "
+  ") (text . "\\whyse{} is not implemented with lexical binding) is mapped over until") (nl . "
+  ") (text . "every file token has been processed and records have been inserted into") (nl . "
+  ") (text . "all four tables of the database.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "All files represented in the ") (quotation . "@text parse-tree
+  ") (text . " (actually an association") (nl . "
+  ") (text . "list) are processed into SQL database records while mapping over the") (nl . "
+  ") (quotation . "@text parse-tree
+  ") (text . " (whichever is in scope at the time because \\whyse{} is") (nl . "
+  ") (text . "implemented without lexical binding).") (nl . "
+  ") (text . "") (nl . "
+  ")) ((45 . code) (chunk . "default hook functions") (nl . "
+  ") (text . "(defun w--prepare-sexp-sql-from-file-tokens ()") (nl . "
+  ") (text . "  \"Prepare an s-expression of SQL statements for `emacsql'.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The `parse-tree' from the lexical environment (or scope, given") (nl . "
+  ") (text . "that WHYSE is not implemented with lexical binding) is mapped") (nl . "
+  ") (text . "over until every file token has been processed and records have") (nl . "
+  ") (text . "been inserted into all four tables of the database.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "This hook depends on this object being in scope: `parse-tree'.") (nl . "
+  ") (text . "That object is in scope when this hook runs with the default") (nl . "
+  ") (text . "implementation of `whyse'. (This is not meant to imply other") (nl . "
+  ") (text . "implementations exist [yet], only that hacked up installations") (nl . "
+  ") (text . "won't operate with any guarantees or according to the original") (nl . "
+  ") (text . "documentation. You know that, though, because you're reading the") (nl . "
+  ") (text . "source code and documentation for the original right now, and it") (nl . "
+  ") (text . "should be obvious that changing the source code should have been") (nl . "
+  ") (text . "accompanied with changes in the documentation.)\"") (nl . "
+  ") (text . "  (mapcar") (nl . "
+  ") (text . "   (lambda (file-token)") (nl . "
+  ") (text . "     (let* ((file-name (car file-token))") (nl . "
+  ") (text . "            (chunks (cdr file-token))") (nl . "
+  ") (text . "            (modules (vector") (nl . "
+  ") (text . "                      :insert :into 'module") (nl . "
+  ") (text . "                      :values (mapcar #'w--vectorize-chunk-data chunks)") (nl . "
+  ") (text . "                      :on-conflict-do-nothing))") (nl . "
+  ") (text . "            (parent-child (vector") (nl . "
+  ") (text . "                           :insert :into 'parentchild") (nl . "
+  ") (text . "                           :values (w--parent-child-relationships)") (nl . "
+  ") (text . "                           :on-conflict-do-nothing))") (nl . "
+  ") (text . "            (connection (w-project-database-connection project)))") (nl . "
+  ") (text . "       (mapcar (lambda (seql) (emacsql connection seql))") (nl . "
+  ") (text . "               (list modules") (nl . "
+  ") (text . "                     parent-child") (nl . "
+  ") (text . "                     ;; TODO:") (nl . "
+  ") (text . "                     ;; identifier-used-in-module") (nl . "
+  ") (text . "                     ;; topic-referenced-in-module") (nl . "
+  ") (text . "                     ))))") (nl . "
+  ") (text . "   parse-tree))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--vectorize-chunk-data (chunk)") (nl . "
+  ") (text . "  \"Convert an individual chunk to a vector of objects.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "NOTE: order of arguments: [module-name module-text file-name") (nl . "
+  ") (text . "section displacement module-number]\"") (nl . "
+  ") (text . "  (let ((chunk-name (w--chunk-name chunk)))") (nl . "
+  ") (text . "    (vector chunk-name") (nl . "
+  ") (text . "            (w--chunk-text chunk)") (nl . "
+  ") (text . "            file-name") (nl . "
+  ") (text . "            (when chunk-name") (nl . "
+  ") (text . "              (w--chunk-section chunk-name))") (nl . "
+  ") (text . "            nil") (nl . "
+  ") (text . "            (w--chunk-number chunk))))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--parent-child-relationships ()") (nl . "
+  ") (text . "  \"Make a list of vectors of parent-child relationships.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The elements are taken from applying `w--get-chunk-uses-of-chunks' to") (nl . "
+  ") (text . "every chunk in the noweb.\"") (nl . "
+  ") (text . "  (apply #'append (cl-mapcar #'w--get-chunk-uses-of-chunks chunks)))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "(defun w--get-chunk-uses-of-chunks (chunk)") (nl . "
+  ") (text . "  \"Make a list of vectors of parent-child relationships.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The parent is CHUNK, and the first element of each vector in the") (nl . "
+  ") (text . "list will be the number of this chunk. The chunks this chunk uses") (nl . "
+  ") (text . "will be named in the vectors in the returned list.\"") (nl . "
+  ") (text . "  (with-temp-buffer") (nl . "
+  ") (text . "    (let* ((iter 0)") (nl . "
+  ") (text . "           (parent-uses-child (list nil))") (nl . "
+  ") (text . "           (chunk-number (assoc-default 'code chunk))") (nl . "
+  ") (text . "           (chunk-formatted (format \"%S\" chunk)))") (nl . "
+  ") (text . "      (insert chunk-formatted)") (nl . "
+  ") (text . "      (goto-char (point-min))") (nl . "
+  ") (text . "      (cl-remove") (nl . "
+  ") (text . "       nil") (nl . "
+  ") (text . "       (cl-mapcar (lambda (assoc)") (nl . "
+  ") (text . "                    (when (equal (car assoc) 'chunk-child-usage)") (nl . "
+  ") (text . "                      (vconcat (list (number-to-string chunk-number)") (nl . "
+  ") (text . "                                     (cdr assoc)))))") (nl . "
+  ") (text . "                  chunk)))))") (nl . "
+  ") (text . "") (nl . "
+  ")) ((46 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "When the SEQL (S-EXP SQL) has been compiled, it should be logged. This") (nl . "
+  ") (text . "might be better controlled with DCL (the data control langauge") (nl . "
+  ") (text . "featureset of SQL). The history of SEQL statements compiled is treated") (nl . "
+  ") (text . "like a stack, with the newest statement being the first element of the") (nl . "
+  ") (text . "list. A shoddy implementation of a ``stack-based history'' is given") (nl . "
+  ") (text . "next.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((47 . code) (chunk . "push the compiled SQL to the database and to the history stack") (nl . "
+  ") (text . ";; NOTE: the result of evaluating the SQL is pushed to the history stack") (nl . "
+  ") (text . ";; alongside the SQL that was executed.") (nl . "
+  ") (text . "(cl-pushnew (cons (emacsql (w-project-database-connection default-project)") (nl . "
+  ") (text . "                           compiled-parse-tree)") (nl . "
+  ") (text . "                  . compiled-parse-tree)") (nl . "
+  ") (text . "            (w-project-history-sql-commands default-project))") (nl . "
+  ")) ((48 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{finding the section title of a chunk}") (nl . "
+  ")) ((49 . code) (chunk . "Package Code") (nl . "
+  ") (use . "find section title") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((50 . code) (chunk . "find section title") (nl . "
+  ") (text . ";; TODO 2024-05-13: this function is really rough. It still needs a") (nl . "
+  ") (text . ";; working algorithm to search through the noweb text to find the") (nl . "
+  ") (text . ";; section that a chunk belongs to. I think that searching for all of") (nl . "
+  ") (text . ";; the sections that preceed a chunk definition will be necessary before") (nl . "
+  ") (text . ";; finding the last section command that preceeds a chunk (thereby") (nl . "
+  ") (text . ";; finding the section the chunk belongs to). There may be a better") (nl . "
+  ") (text . ";; algorithm; this is the first algorithm I thought of to find the") (nl . "
+  ") (text . ";; section that a chunk belongs to regardless of the regular expression") (nl . "
+  ") (text . ";; used.") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; Another algorithm might use Emacs Lisp regular expressions to search") (nl . "
+  ") (text . ";; for the first match to any of the set of regular expressions that") (nl . "
+  ") (text . ";; would search for a given sectioning command.") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; For now, I trust the Emacs Lisp manual when it says that `regex-opt'") (nl . "
+  ") (text . ";; is efficient; it is damned convenient right now.") (nl . "
+  ") (text . "(defun w--chunk-section (chunk-name)") (nl . "
+  ") (text . "  (with-temp-buffer") (nl . "
+  ") (text . "    (insert-file-contents (w-project-noweb project))") (nl . "
+  ") (text . "    (goto-char 0)") (nl . "
+  ") (text . "    (re-search-forward") (nl . "
+  ") (text . "     ;; It is an error if no chunks are found.") (nl . "
+  ") (text . "     (regexp-opt (list (concat \"<\" \"<\" chunk-name \">\" \">\" \"=\"))))") (nl . "
+  ") (text . "    (re-search-backward") (nl . "
+  ") (text . "     ;; TODO: support a fallback list from RefTeX.") (nl . "
+  ") (text . "     (regexp-opt (w-project-sectioning-commands-regexs project))") (nl . "
+  ") (text . "     ;; It is not an error if no section is found because sectioning is") (nl . "
+  ") (text . "     ;; entirely optional in a literate document with LaTeX.") (nl . "
+  ") (text . "     nil t)") (nl . "
+  ") (text . "    (buffer-substring (line-beginning-position) (line-end-position))))") (nl . "
+  ")) ((51 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "While it's certain that some of the data from a search operation are") (nl . "
+  ") (text . "markers of a match (some of them are non-nil), substrings corresponding") (nl . "
+  ") (text . "to the used chunk name in the current chunk are appended to a list that") (nl . "
+  ") (text . "is ultimately returned.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\subsection{Determining parent-child relationships}") (nl . "
+  ") (text . "There needs to be a function which can take a generalizable approach to") (nl . "
+  ") (text . "determining the name of a section defined by any possible sectioning") (nl . "
+  ") (text . "command. To easily do that a function could be provided by the user for") (nl . "
+  ") (text . "any sectioning commands that are exotic, and those functions will") (nl . "
+  ") (text . "accommodate the LaTeX command while the calling function will handle") (nl . "
+  ") (text . "finding them and collecting their output.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% NOTE: There may be some semantic or logical connection between the") (nl . "
+  ") (text . "%% parent-child chunk relationship and the latex sections which contain") (nl . "
+  ") (text . "%% parent chunks, or even child chunks! What is that?") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The following association list gives the keyword and the value") (nl . "
+  ") (text . "corresponding to that which were seen in the intermediate representation") (nl . "
+  ") (text . "used by noweb itself. To implement \\whyse{} we utilize the intermediate") (nl . "
+  ") (text . "representation (IR) for both editing and document compilation. Features") (nl . "
+  ") (text . "unique to \\whyse{} would add in new keywords, and these would only be") (nl . "
+  ") (text . "processed by \\whyse{}; filters should always ignore IR content that") (nl . "
+  ") (text . "doesn't concern them.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\begin{verbatim}") (nl . "
+  ") (text . "((code . 32)") (nl . "
+  ") (text . " (x-label . \"NW2ucZJx-3LzQog-2\")") (nl . "
+  ") (text . " (ref . \"NW2ucZJx-3LzQog-1\")") (nl . "
+  ") (text . " (chunk . \"chunks and their\")% ELIDED") (nl . "
+  ") (text . " (prevdef . \"NW2ucZJx-3LzQog-1\")") (nl . "
+  ") (text . " (nextdef . \"NW2ucZJx-3LzQog-3\")") (nl . "
+  ") (text . " (text . \"\\n(chunk-contents\\n...\")% ELIDED") (nl . "
+  ") (text . " (x-label . \"NW2ucZJx-3LzQog-2-u1\")") (nl . "
+  ") (text . " (ref . \"NW2ucZJx-2ZphFz-1\")") (nl . "
+  ") (text . " (chunk-child-usage . \"structural keywords\")") (nl . "
+  ") (text . " (text . \"\\n  \")") (nl . "
+  ") (text . " (x-label . \"NW2ucZJx-3LzQog-2-u2\")") (nl . "
+  ") (text . " (ref . \"NW2ucZJx-44iV1g-1\")") (nl . "
+  ") (text . " (chunk-child-usage . \"tagging keywords\")") (nl . "
+  ") (text . " (text . \"\\n  x-notused\\n  \")") (nl . "
+  ") (text . " (x-label . \"NW2ucZJx-3LzQog-2-u3\")") (nl . "
+  ") (text . " (ref . \"NW2ucZJx-1ZiKLq-1\")") (nl . "
+  ") (text . " (chunk-child-usage . \"tool errors\")") (nl . "
+  ") (text . " (text . \"))\\n\"))") (nl . "
+  ") (text . "\\end{verbatim}") (nl . "
+  ") (text . "") (nl . "
+  ")) ((52 . code) (chunk . "collect child chunk uses") (nl . "
+  ") (text . "(with-temp-buffer") (nl . "
+  ") (text . "  (let* ((iter 0)") (nl . "
+  ") (text . "         (parent-uses-child (list nil))") (nl . "
+  ") (text . "         (chunk-number (assoc-default 'code chunk))") (nl . "
+  ") (text . "         (chunk-formatted (format \"%S\" chunk)))") (nl . "
+  ") (text . "    (insert chunk-formatted)") (nl . "
+  ") (text . "    (goto-char (point-min))") (nl . "
+  ") (text . "    (cl-remove") (nl . "
+  ") (text . "     nil") (nl . "
+  ") (text . "     (cl-mapcar (lambda (assoc)") (nl . "
+  ") (text . "                  (when (equal (car assoc) 'chunk-child-usage)") (nl . "
+  ") (text . "                    (vconcat (list chunk-number (cdr assoc)))))") (nl . "
+  ") (text . "                chunk))))") (nl . "
+  ")) ((53 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\part{Appendices}") (nl . "
+  ") (text . "\\label{part:appendices}") (nl . "
+  ") (text . "\\appendix") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{Packaging \\whyse{}}") (nl . "
+  ") (text . "Installing an \\textsc{Emacs~LISP} package is quite easy if the system is") (nl . "
+  ") (text . "distributed through the \\textsc{GNU~Emacs~LISP~Package~Archive}") (nl . "
+  ") (text . "(\\textsc{GNU~ELPA}), and only slightly less easy if it is distributed") (nl . "
+  ") (text . "through \\textsc{MELPA}") (nl . "
+  ") (text . "(\\textsc{Milkypostman's~Emacs~Lisp~Package~Archive}). Other package") (nl . "
+  ") (text . "archives have existed, but they are all ephemeral. The most popular") (nl . "
+  ") (text . "alternative to \\textsc{GNU~ELPA}, \\textsc{Non-GNU~ELPA}, and") (nl . "
+  ") (text . "\\textsc{MELPA} is direct distribution of files through \\textsc{Git}") (nl . "
+  ") (text . "servers and the use of a package by the end user to install directly") (nl . "
+  ") (text . "from such (e.g. \\textsc{Quelpa}).") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "This software is in-development, so it will only be distributed directly") (nl . "
+  ") (text . "through \\textsc{Git}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\whyse{} follows the form of single-file packages documented in the") (nl . "
+  ") (text . "\\textit{Emacs Lisp Reference Manual}. The package file, \\whyseel{}, is") (nl . "
+  ") (text . "emitted by \\texttt{notangle} which is called by the Makefile in every") (nl . "
+  ") (text . "target but ") (quotation . "@text clean
+  ") (text . ". All source development occurs in \\whysenw{} using") (nl . "
+  ") (text . "\\textsc{Polymode}.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The makefile distributed alongside \\whysenw{} in the tarball contains the") (nl . "
+  ") (text . "command-line used to tangle and weave \\whyse{}.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((54 . code) (chunk . "whyse.el") (nl . "
+  ") (use . "Emacs Lisp package headers") (text . "") (nl . "
+  ") (use . "Licensing and copyright") (text . "") (nl . "
+  ") (use . "Commentary") (text . "") (nl . "
+  ") (use . "Package Code") (text . "") (nl . "
+  ") (use . "provide the whyse feature and list the file local variables") (text . "") (nl . "
+  ")) ((55 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((56 . code) (chunk . "Emacs Lisp package headers") (nl . "
+  ") (text . ";;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: nil -*-") (nl . "
+  ") (text . ";; Yes, you read that right: no lexical binding in this file.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; Copyright © 2023 Bryce Carson") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; Author: Bryce Carson <bcars268@mtroyal.ca>") (nl . "
+  ") (text . ";; Created 2023-06-18") (nl . "
+  ") (text . ";; Keywords: tools tex hypermedia") (nl . "
+  ") (text . ";; URL: https://github.com/bryce-carson/whyse") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; This file is not part of GNU Emacs.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((57 . code) (chunk . "whyse-pkg.el") (nl . "
+  ") (text . "(define-package \"whyse\" \"0.1\" \"noWeb HYpertext System in Emacs\"") (nl . "
+  ") (text . "  '(") (use . "required packages") (text . "))") (nl . "
+  ")) ((58 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The following chunk lists the ") (quotation . "@use required packages
+  ") (text . "; as of") (nl . "
+  ") (quotation . "@text whyse-0.1-devel
+  ") (text . " the only required packages are ") (quotation . "@text peg
+  ") (text . ", ") (quotation . "@text cl-lib
+  ") (text . ",") (nl . "
+  ") (quotation . "@text emacsql
+  ") (text . ".") (nl . "
+  ") (text . "") (nl . "
+  ")) ((59 . code) (chunk . "required packages") (nl . "
+  ") (text . "(emacs \"25.1\")") (nl . "
+  ") (text . "(emacsql \"20230220\")") (nl . "
+  ") (text . "(peg \"1.0.1\")") (nl . "
+  ") (text . "(peg-noweb \"0.1\")") (nl . "
+  ") (text . "(cl-lib \"1.0\")") (nl . "
+  ")) ((60 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "The license text was included in this document using its \\LaTeX{} form") (nl . "
+  ") (text . "in the License section at the end of this document.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((61 . code) (chunk . "Licensing and copyright") (nl . "
+  ") (text . ";; This program is free software: you can redistribute it and/or") (nl . "
+  ") (text . ";; modify it under the terms of the GNU General Public License as") (nl . "
+  ") (text . ";; published by the Free Software Foundation, either version 3 of the") (nl . "
+  ") (text . ";; License, or (at your option) any later version.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; This program is distributed in the hope that it will be useful, but") (nl . "
+  ") (text . ";; WITHOUT ANY WARRANTY; without even the implied warranty of") (nl . "
+  ") (text . ";; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU") (nl . "
+  ") (text . ";; General Public License for more details.") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; You should have received a copy of the GNU General Public License") (nl . "
+  ") (text . ";; along with this program. If not, see") (nl . "
+  ") (text . ";; <https://www.gnu.org/licenses/>.") (nl . "
+  ") (text . "") (nl . "
+  ")) ((62 . code) (chunk . "Commentary") (nl . "
+  ") (text . ";;; Commentary:") (nl . "
+  ") (text . ";; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate") (nl . "
+  ") (text . ";; Programming_ (1991).") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,") (nl . "
+  ") (text . ";;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and") (nl . "
+  ") (text . ";;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol") (nl . "
+  ") (text . ";;    468. Springer, Berlin, Heidelberg.") (nl . "
+  ") (text . ";;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.") (nl . "
+  ") (text . ";;") (nl . "
+  ") (text . ";; A paper describing this implementation---written in Noweb and browsable,") (nl . "
+  ") (text . ";; editable, and auditable with WHYSE, or readable in the printed form---is") (nl . "
+  ") (text . ";; hoped to be submitted to The Journal of Open Source Software (JOSS) before") (nl . "
+  ") (text . ";; the year 2024. N.B.: the paper will include historical information about") (nl . "
+  ") (text . ";; literate programming, and citations (especially of those given credit here") (nl . "
+  ") (text . ";; for ideating WHYSE itself).") (nl . "
+  ") (text . "") (nl . "
+  ")) ((63 . code) (chunk . "Package Code") (nl . "
+  ") (text . ";;; Code:") (nl . "
+  ") (text . ";;;; Compiler directives") (nl . "
+  ") (text . "(eval-when-compile (require 'wid-edit))") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";;;; Internals") (nl . "
+  ") (use . "Customization and global variables") (text . "") (nl . "
+  ") (use . "Widgets") (text . "") (nl . "
+  ") (use . "\\whyse{} project structure") (text . "") (nl . "
+  ") (use . "open-project-hook") (text . "") (nl . "
+  ") (use . "default hook functions") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";;;; Commands") (nl . "
+  ") (text . ";;;###autoload") (nl . "
+  ") (use . "\\whyse{}") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ")) ((64 . code) (chunk . "provide the whyse feature and list the file local variables") (nl . "
+  ") (text . "(provide 'whyse)") (nl . "
+  ") (text . "") (nl . "
+  ") (text . ";; Local Variables:") (nl . "
+  ") (text . ";; mode: emacs-lisp") (nl . "
+  ") (text . ";; no-byte-compile: t") (nl . "
+  ") (text . ";; no-native-compile: t") (nl . "
+  ") (text . ";; End:") (nl . "
+  ")) ((65 . docs) (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%% \\backmatter") (nl . "
+  ") (text . "\\chapter{Indices}") (nl . "
+  ") (text . "\\section{Chunks} \\nowebchunks") (nl . "
+  ") (text . "\\section{Identifiers} \\nowebindex") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "% \\chapter{Bibliography}") (nl . "
+  ") (text . "% \\printbibliography") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\chapter{License}") (nl . "
+  ") (text . "\\input{../src/gpl-3.0.tex}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "\\end{document}") (nl . "
+  ") (text . "") (nl . "
+  ") (text . "%%% Do not delete the above form feed charcter. It prevents Emacs from") (nl . "
+  ") (text . "%%% mistakenly applying a local variables list contained within a noweb") (nl . "
+  ") (text . "%%% chunk on a previous \"page\". END OF FILE") (nl . "
+  ")) nil))
+#+end_src
+
+** Flowcharts
+https://app.diagrams.net/#G1JRchjWwp13FYIpgNpmkbV47944NCaBjj#%7B%22pageId%22%3A%22jpz_qzJgL6jIhkhn-vdT%22%7D
+
+* Archived content
+** a =very-nice.el=, small elisp program using widgets to navigate
+#+begin_src elisp
+  (defun w--module-navigate (widget direction widget-number)
+    "Navigate to another module.
+
+  Navigate to a module, previous or next, from the current module's action
+  button."
+    (let ((widget-number (widget-get widget :module-number)))
+      (if (and (stringp direction)
+               (string= direction "prev"))
+          (while; not at the beginning or end of the buffer, nor at the desired widget
+              (or (not (bobp))
+                  (not (and (widget-at)
+                            (widget-member (widget-at) :module-number)
+                            (= (widget-member (widget-at) :module-number)
+                               (1- widget-number)))))
+            (backward-line))
+        (while; not at the beginning or end of the buffer, nor at the desired widget
+            (or (not (eobp))
+                (not (and (widget-at)
+                          (widget-member (widget-at) :module-number)
+                          (= (widget-member (widget-at) :module-number)
+                             (1+ widget-number)))))
+          (forward-line)))))
+
+  (widget-create 'push-button
+                 :format "%[prev%]"
+                 :button-face custom-button
+                 :module-navigate #'w--module-navigate
+                 :action (lambda (widget value)
+                           (widget-apply widget :module-navigate
+                                         value
+                                         (widget-get widget :module-number))))
+#+end_src
+
+** =archive.nw= archives contents from =whyse.nw= which aren't used now
+* Ideas
+** A modification to noweb's noweave
+It might be prudent to add a =--no-latex= option of noweave allowing the system
+to know that the document would normally be woven with latex, but that the totex
+transformer shouldn't be used during this call. Such option parsing could be
+added so any valid transformer could be denied.
+** Old ideas about RefTeX and other advanced implementation details :ARCHIVE:
+*** TODO Use RefTeX's ~reftex-section-regexp~ to recognize arbitrary LaTeX sectioning commands
+- [[elisp:(load-library "reftex")][ ~(load-library "reftex")~ # before clicking the function link]]
+- [[help:reftex-section-regexp][reftex-section-regexp]]
+- navigate to the ~setq~ for that symbol.
+
+*** Explore alternative implementations
+An implementation of something WHS-like in Org mode, rather than noweb-mode,
+would be interesting. It seems quite capable, and in fact is more featureful
+than noweb. Noweb may be outmoded, honestly, but it does have its place.
+
+**** TODO Buttonizing all =<<noweb chunk headers>>== in poly-noweb mode buffers
+Rather than using widget.el in the main Polymode buffer it would be prudent to
+use the Button package to make buttons out of pre-existing text.
+
+There are utilities for mapping over all "spans" in a polymode buffer, e.g.
+[[help:pm-map-over-spans][polymode map over spans]].
+
+#+begin_quote markdown
+`:head-mode` and `:tail-mode` specify the major mode which should be used for
+head and tail respectively. Special symbol `'host` means that the host mode is
+used for head or tail, if `'body` [then] the mode of the chunk's body. Head and
+tail modes default to `poly-head-tail-mode` which is a very basic prog mode with
+no special powers.
+#+end_quote
+
+I need to define a mode. The mode must have a keymap to navigate chunks:
+preferrably a transient map or hydra like Info mode.
+
+#+begin_src elisp :noweb yes :tangle noweb-navigation-mode.el
+  (define-minor-mode nwn-mode
+    "Noweb Narrowing minor mode provides alternative motion commands
+            between pages, defined by a buffer-local value of
+            `page-delimiter' appropriate for Noweb chunks."
+    :lighter " nWn "
+    :list '(fundamental-mode text-mode latex-mode noweb-mode poly-noweb-mode)
+    :keymap '(([next] . nwn--forward-page)
+              ([prior] . nwn--backward-page))
+    (if <<current buffer is a noweb file>>
+        (if nwn-mode
+            (progn (make-local-variable 'page-delimiter)
+                   <<customize page-delimiter regular expression for noweb>>
+                   (nwn-narrow-to-page))
+          (kill-local-variable 'page-delimiter)
+          (when (buffer-narrowed-p)
+            (widen)))
+        (message "Current buffer is not a noweb file; refusing to enable nwn-mode!")))
+
+  (define-child-mode noweb-navigation-mode text-mode)
+  (defun noweb-navigation-mode (&rest mode-arguments)
+    "\[COMMAND] is exclusively for use as a :head-mode and :tail-mode with poly-noweb. It has no other purpose.
+
+  \{KEYMAP}
+
+  \<KEYMAP>"
+
+    (kill-all-local-variables)
+    (set-variable 'major-mode noweb-navigation-mode)
+    (use-local-map
+     (let ((map (make-sparse-keymap)))
+       ;; TODO: these dwim functions should be cyclic. Once at the last definition
+       ;; of a chunk continuing to the next should return the user to the first
+       ;; definition of the chunk.
+       (define-key map "n" #'next-noweb-chunk-definition-dwim)
+       (define-key map "p" #'previous-noweb-chunk-definition-dwim)
+
+       ;; TODO: these dwim functions should cycle through the next visible
+       ;; defintions of a chunk which is the sibling of the currently visited
+       ;; chunk.
+       (define-key map "S-n" #'next-noweb-chunk-sibling-definition-dwim)
+       (define-key map "S-p" #'previous-noweb-chunk-sibling-definition-dwim)
+
+       ;; TODO: these dwim functions should cycle through parents of the currently
+       ;; visited chunk.
+       (define-key map "M-n" #'next-noweb-chunk-parent-definition-dwim)
+       (define-key map "M-p" #'previous-noweb-chunk-parent-definition-dwim)
+       map)))
+#+end_src
+

@@ -1,0 +1,757 @@
+%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
+%% quotations should be guarded with at-signs, like [[@<<name@>>]]. The
+%% Emacs poly-noweb mode should have syntax highlighting that does not
+%% hightlight noweb quotations within LaTeX comments. The font-locking
+%% should be aware that this is a comment, so that the proper syntax
+%% highlighting is applied (i.e. none is applied to the quotation, or at
+%% least it is another shade of the comment syntax colouring, rather
+%% than pure white like body text).
+
+\chapter{Ideas for future RefTeX support}
+% November 8, 2025
+
+My development plan is to add support for \noweb{}'s macros to \reftex and
+\auctex then use the information gleaned from these packages to
+buttonize and markup (with overlays) the chunk headers and
+cross-references in poly-noweb buffers. \texttt{diff}s of the
+continually watched product of the \noweb{}-formatted source file and the
+user-modified \LaTeX{}-formatted document (which is a derivation of the
+former), and suggestions for filters could conceivably allow two-way
+communication between \noweb{} and \auctex. Would that be \whyse{}? I don't
+think it would be wise to call it \whyse{}---the \textsc{WHS} implemented
+in \emacs{}---but it would still be \whyse{}: \emph{a particular}
+\textsc{((no)Web~HYpertext~System~in~Emacs)}. It may still be a stepping
+stone to the original notion, which would be interesting to explore, but
+I think it would be better than that original goal as well; it wouldn't
+be as flexible as the \noweb{} system is, however, as it would only
+support \LaTeX{} documentation, whereas \noweb{} supports other backends.
+
+\begin{quote}
+  \reftex has been bundled and pre-installed with \emacs{} since version
+  20.2.
+
+  --- the \reftex \texinfo manual, ``with typographic editions''.
+\end{quote}
+
+Given \reftex has been a part of \emacs{} for so long it makes sense to
+simply defer to its featureset where it provides something useful,
+rather than replacing it with new functionality in Emacs; I haven't
+surpassed the featureset or implementation of \reftex, certainly not, so
+rather than replacing that I'll add to it.
+
+The following diagram shows which lines, in a Noweb document, need
+RefTeX support and what kind. Within a chunk there are cross-references
+to labels defined elsewhere as well as index entry definitions and
+cross-references to labels identically-defined.
+
+<<>>=
+*
++-------------------+
+|                   |
+| <<example.c>>=    |
+|i#define A foo     | i Index "A".
+| int main() {      |
+|x  printf(@<<S>>); | x Cross-reference "S".
+| }                 |
+|                   |
+|l@<<S>>=           | l Label "S".
+| "Hello, world!"   |
+| @                 |
+|                   |
+|x[[@<<S>>]] is a   | x Cross-reference "S".
+| new chunk label.  |
++-------------------+
+@ 
+
+In the verbatim text above, \texttt{*} indicates that the first column
+is markup/gutter content not part of the normal buffer contents.
+
+\section{Configuring \reftex to support the \noweb through knoweb} \label{cha:conf-reft-recogn}
+
+\begin{quotation}
+  Support for RefTeX in such a style file is useful when the LaTeX style
+  defines macros or environments connected with labels, citations, or
+  the index.
+\end{quotation}
+
+<<knoweb.el>>=
+;;; This is knoweb.el --- an Emacs LISP style file for AUCTeX and RefTeX. -*- mode: emacs-lisp -*-
+<<knoweb.el>>=
+;; AUCTeX customization: support for knoweb label environments.
+;; Conditionally supporting RefTeX.
+(TeX-add-style-hook "knoweb"
+ (lambda ()
+   (if (fboundp 'reftex-add-label-environments)
+       ;; Provide the symbol for the knoweb label environments.
+       (reftex-add-label-environments '(webcode moddef nwtypesetcomment thenowebchunks thenowebindex)))))
+@ 
+
+For example, the [[webcode]] environment is defined with:
+
+\begin{verbatim}
+\newenvironment{webcode}{%
+  \@begincode
+}{%
+  \endtrivlist}
+\end{verbatim}
+
+It looks like the [[webcode]] environment starts processing with an
+at-command and ends it with [[\\endtrivlist]], which ends a trivial list.
+
+<<knoweb.el>>=
+(TeX-add-symbols
+ '("nwbegincode" TeX-arg-define-macro)
+ '("nwendcode" TeX-arg-define-macro))
+;; \newcommand{\nwbegincode}[1]{%
+;;   \begingroup
+;;   \setlength{\topsep}{\nwcodetopsep}
+;;   \@beginparpenalty=\@highpenalty
+;;   \@endparpenalty=-\@highpenalty
+;;   \@begincode }
+@ 
+
+\subsection{\auctex Folding Support}
+To enable folding of noweb macros they must be present in the variable
+\texttt{TeX-fold-macro-spec-list}. Folding of noweb environment would be
+supported by adding these to \texttt{TeX-fold-env-spec-list}. These will
+apply to all \auctex modes unless the mode-specific spec-list variable
+is used instead (e.g. \texttt{LaTeX-fold-env-spec-list} would limit the
+folding support for noweb environments to \LaTeX{}-specific modes enhanced
+by \auctex).
+
+\subsection{\reftex Label Support}
+\label{sec:label support}
+<<>>=
+
+@ 
+
+The \reftex manual states that [[reftex-label-alist]] is bound to an
+association list with infromation about the label and reference commands
+used to refer to sections (and environments). Seeing the
+[[reftex-label-alist-builtin]] below, I can understand that there is
+support for implicit and explicit environments: with an implicit
+environment being a section (\`{a} la \html; ``implicit
+environments'' may not be a concept in \LaTeX{}, but such nesting is how I
+conceive of hierarchical structuring in \LaTeX{} as it actually is in
+\html).
+
+\begin{Verbatim}
+(minted "The minted package"
+         (("listing" 108 "lst:" "~\\ref{%s}" nil (regexp "[Ll]isting"))))
+ (LaTeX "LaTeX default environments"
+        (("section" 115 "%S" "~\\ref{%s}" (nil . t)
+          (regexp "parts?" "chapters?" "chap\\." "sections?" "sect?\\."
+                  "paragraphs?" "par\\." "\\\\S" "\247" "Teile?" "Kapitel"
+                  "Kap\\." "Abschnitte?" "appendi\\(x\\|ces\\)" "App\\."
+                  "Anh\"?ange?" "Anh\\."))
+         ("enumerate" 105 "item:" "~\\ref{%s}" item (regexp "items?" "Punkte?"))
+         ("equation" 101 "eq:" "~(\\ref{%s})" t
+          (regexp "equations?" "eqs?\\." "eqn\\." "Gleichung\\(en\\)?" "Gl\\."))
+         ("eqnarray" 101 "eq:" nil eqnarray-like)
+         ("figure" 102 "fig:" "~\\ref{%s}" caption
+          (regexp "figure?[sn]?" "figs?\\." "Abbildung\\(en\\)?" "Abb\\."))
+         ("figure*" 102 nil nil caption)
+         ("table" 116 "tab:" "~\\ref{%s}" caption
+          (regexp "tables?" "tab\\." "Tabellen?"))
+         ("table*" 116 nil nil caption)
+         ("\\footnote[]{}" 110 "fn:" "~\\footref{%s}" 2
+          (regexp "footnotes?" "Fussnoten?"))
+         ("any" 32 " " "~\\ref{%s}" nil)))
+\end{Verbatim}
+
+\subsection{\reftex Index Support}
+\label{sec:Index Support}
+
+<<knoweb.el>>=
+
+@
+
+
+\reftex can also be configured to recognize index macros from packages
+(i.e. it can work with index entries apart from those defined with the
+built-in index commands).
+
+\begin{Verbatim}
+  To make your own LaTeX macro definitions known to RefTeX, customize
+  the variables
+       reftex-label-alist          (for label macros/environments)
+       reftex-section-levels       (for sectioning commands)
+       reftex-cite-format          (for ‘\cite’-like macros)
+       reftex-index-macros         (for ‘\index’-like macros)
+       reftex-index-default-macro  (to set the default macro)
+  If you have a large number of macros defined, you may want to write
+  an AUCTeX style file to support them with both AUCTeX and RefTeX.
+\end{Verbatim}
+
+\input{../src/survey-of-woven-whyse-LaTeX-commands.tex}
+
+
+\chapter{Pipeline Architecture}
+\label{chap:pipe}
+
+Perfect and documented has become the enemy of the good and implemented,
+so things will be more sparse until a program is released.
+
+<<index-keywords.sh>>=
+#!/usr/bin/sh
+
+awk '/^@index/ { print $0 }' < /dev/stdin
+@ 
+
+The prior filter will remove all keywords that aren't indexing keywords.
+
+<<definitions.sh>>=
+#!/usr/bin/sh
+
+awk '<<definitions.sh.awk>>' < /dev/stdin
+
+<<definitions.sh.awk>>= (awk)
+/^@index defn (.*)/ {
+    if (match($0, /^@index defn (.*)/)) {
+           print(substr($0, match($0, /^@index defn (.*)/)))
+    }
+}
+
+<<example.sh>>=
+#!/usr/bin/sh
+awk '<<example.sh.awk>>' < /dev/stdin
+
+<<example.sh.awk>>= (awk)
+BEGIN {
+    # idefnrx = /^@index defn (.*)/
+    FS=" "
+    nwnl=1
+}
+# idefnrx {
+#     if (match($0, idefnrx)) {
+#         print(substr($0, match($0, idefnrx)))
+#     }
+# }
+/^@nl/ {
+    nwnl=nwnl+1
+}
+/^@defn/ {
+    module_name = substr($0, 7)
+    #print(substr($0, 6))# skip "@defn "
+}
+$1 == "@index" && $2 == "defn" {
+        id = substr($0, 13)# skip "@index defn ", print the rest of the line.
+        print(sprintf("%s\x1C%s\x1C%d", id, module_name, nwnl))
+}
+@
+
+
+\chapter{Event-hook Loop}\label{event-hook-loop}
+There has always been some confusion in my mind as to how the system
+will work. Reading a noweb file is no issue, neither is parsing the tool
+syntax of that file, but when these operations should take place in the
+editing cycle has been elusive.
+
+Implementing the \textsc{WHS} using the UNIX toolbox philosophy---many small
+tools chained together to create solutions and systems---honours the
+noweb architecture itself, but I won't be calling [[shell-command]] too
+much. The original inspiration when I began writing WHYSE's literate
+program was correct: I need to gather from the user a [[shell-command]]
+to work with the project sources as they are. Users may be adopting
+\whyse after already working on their projects for some time, and with
+some filters and other advanced modes of operation in play (for
+instance, not using the default shell wrappers to call the C backends or
+the Icon filters).
+
+My own document currently builds with a simple Make rule, but I do use
+options! I'm not simply calling [[noweave]].
+
+\begin{verbatim}
+whyse.tex: autodefs.elisp | builddir
+	cd $(BUILD) && $(NOWEB_BIN)/noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
+\end{verbatim}
+
+\section{Algorithm}
+\begin{enumerate}
+  \item{parse project noweb into tool syntax}
+  \item{autoidentify definitions in code chunks}
+  \item{index chunks and usages}
+\end{enumerate}
+
+
+\chapter{Processing parsed nowebs into SQL}\label{processing lists}
+This chapter covers how the parsed text, generating the tool syntax, is
+used to create a series of \sql{} statements that will be executed by
+SQLite.
+
+\section{Processing}
+First, the overall structure of the parsed text should be diagrammed
+(\ref{parsed-text-lisp}). The parse tree is a list of noweb documents,
+each being a list themselves. The first atom of an inner list,
+corresonding to a document, is the filename of that document (hopefully
+the same filename as passed on the commmand-line elsewhere when the
+document is used). Deeper, each document-list contains as the second
+atom a list of its contents, which is an association list thereof. Each
+association in the alist is bewteen the symbol relating to the rule that
+generated the cons cell, and the contents appropriate to the symbol.
+
+There are many steps to compiling the parse tree into \sequel{}. The first
+step is to ensure the association lists in the parse tree are in a
+format that is acceptable to built-in Emacs Lisp functions; this will
+make it easier to navigate the tree and transform it.
+%% FIXME: is it really true, and does it make sense for
+%% what I'm actually doing, or am I using the concept/name wrong?
+Other texts call this manipulation of the parse tree ``list
+destructuring'';
+%%
+it could be thought of as code generation, since the data is used to
+generate DML which is partly code and partly data.
+
+%% FIXME 2024-08-10 what the fuck am I saying here?
+Some associations are reductions from the initial parse tree,
+which---thanks to the \textsc{peg} package and \textit{PEG parsing in
+  general}---are not reduced in a second step. Modifications to the
+parsing procedure can occur directly without losing information, and
+thanks to literate programming should be easy for advanced users.
+
+The initial parse tree begins like the one below. This tree is
+purposefully small omits everything but the \texttt{docs},
+\texttt{text}, and \texttt{code} symbols.
+
+\begin{verbatim}\label{parsed-text-lisp}
+'((noweb-document-one
+   ((docs . 0)
+    (text . "\tex{} is cool!"))
+   ((code . 1)
+    (text . "(message \"LISP is awesome!\")")))
+  (noweb-document-two
+   ((code . 0)
+    (text . "asdf is a system definition format in Common LISP,"))
+   (nwnl . "\n")
+   (text . "and I like to use it.")
+   ((code . 1)
+    (text . "jkl; is the right-handed corollary of asdf."))
+   ((docs . 2)
+    (text . "\LaTeX{} is great!"))
+   ((docs . 3)
+    (text . "Noweb, written by Norman Ramsey is sweet!"))))
+\end{verbatim}
+
+The reductions which occur during parsing make chunk zero of the second
+noweb document look like this in the final result.
+
+\begin{verbatim}
+((code . 0)
+ (text . "asdf is a system definition format in Common LISP,
+and I like to use it."))
+\end{verbatim}
+
+The new result is much easier to use as data for other programs (SQL in
+this case). In the verbatim text a literal newline was inserted rather
+than retaining the escape sequence, which is exactly what happens in the
+reduction step as well. The next subsection discusses the details of how
+the reduction in complexity exampled above is achieved.
+
+\subsection{Reducing complexity in the alist}
+The first step in making the parse tree navigable for other programs is
+collapsing adjacent ``stringy'' tokens into single [[text]] tokens. The
+output tool syntax of notangle, and the parse tree resulting from the
+PEG, (breifly) contain individual text tokens for fragments of whole
+text lines and form feed characters. These tokens exist because the
+cross-referencing tokens fragment the text lines, and new lines in the
+noweb document are treated specially to facilitate this fragmentation.
+
+A small quote from the tool syntax of a development version of \whyse{} is
+shown in this example in its parsed form. However, during actual parsing
+these adjacent tokens are \textit{immediately collapsed} into singular
+tokens.
+
+\begin{verbatim}
+(text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
+(nwnl . "@nl")
+(text . "\end{enumerate}")
+(nwnl . "@nl")
+(text . "")
+(nwnl . "@nl")
+\end{verbatim}
+
+To collapse these tokens into a single text token the [[peg--stack]]
+must be manipulated carefully. It isn't advisable to manipulate this
+variable in the course of a PEG grammar's actions. There is a use case
+for it when the previous rules and actions won't accommodate the
+necessary action without refactoring a larger part of the grammar. In
+this development version that is not a goal; basic functionality is
+sought after, not robustness or beauty, so hacking the desired behaviour
+together quickly is better.
+
+
+\part{Implementing the core WHYSE featureset}
+\label{part:mystery-meat}
+
+What are the steps to follow to implement \whyse{}? What is the meat of
+the application? This is not a question different from
+~\Ref{part:what-is-whyse}. That section focused on explaining the
+purpose of \whyse{} to discover what it is and what comprises it, rather
+than how to implement those things which comprise WHYSE.
+
+The application has been in development for a little over two years and
+I haven't made any progress in nearly the same amount of time. I know
+that I need {an~event~loop~\ref{event-hook-loop}}.
+
+What are the individual events that take place in a system such as
+\whyse{}? What takes place between the input of a file in \noweb{} format
+into an application that either extends the mode(s) suitable for that
+format or extends the mode(s) suitable for the resulting \LaTeX{}-format
+file?
+
+The standard steps in the usage of \noweb{} are as follows:
+
+\begin{itemize}[noweb-to-latex]
+  \item Write a \noweb{}-formatted file, and
+  \item Call \notangle on the file, with various options, OR
+  \item Call \noweave on the file, with various options.
+\end{itemize}
+
+with not much else to it. Except in expert cases, like the writing of a
+large book or the development of an application like \whyse{}, or
+noweb itself, or the Physically-based Rendering book (which uses a
+different program yet similar to and inspired by noweb).
+
+Developing an application like this, even when a rudimentary design is
+available in \cite[A Hypertext System for Literate
+Programming]{brown1991}, is not easy. I haven't fully designed the
+program, and over the course of two years I've sat down for a few hours
+or a few days and obsessed over how to finish this damned application.
+It's certainly not ``test-driven'' or following a traditional software
+development lifecycle (SDLC); it's the worst form of literate
+programming, rambling!
+
+The following quotation examples the output of \noweave. The in-line
+forms [[@<<chunk-name>>]] and [[some prose with a [[quotation]]]] are
+not exampled below, only a code chunk. Documentation chunks are literal
+\LaTeX{}, with minimal embracement by \noweb{} macros (just
+\texttt{\\nwbegindocs{*}}).
+
+\begin{Verbatim}
+\nwbegincode{97}
+  \sublabel{NW43JrUv-3RJbFb-1}
+  \nwmargintag{{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}
+  \moddef{Commentary~{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}\endmoddef
+  \nwstartdeflinemarkup
+    \nwusesondefline{\\{NW43JrUv-1gS5zu-1}}
+  \nwenddeflinemarkup
+;;; Commentary:
+;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
+;; Programming_ (1991).
+;;
+;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,
+;;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and
+;;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol
+;;    468. Springer, Berlin, Heidelberg.
+;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
+;;
+;; A paper describing this implementation---written in Noweb and browsable,
+;; editable, and auditable with WHYSE, or readable in the printed form---is
+;; hoped to be submitted to The Journal of Open Source Software (JOSS) before
+;; the year 2024. N.B.: the paper will include historical information about
+;; literate programming, and citations (especially of those given credit here
+;; for ideating WHYSE itself).
+
+\nwused{\\{NW43JrUv-1gS5zu-1}}
+\nwendcode{}
+\end{Verbatim}
+
+The fact that \noweb{} users usually author documents with LaTeX
+documentation, rather than nroff or HTML, gives quarter to the existing
+\LaTeX{} support in \emacs{}. \reftex and \auctex support extensions as
+a matter of course because they're written in \elisp{}; it's part of
+what they are. Could I be rid of the \whyse{} project (at least a first
+implementation) by beginning with adding support for the \noweb{}
+cross-reference, label, and index macros? Years of stalled development
+and failed attempts to pick the project back up have answered that
+question: no. I struggled with writing a \reftex extension for a week or
+so years ago and the project has been in my sources folder since,
+gathering cobwebs.
+
+A pipelined architecture is more appropriate to noweb (and also very
+welcome in Emacs) and will lend to immediate resolution of the project
+if I can simply focus on the "event loop" or core application
+logic/algorithm.
+
+
+
+
+
+<<functions to collapse text and newline tokens into their largest possible form>>=
+(defun w--concatenate-text-tokens (new-token)
+  "Join the values of two text token associations in a two-element token alist.
+
+If the two associations shouldn't be joined, return them to the stack."
+  (prog1
+      ;; Concatenation only occurs when the previous token examined was
+      ;; a text or nwnl token, ergo there must have been a text or nwnl
+      ;; token previously examined for any concatenation to occur. When
+      ;; no such token has been examined immediately return the
+      ;; (stringy) token recieved and indicate it must have been a
+      ;; stringy token by chaning the value of `w--first-stringy-token?'
+      ;; accordingly. Subsequent runs will then operate on potential
+      ;; pairs of stringy tokens.
+      (if-let ((not-first-stringy-token? (not w--first-stringy-token?))
+               (previous-token  (pop peg--stack))
+               ;; The previous token cannot be a text or nwnl token if
+               ;; it is not a list, and checking prevents causing an
+               ;; error by taking the `car' of a non-list token, e.g. the
+               ;; filename token.
+               (previous-token-is-alist?
+                (prog1 (and (listp previous-token)
+                            (listp new-token)
+                            (or (assoc 'text `(,new-token))
+                                (assoc 'nl `(,new-token)))
+                            (or (assoc 'text `(,previous-token))
+                                (assoc 'nl `(,previous-token)))))))
+          ;; Join the association's values and let the caller push a single
+          ;; token back onto the `peg--stack'.
+          (cons 'text (format "%s%s" (cdr previous-token)
+                              (cdr new-token)))
+
+        ;; Push the previous token back to the `peg--stack', and let the
+        ;; caller push the new token to that stack.
+        (push previous-token peg--stack)
+        new-token)
+    (when w--first-stringy-token? (setq w--first-stringy-token? nil))))
+
+@
+
+The `parse-tree' from the lexical environment (or scope, given that
+\whyse{} is not implemented with lexical binding) is mapped over until
+every file token has been processed and records have been inserted into
+all four tables of the database.
+
+All files represented in the [[parse-tree]] (actually an association
+list) are processed into SQL database records while mapping over the
+[[parse-tree]] (whichever is in scope at the time because \whyse{} is
+implemented without lexical binding).
+
+<<default hook functions>>=
+(defun w--prepare-sexp-sql-from-file-tokens ()
+  "Prepare an s-expression of SQL statements for `emacsql'.
+
+The `parse-tree' from the lexical environment (or scope, given
+that WHYSE is not implemented with lexical binding) is mapped
+over until every file token has been processed and records have
+been inserted into all four tables of the database.
+
+This hook depends on this object being in scope: `parse-tree'.
+That object is in scope when this hook runs with the default
+implementation of `whyse'. (This is not meant to imply other
+implementations exist [yet], only that hacked up installations
+won't operate with any guarantees or according to the original
+documentation. You know that, though, because you're reading the
+source code and documentation for the original right now, and it
+should be obvious that changing the source code should have been
+accompanied with changes in the documentation.)"
+  (mapcar
+   (lambda (file-token)
+     (let* ((file-name (car file-token))
+            (chunks (cdr file-token))
+            (modules (vector
+                      :insert :into 'module
+                      :values (mapcar #'w--vectorize-chunk-data chunks)
+                      :on-conflict-do-nothing))
+            (parent-child (vector
+                           :insert :into 'parentchild
+                           :values (w--parent-child-relationships)
+                           :on-conflict-do-nothing))
+            (connection (w-project-database-connection project)))
+       (mapcar (lambda (seql) (emacsql connection seql))
+               (list modules
+                     parent-child
+                     ;; TODO:
+                     ;; identifier-used-in-module
+                     ;; topic-referenced-in-module
+                     ))))
+   parse-tree))
+
+(defun w--vectorize-chunk-data (chunk)
+  "Convert an individual chunk to a vector of objects.
+
+NOTE: order of arguments: [module-name module-text file-name
+section displacement module-number]"
+  (let ((chunk-name (w--chunk-name chunk)))
+    (vector chunk-name
+            (w--chunk-text chunk)
+            file-name
+            (when chunk-name
+              (w--chunk-section chunk-name))
+            nil
+            (w--chunk-number chunk))))
+
+(defun w--parent-child-relationships ()
+  "Make a list of vectors of parent-child relationships.
+
+The elements are taken from applying `w--get-chunk-uses-of-chunks' to
+every chunk in the noweb."
+  (apply #'append (cl-mapcar #'w--get-chunk-uses-of-chunks chunks)))
+
+(defun w--get-chunk-uses-of-chunks (chunk)
+  "Make a list of vectors of parent-child relationships.
+
+The parent is CHUNK, and the first element of each vector in the
+list will be the number of this chunk. The chunks this chunk uses
+will be named in the vectors in the returned list."
+  (with-temp-buffer
+    (let* ((iter 0)
+           (parent-uses-child (list nil))
+           (chunk-number (assoc-default 'code chunk))
+           (chunk-formatted (format "%S" chunk)))
+      (insert chunk-formatted)
+      (goto-char (point-min))
+      (cl-remove
+       nil
+       (cl-mapcar (lambda (assoc)
+                    (when (equal (car assoc) 'chunk-child-usage)
+                      (vconcat (list (number-to-string chunk-number)
+                                     (cdr assoc)))))
+                  chunk)))))
+
+@
+
+When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
+might be better controlled with DCL (the data control langauge
+featureset of SQL). The history of SEQL statements compiled is treated
+like a stack, with the newest statement being the first element of the
+list. A shoddy implementation of a ``stack-based history'' is given
+next.
+
+<<push the compiled SQL to the database and to the history stack>>=
+;; NOTE: the result of evaluating the SQL is pushed to the history stack
+;; alongside the SQL that was executed.
+(cl-pushnew (cons (emacsql (w-project-database-connection default-project)
+                           compiled-parse-tree)
+                  . compiled-parse-tree)
+            (w-project-history-sql-commands default-project))
+@
+
+
+
+
+
+\subsection{finding the section title of a chunk}
+<<Package Code>>=
+<<find section title>>
+
+<<find section title>>=
+;; TODO 2024-05-13: this function is really rough. It still needs a
+;; working algorithm to search through the noweb text to find the
+;; section that a chunk belongs to. I think that searching for all of
+;; the sections that preceed a chunk definition will be necessary before
+;; finding the last section command that preceeds a chunk (thereby
+;; finding the section the chunk belongs to). There may be a better
+;; algorithm; this is the first algorithm I thought of to find the
+;; section that a chunk belongs to regardless of the regular expression
+;; used.
+;;
+;; Another algorithm might use Emacs Lisp regular expressions to search
+;; for the first match to any of the set of regular expressions that
+;; would search for a given sectioning command.
+;;
+;; For now, I trust the Emacs Lisp manual when it says that `regex-opt'
+;; is efficient; it is damned convenient right now.
+(defun w--chunk-section (chunk-name)
+  (with-temp-buffer
+    (insert-file-contents (w-project-noweb project))
+    (goto-char 0)
+    (re-search-forward
+     ;; It is an error if no chunks are found.
+     (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
+    (re-search-backward
+     ;; TODO: support a fallback list from RefTeX.
+     (regexp-opt (w-project-sectioning-commands-regexs project))
+     ;; It is not an error if no section is found because sectioning is
+     ;; entirely optional in a literate document with LaTeX.
+     nil t)
+    (buffer-substring (line-beginning-position) (line-end-position))))
+@
+
+While it's certain that some of the data from a search operation are
+markers of a match (some of them are non-nil), substrings corresponding
+to the used chunk name in the current chunk are appended to a list that
+is ultimately returned.
+
+\subsection{Determining parent-child relationships}
+There needs to be a function which can take a generalizable approach to
+determining the name of a section defined by any possible sectioning
+command. To easily do that a function could be provided by the user for
+any sectioning commands that are exotic, and those functions will
+accommodate the LaTeX command while the calling function will handle
+finding them and collecting their output.
+
+%% NOTE: There may be some semantic or logical connection between the
+%% parent-child chunk relationship and the latex sections which contain
+%% parent chunks, or even child chunks! What is that?
+
+The following association list gives the keyword and the value
+corresponding to that which were seen in the intermediate representation
+used by noweb itself. To implement \whyse{} we utilize the intermediate
+representation (IR) for both editing and document compilation. Features
+unique to \whyse{} would add in new keywords, and these would only be
+processed by \whyse{}; filters should always ignore IR content that
+doesn't concern them.
+
+\begin{verbatim}
+((code . 32)
+ (x-label . "NW2ucZJx-3LzQog-2")
+ (ref . "NW2ucZJx-3LzQog-1")
+ (chunk . "chunks and their")% ELIDED
+ (prevdef . "NW2ucZJx-3LzQog-1")
+ (nextdef . "NW2ucZJx-3LzQog-3")
+ (text . "\n(chunk-contents\n...")% ELIDED
+ (x-label . "NW2ucZJx-3LzQog-2-u1")
+ (ref . "NW2ucZJx-2ZphFz-1")
+ (chunk-child-usage . "structural keywords")
+ (text . "\n  ")
+ (x-label . "NW2ucZJx-3LzQog-2-u2")
+ (ref . "NW2ucZJx-44iV1g-1")
+ (chunk-child-usage . "tagging keywords")
+ (text . "\n  x-notused\n  ")
+ (x-label . "NW2ucZJx-3LzQog-2-u3")
+ (ref . "NW2ucZJx-1ZiKLq-1")
+ (chunk-child-usage . "tool errors")
+ (text . "))\n"))
+\end{verbatim}
+
+<<collect child chunk uses>>=
+(with-temp-buffer
+  (let* ((iter 0)
+         (parent-uses-child (list nil))
+         (chunk-number (assoc-default 'code chunk))
+         (chunk-formatted (format "%S" chunk)))
+    (insert chunk-formatted)
+    (goto-char (point-min))
+    (cl-remove
+     nil
+     (cl-mapcar (lambda (assoc)
+                  (when (equal (car assoc) 'chunk-child-usage)
+                    (vconcat (list chunk-number (cdr assoc)))))
+                chunk))))
+@
+
+
+
+
+
+<<<Widgets>>=
+(editable-list
+           :tag "LaTeX sectioning commands"
+           :format "%t\n%v%i\n"
+           :documentation "The strings here should be the maximum length of the command
+                  possible, because substrings like 'section' will not match the
+                  sectioning command only. It is likely that these will have false
+                  positive matches (Sectioning command might be called like
+                  '\\section{}' or '\\mySectionCommand[bold]{name}'.)"
+           :args ((string :tag "Sectioning command"
+                          :format "%t: %v"
+                          :value "\\section{"
+                          ;; FIXME: even with regex-builder I can't seem
+                          ;; to write a regular expression that doesn't
+                          ;; reject seemingly valid strings.
+                          ;; :valid-regexp "\\.*\\(\\[.*\\]\\)?{?"
+                          :documentation "More than simply 'section', use '\\section{' or '\mySection[]{' at least."
+                          )))
+
+@ 

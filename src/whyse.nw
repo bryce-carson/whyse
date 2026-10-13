@@ -1,7 +1,9 @@
-%% -*- mode: Poly-Noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
+%% -*- mode: poly-noweb; noweb-code-mode: emacs-lisp-mode; fill-column: 72; -*-
 % Copyright © 2023 Bryce Carson
 % Codename "Wise Eel"
-\documentclass[draft, enable deprecated font commands]{report}
+\documentclass[draft, oldfontcommands]{memoir}
+\leavespergathering{8}
+
 \title{"The Implementation of \textsc{WHYSE}"}
 \author{"Bryce Carson"}
 
@@ -11,7 +13,6 @@
 \newcommand{\elisp}{\textsc{Emacs LISP}}
 \newcommand{\lisp}{\textsc{LISP}}
 \newcommand{\sql}{SQL}
-\newcommand{\sequel}{SQL}
 \newcommand{\noweb}{\textsc{noweb}}
 \newcommand{\notangle}{\texttt{notangle}}
 \newcommand{\noweave}{\texttt{noweave}}
@@ -20,6 +21,7 @@
 \newcommand{\reftex}{Ref\TeX{}}
 \newcommand{\texinfo}{\TeX{}info}
 \newcommand{\html}{\textsc{HTML}}
+\newcommand{\whs}{\textsc{WHS}}
 
 \usepackage{standalone}
 \usepackage[rm]{roboto}
@@ -47,55 +49,34 @@
 \usepackage{color}
 \usepackage{fancyvrb}
 
+% NOTE (from the knoweb package documentation): Headers contain file
+% name, date, and page number. noweave emits \nwfilename{name} for each
+% new file. In the noweb page style, new files cause page breaks;
+% otherwise they are ignored.
 \pagestyle{noweb}
 
+
+
+
+
 \begin{document}
-%% \frontmatter%% FIXME: what did this do and why did I disable it?
 \maketitle
 %% \tableofcontents
-%% \mainmatter%% FIXME: what did this do and why did I disable it?
-
-%% MAYBE TODO: when commenting a region of LaTeX in Poly-Noweb-mode the
-%% quotations should be guarded with at-signs, like [[@<<name>>]]. The
-%% Emacs poly-noweb mode should have syntax highlighting that does not
-%% hightlight noweb quotations within LaTeX comments. The font-locking
-%% should be aware that this is a comment, so that the proper syntax
-%% highlighting is applied (i.e. none is applied to the quotation, or at
-%% least it is another shade of the comment syntax colouring, rather
-%% than pure white like body text).
 
 \begin{abstract}
-\whyse~\textsc{((no)Web~HYpertext~System~in~Emacs)} is an integrated
-development environment for Noweb-based hypertexts within Emacs, similar
-to EDE but not sharing development principles. It is based off of an
-academic paper written in CITE brown1991.% \cite[1991 by Brown and Czejdo]{brown1991}.
-
-A paper describing this implementation---written in Noweb and browsable,
-editable, and auditable with \whyse{}, or readable in the printed
-form---is hoped to be submitted to \textit{The Journal of
-  Open~Source~Software (JOSS)} before the year 2024. N.B.: the paper
-will include historical information about literate programming, and
-citations (especially of those given credit in the [[@<<Commentary>>]]
-for ideating \whyse{} itself).
-
-Users of \whyse{} in Emacs are expected to be familiar with Noweb; this does not
-include how Noweb is built from source (that is arcane, supposedly). It may,
-however, include the writing of filters implemented with Sed, AWK, or other
-languages. Users must know how to write a custom command-line for noweave
-(read the manual section regarding the \texttt{-v} option). If you only know
-how to call the noweave command you're reading the wrong document. Read the
-Noweb manual first, please. Developers of \whyse{} extensions should read the
-Noweb Hacker's Guide until they understand it, afterwards reading this
-documentation several times until the full implementation is understood. I
-recommend modifying the system using itself to keep organized, and writing
-literately; you'll thank yourself later for doing so.
+  \whyse (WEB Hypertext System in Emacs) is an integrated development
+  environment for noweb-based hypertexts within Emacs. While named for
+  WEB, it does not support that nor CWEB; the name is primarily to
+  reference the inspiration. It is motivated by, and based on, a
+  conference proceeding written in \cite[1991 by Brown and
+  Czejdo]{brown1991}
 \end{abstract}
 
 
 
 
 
-\part{What is \whyse{}?}
+\part{\whyse{} and its implementation}
 \label{part:what-is-whyse}
 
 
@@ -103,39 +84,106 @@ literately; you'll thank yourself later for doing so.
 
 
 \chapter{Preface}\label{Preface}
-The organization of this literate program is (more or less) linear:
-implementation of the components of the program are explained as they
-enter scope while discussing how a user would encounter various \whyse{}
-features as in the \textit{user documenation}.
+The RDBMS architecture proposed by Brown \& Czejdo isn't implemented in
+this version of \whyse{}, but for completeness is planned. The main
+features implemented are indices for chunks and identifiers, in the
+style of the \reftex{} table of contents as well as other views, a graph
+view of chunks and identifiers, and a VC-based project-oriented workflow
+used as the backend of these features (the function \texttt{vc-root-dir}
+and some features of customize are relied upon).
+
+Users of \whyse{} are expected to be familiar with noweb. Users must
+know how to write their own pipelines rather than only using
+\texttt{noweave} and \texttt{notangle} (the noweb manual explaining the
+\texttt{-v} option is a starting point for those not familiar enough
+with noweb). Knowing how to write filters isn't required.
+
+To use either noweb or \whyse{} to their fullest, users should read and
+understand the \textit{noweb Hacker's Guide}. Reading the implementation
+of \whyse{} afterwards is recommended; reading the implementation of
+peg-noweb isn't required unless you're a serious hacker.
+
+Modifying \whyse{} without using \whyse{} would be counter-intuitive,
+yet effort is made to produce readable output code and structured,
+readable webs. Nevertheless, unless something is broken you should try
+to leverage \whyse{} to improve itself.
+
+The implementation of the whyse \textit{package} begins with the indices
+feature.
 
 
 
+
+
+\chapter{Indices}
+\whs described several indices used for navigation between modules.
+These indices are the core idea implemented in \whyse, whereas the
+\sql architecture and windowing are deliberately avoided. The indices
+specified in \whs were,
+\begin{itemize}
+\item identifier index
+\item topical index
+\item module index
+\item section index
+\end{itemize}
+whereas I only plan to implement the identifier and module indices in
+the first release of \whyse. The topical index depends upon specific
+behaviour of the traditional WEB. The section index is already suitably,
+and better-implemented, by RefTeX. Eventually, extension of RefTeX and
+AUCTeX is the goal, rather than providing a wholly different interface.
+
+\section{Module index}
+% TODO: whyse--make-index-modules
+The module index provides a tabular interface to the references to other
+modules made by each module. The interface is provided by the
+\texttt{ctable} package, which requires tabular data be provided in a
+list of rows, so the parse tree of a noweb document is first gathered.
+
+The \latex command \texttt{\nowebchunks} emits the chunk index, which is
+facilitated by the \texttt{-index} command of noweave.
+
+<<example noweave pipeline with autodefs and indexing>>=
+markup whyse.nw | ./autodefs.elisp | finduses | noidx -delay > /tmp/whyse.tool
+@ 
+
+The information necessary to create a hyperlink back to the source text from
+the index is generated already, so all that needs to be done is to
+transform it into [[:data]] and metadata usable by ctable hook functions.
+
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
+(defun whyse--make-index-modules ()
+  "Create the *whyse-modules* buffer and show it in a window."
+  (let ((modbuf (get-buffer-create "*whyse-modules*")))
+    (with-current-buffer modbuf
+      (insert parse-tree); FIXME: this probably won't work.
+      (split-window)
+      (switch-to-buffer-other-window modbuf))))
+@ 
+
+\section{Identifier index}
+% TODO: whyse--make-index-identifiers
 
 \chapter{\whyse{} Projects}\label{Projects}
 A user will read from \textit{the package description} that they should
-call an interactive command to create a project. The \whyse{} application
-is started with the interactive command: [[whyse]]. The command loads
-the first element of the customization variable
-[[w-registered-projects]], considering that the default project, or it
-opens the ``Easy Customization Interface'' for the application's
-customization group ([[M-x~customize-group~whyse]]): an effective prompt
-for the user to enter the necessary information. If user's dislike this,
-they can disable it.
-
-A customization group for \whyse{} is defined to organize its
-customization variables, and these details are explained before moving
-on to explain the struct used during runtime.
+call an interactive command to create a project. The \whyse{}
+application is started with the interactive command: [[whyse]]. The
+command loads the first element of the customization variable
+[[whyse-registered-projects]] (a list), considering that the default
+project, or it opens the ``Easy Customization Interface'' for the
+application's customization group ([[M-x~customize-group~whyse]]): an
+effective prompt for the user to enter the necessary information. If
+user's dislike this, they can disable it.
 
 <<Customization and global variables>>=
 (defgroup whyse nil
-  "noWeb HYpertext System in Emacs"
+  "WEB Hypertext System in Emacs"
   :tag "WHYSE"
   :group 'applications)
 
-(defcustom w-registered-projects nil
+(defcustom whyse-registered-projects nil
   "This variable stores all of the projects that are known to WHYSE."
   :group 'whyse
-  :type '(repeat w--project-widget)
+  :type '(repeat whyse--project-widget)
   :require 'widget
   :tag "WHYSE Registered Projects")
 
@@ -144,32 +192,31 @@ on to explain the struct used during runtime.
 %% NOTE: The Widget feature is required by the registered projects
 %% variable, but may be redundant because the Easy Customization
 %% Interface is itself implemented with The Emacs Widget Library.
-%% Requiring the library may be undesirable, as @[@[(require 'widget)]]
-%% will be eagerly evaluated upon Emacs' initialization when
-%% @[@[w-registered-projects]] is set to its saved custom value.
-%% However, there may be a good reason to eagerly evaluate that form:
-%% the Widget feature will be available immediately, and widgets will be
-%% used in buffers to provide TUI buttons for navigation between modules
-%% of a literate program (at least, that is the design of the program at
-%% this point in development), so having this feature available sooner
-%% than later is okay. The feature is required by the package
-%% regardless.
+%% Requiring the library may be undesirable, as (require 'widget) will
+%% be eagerly evaluated upon Emacs' initialization when
+%% whyse-registered-projects is set to its saved custom value. However,
+%% there may be a good reason to eagerly evaluate that form: the Widget
+%% feature will be available immediately, and widgets will be used in
+%% buffers to provide TUI buttons for navigation between modules of a
+%% literate program (at least, that is the design of the program at this
+%% point in development), so having this feature available sooner than
+%% later is okay. The feature is required by the package regardless.
 
-The [[w--project-widget]] type used for the registered projects variable
+The [[whyse--project-widget]] type used for the registered projects variable
 is a simple list widget containing the name of the project and a path to
-its Noweb source file, along with a shell command which generates the
-Noweb tool syntax for this project. Each Noweb project has a different
+its noweb source file, along with a shell command which generates the
+noweb tool syntax for this project. Each noweb project has a different
 command-line, and some are complex enough to have a makefile, or
-multiple makefiles! Noweb itself is an example of that level of
+multiple makefiles! noweb itself is an example of that level of
 complexity. The shell command is executed by \whyse{} upon loading the
 project, and the standard output captured for parsing by a PEG parser
-defined in [[@<<PEG rules>>]].
+defined in the [[peg-noweb]] utility package.
 
 The widget itself is explained in \ref{widgetry}.
 
 \section{Widgetry}\label{widgetry}
 <<Widgets>>=
-(define-widget 'w--project-widget 'list
+(define-widget 'whyse--project-widget 'list
   "The WHYSE project widget type."
   :format "\n%v\n"
   :offset 0
@@ -185,120 +232,117 @@ The widget itself is explained in \ref{widgetry}.
            :value "")
 
           (file
-           :tag "Noweb source file (*.nw)"
+           :tag "noweb source file (*.nw)"
            :format "%t: %v"
            :valid-regexp ".*\\.nw$"
            :value "")
 
           (string
-           :tag "A shell command to run a shell script to generates Noweb tool syntax"
+           :tag "A shell command to run a shell script to generates noweb tool syntax"
            :format "%t: %v"
            :documentation "A shell script which will produce the
-           Noweb tool syntax. Any shell commands involved with
+           noweb tool syntax. Any shell commands involved with
            noweave should be included, but totex should of course
            be excluded from this script. The script should output
-           the full syntax to standard output. See the Noweb
+           the full syntax to standard output. See the noweb
            implementation of WHYSE for explanation."
-           :value "")
-
-          (editable-list
-           :tag "LaTeX sectioning commands"
-           :format "%t\n%v%i\n"
-           :documentation "The strings here should be the maximum length of the command
-                  possible, because substrings like 'section' will not match the
-                  sectioning command only. It is likely that these will have false
-                  positive matches (Sectioning command might be called like
-                  '\\section{}' or '\\mySectionCommand[bold]{name}'.)"
-           :args ((string :tag "Sectioning command"
-                          :format "%t: %v"
-                          :value "\\section{"
-                          ;; FIXME: even with regex-builder I can't seem
-                          ;; to write a regular expression that doesn't
-                          ;; reject seemingly valid strings.
-                          ;; :valid-regexp "\\.*\\(\\[.*\\]\\)?{?"
-                          :documentation "More than simply 'section', use '\\section{' or '\mySection[]{' at least."
-                          )))
-          ))
-
-(define-widget 'w--module-header 'group
-  "Code and docs module editor headerbar.
-
-This widget represents the headerbar for the code and docs module
-editor."
-  <<module-header top-level>>)
+           :value "")))
 
 @
-
-The definition of [[<<module-header top-level>>]] is saved for later,
-because the organization of the editing buffer is experimental and
-therefore kept in the developer-oriented miscellany section \ref{misc}.
-
-%% NOTE: Comments may be superfluous in a literate document like this,
-%% but some effort was made to produce a readable source file regardless
-%% of the conventions other literate programmers follow; other authors
-%% write warnings into their tangled source files like, ``Don't read
-%% this file! Read the Noweb source only!''. I don't say that,
-%% especially for an Emacs application, which should always be
-%% self-documenting whatever format it was distributed in: a Noweb
-%% source or printed literate program, or a tangled source tarball for
-%% installation on a user's machine.
-
-%% TODO: include a customization variable that allows users to trigger
-%% an error or a warning rather than opening Customize when no default
-%% project is available.
 
 An example of what the list generated from the information entered into
 Customize would look like is given here for elucidation (as it would
 exist in a [[custom-set-variables]] form).
 
 \begin{verbatim}
-'(w-registered-projects
-  '(("noWeb HYpertext System in Emacs"
-     "~/Desktop/whyse.nw"
-     "make -C ~/Desktop --silent --file ~/src/whyse/Makefile tool-syntax"))
+'(whyse-registered-projects
+  '(("WEB Hypertext System in Emacs"
+     "~/src/whyse/src/whyse.nw"
+     "make -C "~/src/whyse/build" --silent --file ~/src/whyse/Makefile tool-syntax"))
   nil
   (widget))
 \end{verbatim}
 
-The function documentation string should be expalnatory enough for the
-behaviour of the [[whyse]] command.
 
-<<\whyse{}>>=
+
+
+
+\section{Commands}
+At the moment there is only one command, [[<<[[whyse]]>>]]. This
+command, effectively, handles project registration and in subsequent
+calls will run all hooks when it ``opens a project''. Opening a project
+either finds the file for a known project and opens the module index, or
+it just opens the module index if the user is already editing a file
+within the project.
+
+<<[[whyse]]>>=
 (defun whyse ()
   "Opens the default whyse project, conditionally running hooks.
 
-Hooks are only run if a project is actually opened. If
-`w-load-default-project?' and
-`w-open-customize-when-no-project-defined?' are both nil then a
-warning is given and hooks are not run.
+In effect, open the main file for the project and run hooks to prepare
+the indices. Hooks are only run if a project is actually opened; if both
+`whyse-load-default-project?' and
+`whyse-open-customize-when-no-project-defined?' are nil then a warning
+is given and the `whyse-open-project-functions' is not run.
 
 When both customization variables are non-nil, or if only
-`w-load-default-project?' is nil, then Customize is opened to the
+`whyse-load-default-project?' is nil, then Customize is opened to the
 whyse group."
   (interactive)
   ;; Warn the user that their customization options have made `whyse' a
   ;; no-op function.
-  (when (and (not w-load-default-project?)
-             (not w-open-customize-when-no-projects-defined?))
-    (warn "The current customization options for `whyse' have effectively disabled the `whyse' command."))
-  (if-let ((w-load-default-project?)
-           (default-project (cl-first w-registered-projects))
-           (project (make-w-project :name (cl-first default-project)
-                                    :noweb (cl-second default-project)
-                                    :script (cl-third default-project)))
-           (parse-tree (peg-noweb-parse-file (cl-second default-project))))
-      (progn
-        <<setup project database>>
-        (run-hooks 'w-open-project-hook)
-        ;; TODO: the connection closure should be on a timer that,
-        ;; perhaps, should be reset everytime a `w'-prefixed function is
-        ;; called.
-        (emacsql-close (w-project-database-connection project)))
-    (unless (not w-open-customize-when-no-projects-defined?)
-      (customize-group 'whyse))))
+  (when (and (not whyse-load-default-project?)
+             (not whyse-open-customize-when-no-projects-defined?))
+    (warn "The current customization options in the `whyse' group have effectively disabled the `whyse' command."))
+  (if-let* ((whyse-load-default-project?)
+            (default-project (cl-first whyse-registered-projects))
+            (project (list :name (cl-first default-project)
+                           :noweb (cl-second default-project)
+                           :script (cl-third default-project))))
+      (progn (if whyse-open-project-frame; open in a frame or the current window.
+                 (if (eq t whyse-open-project-frame)
+                     (make-frame); else make a frame with the parameters stored in the flag.
+                   (make-frame whyse-open-project-frame))
+               ;; Open the project in the appropriate buffer. TODO: watch
+               ;; Prot's video about buffer management to get a sense of how
+               ;; applications should behave by default. Which buffer should I
+               ;; open in? The current buffer? Anot her buffer?
+               (find-file (plist-get project :noweb)))
+             (run-hooks-with-args 'whyse-open-project-functions (current-buffer) project))
+    (if whyse-open-customize-when-no-projects-defined?
+        (customize-group 'whyse)
+      (warn "No `whyse' projects are defined! Call `customize-group' with `whyse' to setup a project."))))
+
+@
+
+Opening a project means the indices will need to be available, so the
+project script will be ran to produce the tool syntax needed to generate
+the indices for navigation.
+
+<<a hook function to generate noweb indices>>=
+;; TODO: write a function that starts a process according to a shell command.
+#'make-process
+(whyse--)
+@ 
+
+<<create beframed buffers>>=
+;; FIXME: it's not required that whyse use a frame or any dedicated
+;; buffers. It's perfectly ergonomic to have a keybinding to open the
+;; module index, like RefTeX's *toc* popup buffer (`reftex-toc').
+(with-current-buffer (find-file (cl-second default-project))
+  (make-frame ((name . "WHYSE"))))
+
+<<create a ctable buffer>>=
+;; NOTE: I need to depend on ctable and study its usage. Goals: buffer
+;; containing a table with a ragged-right, or have a CHUNK and
+;; CHUNK-USAGE view (like using `tidyr::pivot_longer'). Preferring a
+;; "wide" format to aide understanding, use the tree view exampled in
+;; `direx-ctable.el', probably just using direx. for now, a
+;; `tidyr::pivot_longer' view is appropriate to get started.
+;; (ctbl:open-table-buffer)
 
 <<Customization and global variables>>=
-(defcustom w-load-default-project? t
+(defcustom whyse-load-default-project? t
   "Non-nil values mean the system will load the default project.
 
 nil will cause the interactive command `whyse' to open Customize on
@@ -307,7 +351,7 @@ its group of variables."
   :group 'whyse
   :tag "Load default project when `whyse' is invoked?")
 
-(defcustom w-open-customize-when-no-projects-defined? t
+(defcustom whyse-open-customize-when-no-projects-defined? t
   "Non-nil values mean the system will open Customize as necessary.
 
 nil will cause `whyse' to simply do nothing when no project is
@@ -316,174 +360,14 @@ defined."
   :group 'whyse
   :tag "Open Customize to the whyse group when `whyse' is invoked and no projects are defined?")
 
-(defcustom w-sql-commands-history? t
-  "nil disables the SQL command history list.
+(defcustom whyse-open-project-frame t
+  "Non-nil means to open a new frame in which to edit a whyse project.
 
-This is also the default for new projets.
-
-`w-sql-commands-history-maximum-conses' limits the list length."
-  :type 'boolean
+The value is any additional frame parameters or `t'."
+  :type '(choice (or boolean list))
   :group 'whyse
-  :tag "Enable the SQL command history")
+  :tag "A list of frame parameters to use when opening a whyse project in a new frame, or `nil' to disable opening projects in new frames.")
 
-(defcustom w-sql-commands-history-maximum-conses 0
-  "Limit the number of conses in the `w-sql-commands-history' list.
-
-This is also the default for new projects.
-
-The default of `0' allows a list of infinite size. To disable history
-set the customization variable `w-sql-commands-history?'"
-  :type 'natnum
-  :group 'whyse
-  :tag "Limit of conses in the `w-sql-commands-history' list.")
-
-(defcustom w-latex-sectioning-command-regexes nil
-  "A list of regular expressions matching LaTeX sectioning commands.
-
-This is the default for new projects."
-  :type (list :regex)
-  :group 'whyse
-  :tag "Regular Expressions matching LaTeX sectioning commands.")
-@
-
-The structure accessed in the namesake command of the package is rather
-simple. It is defined quickly, then explained briefly.
-
-<<\whyse{} project structure>>=
-(cl-defstruct w-project
-  "A WHYSE project"
-  ;; Fundamental
-  name
-  noweb
-  script
-  ;; TODO: document the interaction between this and the default
-  ;; `w-latex-sectioning-command-regexes'. Override? Merge &rest and use
-  ;; :disabled to disable specific regexes?
-  sectioning-commands-regexs
-  database-file
-  database-connection
-
-  ;; Usage
-  frame
-
-  ;; Metadata
-  (date-created (current-time-string))
-  date-last-edited
-  date-last-exported
-
-  ;; TODO: document that this overrides the default.
-  w-sql-commands-history-maximum-conses)
-@
-
-Instances of this struct are only initialized with a few values:
-[[name]], [[noweb]], and [[script]]. The rest of the fields either have
-default values dependent upon the input data (like the database-file,
-database-connection, and date-created), or are given values when
-appropriate later in operation (such as [[date-last-exported]]) or upon
-initialization ([[frame]]).
-
-Initialization when the interactive command is called is covered next;
-to summarize: [[w-open-project-hook]] is run.
-
-\section{Database initialization}
-Every project should have a database file located somewhere within the
-user's Emacs directory; if the user is a Spacemacs user, then Spacemacs'
-cache directory is used, otherwise the database is made in the user's
-Emacs directory and not a sub-directory thereof.
-
-The
-form %% LISP form? Yes.
-used to create the absolute path for the location of the
-database joins three things: the user's Emacs directory, \texttt{nil} or
-Spacemacs' cache directory, and the name of the project with ``.db''
-appended. Note that concatenating \texttt{nil} with a string is the same
-as returning the string unchanged.
-
-<<return a filename for the project database>>=
-(file-name-concat
- ;; Usually ~/.emacs.d/
- user-emacs-directory
- ;; `nil' or the Spacemacs cache directory.
- (when (file-directory-p (expand-file-name ".cache" user-emacs-directory))
-   ".cache")
- ;; PROJECT-NAME.db
- (concat (w-project-name project)
-         ".db"))
-@
-
-For \textsc{SQLite}, the path name of the database to connect to or
-create is sufficient to establish a connection, so the next step is to
-connect to the database and store the connection object in the
-appropriate slot of the project struct.
-
-<<setup project database>>=
-<<create a database connection>>
-<<map over SQL s-expressions, creating the tables>>
-@
-
-<<create a database connection>>=
-(setf (w-project-database-connection project)
-      (emacsql-sqlite <<return a filename for the project database>>
-                      ;; TODO: make this debug log buffer into a package
-                      ;; customization. NOTE: this erases the contents
-                      ;; of the named buffer and then returns the buffer
-                      ;; object for that buffer.
-                      :debug (with-current-buffer
-                                 (get-buffer-create "emacsql-sqlite-debug-log")
-                               (erase-buffer)
-                               (current-buffer))))
-@
-
-The only thing left to do is establish the schema of the tables, which
-is done by mapping over several \textsc{EmacSQL} s-expressions.
-
-%% To create an (SQLite) database from scratch for use with WHYSE, the schema
-%% must be applied to the database using data definition language (DDL).
-%% With the four tables created, data is provided to the database after the
-%% parsing expression grammar (PEG) has finished its work on the tool
-%% syntax produced by Noweave's \texttt{markup} program. The PEG and the
-%% tool syntax are dealt with in \ref{PEG}.
-
-%% TODO: ensure that this database is in 3NF and make a nice database
-%% planning documents for it.
-<<map over SQL s-expressions, creating the tables>>=
-(mapcar (lambda (expression)
-          (emacsql (w-project-database-connection project) expression))
-
-        ;; A list of SQL s-expressions to create the tables.
-        '([:create-table :if-not-exists module
-                         ([modulename content filename sectionname displacement
-                                      modulenumber]
-                          (:primary-key [modulenumber modulename filename]))]
-
-          [:create-table :if-not-exists parentchild
-                         ([parent child]
-                          (:primary-key [parent child]))]
-
-          ;; NOTE: Identifier_used_in_module is a relation with the
-          ;; attributes identifier_name and module_number. An identifier
-          ;; can be used several different ways in each module that it
-          ;; is in. It can be defined, referenced or modified. Each of
-          ;; this functions correspond to different value of the
-          ;; attribute type_of_usage. The type_of_usage attribute can
-          ;; have three values: modified, referenced, and defined.
-          ;; Line_number is an attribute of each relationship. All
-          ;; attributes are included in the key.
-          [:create-table :if-not-exists identifierusedinmodule
-                         ([identifiername modulenumber linenumber typeofusage]
-                          (:primary-key [identifiername modulenumber typeofusage]))]
-
-          ;;; HOLD: the concept of "topic" is not present in Noweb, but
-          ;;; is present in WEB. Consult CWEB documentation and the
-          ;;; original WEB documenation to see the meaning of this
-          ;;; table.
-          ;; NOTE: topic_referenced_in_module is a relation with
-          ;; attributes topic_name and module_number. The same topic may
-          ;; be in several modules and each module can contain several
-          ;; topics. Both attributes compose the primary key.
-          [:create-table :if-not-exists topicreferencedinmodule
-                         ([topicname modulenumber]
-                          (:primary-key [topicname modulenumber]))]))
 @
 
 
@@ -492,808 +376,54 @@ is done by mapping over several \textsc{EmacSQL} s-expressions.
 
 \section{Customizing the behaviour of \whyse{} with hooks}
 \whyse{} is meant to be customizable, defining as little as necessary to
-implement a development environment for Noweb as described by
-CITE brown1991.
-% \cite[Brown and Czejdo]{brown1991}
-.
+implement a development environment for noweb inspired by
+\cite{brown1991}. The default behaviour of \whyse{} is to do nothing
+after opening a project, so no default hook functions are defined.
 
-<<open-project-hook>>=
-(defvar w-open-project-hook '()
-  "Hooks to run when `whyse' has opened a project.")
-@
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
+(defvar whyse-open-project-functions '()
+  "Functions to call when `whyse' has opened a project.
 
-The default behaviour of \whyse{} is to insert all the chunks of the parsed
-document into a database. Before it does that it works upon the parse
-tree, preparing it into a suitable format usable with EmacSQL (which the
-author is aware he's stated elsewhere).
+Each function must take at least one argument, the whyse project plist.")
 
-<<default hook functions>>=
-(add-hook 'w-open-project-hook 'w--prepare-sexp-sql-from-file-tokens)
+(defun whyse--make-index (project &optional modules?)
+  "Create the *nw index* buffer.
 
-@
+When MODULES? is non-nil the module index will be displayed in the
+bufer, otherwise the identifier index is displayed."
+  (if (eq t modules?) (whyse--make-index-modules project)
+    (whyse--make-index-identifiers project)))
 
-
-%% NOTE: peg-noweb.nw was excised from this location.
-
-
-
-\part{Discovering the mystery of the meat}
-\label{part:mystery-meat}
-
-What are the steps to follow to implement \whyse{}? What is the meat of
-the application? This is not a question different from
-~\Ref{part:what-is-whyse}. That section focused on explaining the
-purpose of \whyse{}, rathern than
-
-The application has been in development for a little over two years and
-I haven't made any progress in nearly the same amount of time. I know
-that I need {an~event~loop~\ref{event-hook-loop}}.
-
-What are the individual events that take place in a system such as
-\whyse{}? What takes place between the input of a file in \noweb{} format
-into an application that either extends the mode(s) suitable for that
-format or extends the mode(s) suitable for the resulting \LaTeX{}-format
-file?
-
-  The standard steps in the usage of \noweb{} are as follows:
-
-  \begin{itemize}[noweb-to-latex]
-  \item Write a \noweb{}-formatted file, and
-  \item Call \notangle on the file, with various options, OR
-  \item Call \noweave on the file, with various options.
-  \end{itemize}
-
-  with not much else to it (except in expert cases, like the writing of a
-  large book or the development of an application like \whyse{}).
-
-Developing an application like this, even when a rudimentary design is
-available in \textsc{WHS} described in CITE brown1991% \cite[1991 by Brown and Czejdo]{brown1991}
-, is not easy. I haven't fully designed the program,
-or completed an analysis: I suppose I'm taking an ``agile'' approach to
-development. It's certainly not ``test-driven'' or following a
-traditional software development lifecycle (SDLC).
-
-The following quotation examples the output of \noweave. The in-line
-forms [[@<<chunk-name>>]] and [[some prose with a [[quotation]]]] are
-not exampled below, only a code chunk. Documentation chunks are literal
-\LaTeX{}, with minimal embracement by \noweb{} macros (just
-\texttt{\\nwbegindocs{*}}).
-
-\begin{Verbatim}
-\nwbegincode{97}
-  \sublabel{NW43JrUv-3RJbFb-1}
-  \nwmargintag{{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}
-  \moddef{Commentary~{\nwtagstyle{}\subpageref{NW43JrUv-3RJbFb-1}}}\endmoddef
-  \nwstartdeflinemarkup
-    \nwusesondefline{\\{NW43JrUv-1gS5zu-1}}
-  \nwenddeflinemarkup
-;;; Commentary:
-;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
-;; Programming_ (1991).
-;;
-;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,
-;;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and
-;;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol
-;;    468. Springer, Berlin, Heidelberg.
-;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
-;;
-;; A paper describing this implementation---written in Noweb and browsable,
-;; editable, and auditable with WHYSE, or readable in the printed form---is
-;; hoped to be submitted to The Journal of Open Source Software (JOSS) before
-;; the year 2024. N.B.: the paper will include historical information about
-;; literate programming, and citations (especially of those given credit here
-;; for ideating WHYSE itself).
-
-\nwused{\\{NW43JrUv-1gS5zu-1}}
-\nwendcode{}
-\end{Verbatim}
-
-The fact that \noweb{} users usually author documents LaTeX documentation,
-rather than nroff or HTML, gives quarter to the existing \LaTeX{}
-support in \emacs{}. \reftex and \auctex support extensions as a matter of
-course because they're written in \elisp{}; it's part of what they are.
-Could I be rid of the \whyse{} project (at least a first implementation)
-by beginning with adding support for the \noweb{} cross-reference, label,
-and index macros? It's very likely. It's what I'm doing.
-
-My development plan is to add support for \noweb{}'s macros to \reftex and
-\auctex then use the information gleaned from these packages to
-buttonize and markup (with overlays) the chunk headers and
-cross-references in poly-noweb buffers. \texttt{diff}s of the
-continually watched product of the \noweb{}-formatted source file and the
-user-modified \LaTeX{}-formatted document (which is a derivation of the
-former), and suggestions for filters could conceivably allow two-way
-communication between \noweb{} and \auctex. Would that be \whyse{}? I don't
-think it would be wise to call it \whyse{}---the \textsc{WHS} implemented
-in \emacs{}---but it would still be \whyse{}: \emph{a particular}
-\textsc{((no)Web~HYpertext~System~in~Emacs)}. It may still be a stepping
-stone to the original notion, which would be interesting to explore, but
-I think it would be better than that original goal as well; it wouldn't
-be as flexible as the \noweb{} system is, however, as it would only
-support \LaTeX{} documentation, whereas \noweb{} supports other backends.
-
-\begin{quote}
-  \reftex has been bundled and pre-installed with \emacs{} since version
-  20.2.
-
-  --- the \reftex \texinfo manual, ``with typographic editions''.
-\end{quote}
-
-Given \reftex has been a part of \emacs{} for so long it makes sense to
-simply defer to its featureset where it provides something useful,
-rather than replacing it with new functionality in Emacs; I haven't
-surpassed the featureset or implementation of \reftex, certainly not, so
-rather than replacing that I'll add to it.
-
-\chapter{Configuring \reftex to support the \noweb through knoweb} \label{cha:conf-reft-recogn}
-
-\begin{quotation}
-  Support for RefTeX in such a style file is useful when the LaTeX style
-  defines macros or environments connected with labels, citations, or
-  the index.
-\end{quotation}
-
-<<knoweb.el>>=
-;;; This is knoweb.el --- an Emacs LISP style file for AUCTeX and RefTeX. -*- mode: emacs-lisp -*-
-<<knoweb.el>>=
-;; AUCTeX customization: support for knoweb label environments.
-;; Conditionally supporting RefTeX.
-(TeX-add-style-hook "knoweb"
- (lambda ()
-   (if (fboundp 'reftex-add-label-environments)
-       ;; Provide the symbol for the knoweb label environments.
-       (reftex-add-label-environments '(webcode moddef nwtypesetcomment thenowebchunks thenowebindex)))))
-@ 
-
-For example, the [[webcode]] environment is defined with:
-
-\begin{verbatim}
-\newenvironment{webcode}{%
-  \@begincode
-}{%
-  \endtrivlist}
-\end{verbatim}
-
-It looks like the [[webcode]] environment starts processing with an
-at-command and ends it with [[\\endtrivlist]], which ends a trivial list.
-
-<<knoweb.el>>=
-(TeX-add-symbols
- '("nwbegincode" TeX-arg-define-macro)
- '("nwendcode" TeX-arg-define-macro))
-;; \newcommand{\nwbegincode}[1]{%
-;;   \begingroup
-;;   \setlength{\topsep}{\nwcodetopsep}
-;;   \@beginparpenalty=\@highpenalty
-;;   \@endparpenalty=-\@highpenalty
-;;   \@begincode }
-@ 
-
-\subsection{\auctex Folding Support}
-To enable folding of noweb macros they must be present in the variable
-\texttt{TeX-fold-macro-spec-list}. Folding of noweb environment would be
-supported by adding these to \texttt{TeX-fold-env-spec-list}. These will
-apply to all \auctex modes unless the mode-specific spec-list variable
-is used instead (e.g. \texttt{LaTeX-fold-env-spec-list} would limit the
-folding support for noweb environments to \LaTeX{}-specific modes enhanced
-by \auctex).
-
-\subsection{\reftex Label Support}
-\label{sec:label support}
-<<>>=
-
-@ 
-
-The \reftex manual states that [[reftex-label-alist]] is bound to an
-association list with infromation about the label and reference commands
-used to refer to sections (and environments). Seeing the
-[[reftex-label-alist-builtin]] below, I can understand that there is
-support for implicit and explicit environments: with an implicit
-environment being a section (\`{a} la \html; ``implicit
-environments'' may not be a concept in \LaTeX{}, but such nesting is how I
-conceive of hierarchical structuring in \LaTeX{} as it actually is in
-\html).
-
-\begin{Verbatim}
-(minted "The minted package"
-         (("listing" 108 "lst:" "~\\ref{%s}" nil (regexp "[Ll]isting"))))
- (LaTeX "LaTeX default environments"
-        (("section" 115 "%S" "~\\ref{%s}" (nil . t)
-          (regexp "parts?" "chapters?" "chap\\." "sections?" "sect?\\."
-                  "paragraphs?" "par\\." "\\\\S" "\247" "Teile?" "Kapitel"
-                  "Kap\\." "Abschnitte?" "appendi\\(x\\|ces\\)" "App\\."
-                  "Anh\"?ange?" "Anh\\."))
-         ("enumerate" 105 "item:" "~\\ref{%s}" item (regexp "items?" "Punkte?"))
-         ("equation" 101 "eq:" "~(\\ref{%s})" t
-          (regexp "equations?" "eqs?\\." "eqn\\." "Gleichung\\(en\\)?" "Gl\\."))
-         ("eqnarray" 101 "eq:" nil eqnarray-like)
-         ("figure" 102 "fig:" "~\\ref{%s}" caption
-          (regexp "figure?[sn]?" "figs?\\." "Abbildung\\(en\\)?" "Abb\\."))
-         ("figure*" 102 nil nil caption)
-         ("table" 116 "tab:" "~\\ref{%s}" caption
-          (regexp "tables?" "tab\\." "Tabellen?"))
-         ("table*" 116 nil nil caption)
-         ("\\footnote[]{}" 110 "fn:" "~\\footref{%s}" 2
-          (regexp "footnotes?" "Fussnoten?"))
-         ("any" 32 " " "~\\ref{%s}" nil)))
-\end{Verbatim}
-
-\subsection{\reftex Index Support}
-\label{sec:Index Support}
-
-<<knoweb.el>>=
-
-@
-
-
-\reftex can also be configured to recognize index macros from packages
-(i.e. it can work with index entries apart from those defined with the
-built-in index commands).
-
-\begin{Verbatim}
-  To make your own LaTeX macro definitions known to RefTeX, customize
-  the variables
-       reftex-label-alist          (for label macros/environments)
-       reftex-section-levels       (for sectioning commands)
-       reftex-cite-format          (for ‘\cite’-like macros)
-       reftex-index-macros         (for ‘\index’-like macros)
-       reftex-index-default-macro  (to set the default macro)
-  If you have a large number of macros defined, you may want to write
-  an AUCTeX style file to support them with both AUCTeX and RefTeX.
-\end{Verbatim}
-
-\input{../src/survey-of-woven-whyse-LaTeX-commands.tex}
-
-\chapter{Event-hook Loop}\label{event-hook-loop}
-There has always been some confusion in my mind as to how the system
-will work. Reading a noweb file for a first time is no issue, nor is
-parsing the tool syntax at any time.
-
-Implementing the \textsc{WHS} using the UNIX philosophy---many small
-tools chained together to create solutions and systems---would make
-nineties noweb users happy. It's also how I thought of a solution to my
-confusion, which is one of the reasons why I stopped working on this
-project for almost two years (apart from normal life stresses and other
-projects taking up my time).
-
-\begin{verbatim}
-  example.nw | less# with options for noweb syntax highlighting
-\end{verbatim}
-
-Using [[less]], users will page through the source text until they find
-a chunk they'd wish to edit. Users directly edit the entire noweb source
-(or the current noweb source file if more than one is given on a command
-line) using whichever [[EDITOR]] they have configured less to invoke
-upon the press of the default or a customized [[lesskey]]. Whenever
-[[less]] re-reads the file after the editor exits it will invoke a
-command to convert the noweb sources to tool syntax again (rebuilding
-the index). The index may be browsed upon user demand, and it will
-provide hyperlinks to source chunks.
-
-Perhaps etags can be leveraged to benefit with the [[less]] option [[--tag-file]].
-https://www.gnu.org/software/emacs/manual/html_node/emacs/Tags-Tables.html
-
-<<test.sh>>=
-#!/usr/bin/env bash
-LIB="/usr/lib64/noweb"
-eval "${LIB}/markup whyse.nw" | parse-noweb-tool-syntax --save-tags --no-emit # "no emit" is identical to "quiet".
-@
-
-Parsing the noweb tool syntax is the job of [[parse-noweb-tool-syntax]],
-and it will save identifiers (identified with) -autodefs=emacslisp or
-something to an etags file, and when instructed will not echo anything
-on stdout.
-
-This will update all other files that [[less]] is currently visiting
-(they should all be in one directory with a predictable file name).
-
-The user will observe when returning to the [[less]] pager from their
-[[EDITOR]], hyperlinks to other chunks have been updated as well as tags
-for other identifiers. The user may navigate to hyperlinks and tags
-using the current [[lesskeys]].
-
-\section{Algorithm}
-\begin{enumerate}
-  \item{parse project noweb into tool syntax}
-  \item{autoidentify definitions to produce etags file}
-  \item{create hyperlinks between files and chunks}
-  \item{re-emit files}
-\end{enumerate}
-
-
-
-
-
-\chapter{Processing parsed nowebs into SQL}\label{processing lists}
-This chapter covers how the parsed text generated in the \ref{parsing}
-chapter is processed, either creating a series of \sql{} statements that
-will be executed by SQLite using the interface provided by the
-\textsc{EmacSQL} package, or used in some other way through \elisp{}.
-
-First, the overall structure of the parsed text should be diagrammed.
-The parse tree is a list of noweb documents, each being a list
-themselves. The first atom of an inner list, corresonding to a document,
-is the filename of that document (hopefully the same filename as passed
-on the commmand-line elsewhere when the document is used).
-
-Deeper, each document-list contains as the second atom a list of its
-contents, which is an association list thereof. Each association in the
-alist is bewteen the symbol relating to the rule that generated the cons
-cell, and the contents appropriate to the symbol.
-
-\section{Processing}
-There are many steps to compiling the parse tree into \sequel{}. The first
-step is to ensure the association lists in the parse tree are in a
-format that is acceptable to built-in Emacs Lisp functions; this will
-make it easier to navigate the tree and transform it.
-%% FIXME: is it really true, and does it make sense for
-%% what I'm actually doing, or am I using the concept/name wrong?
-Other texts call this manipulation of the parse tree ``list
-destructuring'';
-%%
-it could be thought of as code generation, since the data is used to
-generate DML which is partly code and partly data.
-
-%% FIXME 2024-08-10 what the fuck am I saying here?
-Some associations are reductions from the initial parse tree,
-which---thanks to the \textsc{peg} package and \textit{PEG parsing in
-  general}---are not reduced in a second step. Modifications to the
-parsing procedure can occur directly without losing information, and
-thanks to literate programming should be easy for advanced users.
-
-The initial parse tree begins like the one below.
-
-\begin{verbatim}
-'((noweb-document-one
-   ((docs . 0)
-    (text . "\tex{} is cool!"))
-   ((code . 1)
-    (text . "(message \"LISP is awesome!\")")))
-  (noweb-document-two
-   ((code . 0)
-    (text . "asdf is a system definition format in Common LISP,"))
-   (nwnl . "\n")
-   (text . "and I like to use it.")
-   ((code . 1)
-    (text . "jkl; is the right-handed corollary of asdf."))
-   ((docs . 2)
-    (text . "\LaTeX{} is great!"))
-   ((docs . 3)
-    (text . "Noweb, written by Norman Ramsey is sweet!"))))
-\end{verbatim}
-
-The reductions which occur during parsing make chunk zero of the second
-noweb document look like this in the final result.
-
-\begin{verbatim}
-((code . 0)
- (text . "asdf is a system definition format in Common LISP,
-and I like to use it."))
-\end{verbatim}
-
-The new result is much easier to use as data for other programs (SQL in
-this case). In the verbatim text a literal newline was inserted rather
-than retaining the escape sequence, which is exactly what happens in the
-reduction step as well. The next subsection discusses the details of how
-the reduction in complexity exampled above is achieved.
-
-\subsection{Reducing complexity in the alist}
-The first step in making the parse tree navigable for other programs is
-collapsing adjacent ``stringy'' tokens into single [[text]] tokens. The
-output tool syntax of notangle, and the parse tree resulting from the
-PEG, (breifly) contain individual text tokens for fragments of whole
-text lines and form feed characters. These tokens exist because the
-cross-referencing tokens fragment the text lines, and new lines in the
-noweb document are treated specially to facilitate this fragmentation.
-
-A small quote from the tool syntax of a development version of \whyse{} is
-shown in this example in its parsed form. However, during actual parsing
-these adjacent tokens are \textit{immediately collapsed} into singular
-tokens.
-
-\begin{verbatim}
-(text . "  and \textsc{Noweb}'s \texttt{finduses.nw}!")
-(nwnl . "@nl")
-(text . "\end{enumerate}")
-(nwnl . "@nl")
-(text . "")
-(nwnl . "@nl")
-\end{verbatim}
-
-To collapse these tokens into a single text token the [[peg--stack]]
-must be manipulated carefully. It isn't advisable to manipulate this
-variable in the course of a PEG grammar's actions. There is a use case
-for it when the previous rules and actions won't accommodate the
-necessary action without refactoring a larger part of the grammar. In
-this development version that is not a goal; basic functionality is
-sought after, not robustness or beauty, so hacking the desired behaviour
-together quickly is better.
-
-[[w--nth-chunk-of-nth-noweb-document]] retrieves the parse tree for the nth
-noweb document, which in the case of [[whyse.nw]] is the parse tree of
-the zeroth-indexed document. It's quite a simple function. To obtain a
-given chunk of this document from the parse tree the result of the
-function is called with [[nth]] and the index of the chunk.
-
-<<functions for navigating \whyse{} parse trees>>=
-(defun w--nth-document-file-name (nth-document parse-tree)
-  "Return the file name of the nth-indexed document in the parse tree.
-
-For the first document in the parse tree, that is the
-zeroth-indexed document."
-  (cl-first (nth nth-document parse-tree)))
-
-(defun w--nth-document (nth-document parse-tree)
-  "Return the subtree of the nth-indexed document in the parse tree."
-  (cl-second (nth nth-document parse-tree)))
-
-(defun w--nth-chunk-of-document (n document)
-  "Return the subtree for the Nth chunk of a noweb document parse subtree."
-  (nth n document))
-
-(defun w--chunk-number (chunk)
-  "Return the chunk number of CHUNK."
-  (or (cdr (assq 'code chunk))
-      (cdr (assq 'docs chunk))))
-
-(defun w--nth-chunk-of-nth-noweb-document (nth-chunk nth-document parse-tree)
-  (w--nth-chunk-of-document nth-chunk (w--nth-document nth-document parse-tree)))
-
-(defun w--chunk-text (chunk)
-  "Join all the strings returned from the collection in the loop,
-and return the single string."
-  (string-join
-   (cl-loop for elt in chunk collect
-            (when (and (listp elt) (equal 'text (car elt)))
-              (cdr elt)))
-   ""))
-
-(defun w--chunk-name (chunk)
-  "Return non-nil if CHUNK is a code chunk, and thereby has a name.
-
-The return value, if non-nil, is actually the name of the chunk."
-  (if-let ((name (assq 'chunk chunk)))
-      (cdr name)))
-
-@
-
-
-
-<<Package Code>>=
-<<functions for navigating \whyse{} parse trees>>
-<<functions to collapse text and newline tokens into their largest possible form>>
-@
-
-<<functions to collapse text and newline tokens into their largest possible form>>=
-(defun w--concatenate-text-tokens (new-token)
-  "Join the values of two text token associations in a two-element token alist.
-
-If the two associations shouldn't be joined, return them to the stack."
-  (prog1
-      ;; Concatenation only occurs when the previous token examined was
-      ;; a text or nwnl token, ergo there must have been a text or nwnl
-      ;; token previously examined for any concatenation to occur. When
-      ;; no such token has been examined immediately return the
-      ;; (stringy) token recieved and indicate it must have been a
-      ;; stringy token by chaning the value of `w--first-stringy-token?'
-      ;; accordingly. Subsequent runs will then operate on potential
-      ;; pairs of stringy tokens.
-      (if-let ((not-first-stringy-token? (not w--first-stringy-token?))
-               (previous-token  (pop peg--stack))
-               ;; The previous token cannot be a text or nwnl token if
-               ;; it is not a list, and checking prevents causing an
-               ;; error by taking the `car' of a non-list token, e.g. the
-               ;; filename token.
-               (previous-token-is-alist?
-                (prog1 (and (listp previous-token)
-                            (listp new-token)
-                            (or (assoc 'text `(,new-token))
-                                (assoc 'nl `(,new-token)))
-                            (or (assoc 'text `(,previous-token))
-                                (assoc 'nl `(,previous-token)))))))
-          ;; Join the association's values and let the caller push a single
-          ;; token back onto the `peg--stack'.
-          (cons 'text (format "%s%s" (cdr previous-token)
-                              (cdr new-token)))
-
-        ;; Push the previous token back to the `peg--stack', and let the
-        ;; caller push the new token to that stack.
-        (push previous-token peg--stack)
-        new-token)
-    (when w--first-stringy-token? (setq w--first-stringy-token? nil))))
-
-@
-
-The `parse-tree' from the lexical environment (or scope, given that
-\whyse{} is not implemented with lexical binding) is mapped over until
-every file token has been processed and records have been inserted into
-all four tables of the database.
-
-All files represented in the [[parse-tree]] (actually an association
-list) are processed into SQL database records while mapping over the
-[[parse-tree]] (whichever is in scope at the time because \whyse{} is
-implemented without lexical binding).
-
-<<default hook functions>>=
-(defun w--prepare-sexp-sql-from-file-tokens ()
-  "Prepare an s-expression of SQL statements for `emacsql'.
-
-The `parse-tree' from the lexical environment (or scope, given
-that WHYSE is not implemented with lexical binding) is mapped
-over until every file token has been processed and records have
-been inserted into all four tables of the database.
-
-This hook depends on this object being in scope: `parse-tree'.
-That object is in scope when this hook runs with the default
-implementation of `whyse'. (This is not meant to imply other
-implementations exist [yet], only that hacked up installations
-won't operate with any guarantees or according to the original
-documentation. You know that, though, because you're reading the
-source code and documentation for the original right now, and it
-should be obvious that changing the source code should have been
-accompanied with changes in the documentation.)"
-  (mapcar
-   (lambda (file-token)
-     (let* ((file-name (car file-token))
-            (chunks (cdr file-token))
-            (modules (vector
-                      :insert :into 'module
-                      :values (mapcar #'w--vectorize-chunk-data chunks)
-                      :on-conflict-do-nothing))
-            (parent-child (vector
-                           :insert :into 'parentchild
-                           :values (w--parent-child-relationships)
-                           :on-conflict-do-nothing))
-            (connection (w-project-database-connection project)))
-       (mapcar (lambda (seql) (emacsql connection seql))
-               (list modules
-                     parent-child
-                     ;; TODO:
-                     ;; identifier-used-in-module
-                     ;; topic-referenced-in-module
-                     ))))
-   parse-tree))
-
-(defun w--vectorize-chunk-data (chunk)
-  "Convert an individual chunk to a vector of objects.
-
-NOTE: order of arguments: [module-name module-text file-name
-section displacement module-number]"
-  (let ((chunk-name (w--chunk-name chunk)))
-    (vector chunk-name
-            (w--chunk-text chunk)
-            file-name
-            (when chunk-name
-              (w--chunk-section chunk-name))
-            nil
-            (w--chunk-number chunk))))
-
-(defun w--parent-child-relationships ()
-  "Make a list of vectors of parent-child relationships.
-
-The elements are taken from applying `w--get-chunk-uses-of-chunks' to
-every chunk in the noweb."
-  (apply #'append (cl-mapcar #'w--get-chunk-uses-of-chunks chunks)))
-
-(defun w--get-chunk-uses-of-chunks (chunk)
-  "Make a list of vectors of parent-child relationships.
-
-The parent is CHUNK, and the first element of each vector in the
-list will be the number of this chunk. The chunks this chunk uses
-will be named in the vectors in the returned list."
-  (with-temp-buffer
-    (let* ((iter 0)
-           (parent-uses-child (list nil))
-           (chunk-number (assoc-default 'code chunk))
-           (chunk-formatted (format "%S" chunk)))
-      (insert chunk-formatted)
-      (goto-char (point-min))
-      (cl-remove
-       nil
-       (cl-mapcar (lambda (assoc)
-                    (when (equal (car assoc) 'chunk-child-usage)
-                      (vconcat (list (number-to-string chunk-number)
-                                     (cdr assoc)))))
-                  chunk)))))
-
-@
-
-When the SEQL (S-EXP SQL) has been compiled, it should be logged. This
-might be better controlled with DCL (the data control langauge
-featureset of SQL). The history of SEQL statements compiled is treated
-like a stack, with the newest statement being the first element of the
-list. A shoddy implementation of a ``stack-based history'' is given
-next.
-
-<<push the compiled SQL to the database and to the history stack>>=
-;; NOTE: the result of evaluating the SQL is pushed to the history stack
-;; alongside the SQL that was executed.
-(cl-pushnew (cons (emacsql (w-project-database-connection default-project)
-                           compiled-parse-tree)
-                  . compiled-parse-tree)
-            (w-project-history-sql-commands default-project))
+(add-hook 'whyse-open-project-functions #'whyse--make-index)
 @
 
 
 
 
 
-\subsection{finding the section title of a chunk}
-<<Package Code>>=
-<<find section title>>
-
-<<find section title>>=
-;; TODO 2024-05-13: this function is really rough. It still needs a
-;; working algorithm to search through the noweb text to find the
-;; section that a chunk belongs to. I think that searching for all of
-;; the sections that preceed a chunk definition will be necessary before
-;; finding the last section command that preceeds a chunk (thereby
-;; finding the section the chunk belongs to). There may be a better
-;; algorithm; this is the first algorithm I thought of to find the
-;; section that a chunk belongs to regardless of the regular expression
-;; used.
-;;
-;; Another algorithm might use Emacs Lisp regular expressions to search
-;; for the first match to any of the set of regular expressions that
-;; would search for a given sectioning command.
-;;
-;; For now, I trust the Emacs Lisp manual when it says that `regex-opt'
-;; is efficient; it is damned convenient right now.
-(defun w--chunk-section (chunk-name)
-  (with-temp-buffer
-    (insert-file-contents (w-project-noweb project))
-    (goto-char 0)
-    (re-search-forward
-     ;; It is an error if no chunks are found.
-     (regexp-opt (list (concat "<" "<" chunk-name ">" ">" "="))))
-    (re-search-backward
-     ;; TODO: support a fallback list from RefTeX.
-     (regexp-opt (w-project-sectioning-commands-regexs project))
-     ;; It is not an error if no section is found because sectioning is
-     ;; entirely optional in a literate document with LaTeX.
-     nil t)
-    (buffer-substring (line-beginning-position) (line-end-position))))
-@
-
-While it's certain that some of the data from a search operation are
-markers of a match (some of them are non-nil), substrings corresponding
-to the used chunk name in the current chunk are appended to a list that
-is ultimately returned.
-
-\subsection{Determining parent-child relationships}
-There needs to be a function which can take a generalizable approach to
-determining the name of a section defined by any possible sectioning
-command. To easily do that a function could be provided by the user for
-any sectioning commands that are exotic, and those functions will
-accommodate the LaTeX command while the calling function will handle
-finding them and collecting their output.
-
-%% NOTE: There may be some semantic or logical connection between the
-%% parent-child chunk relationship and the latex sections which contain
-%% parent chunks, or even child chunks! What is that?
-
-The following association list gives the keyword and the value
-corresponding to that which were seen in the intermediate representation
-used by noweb itself. To implement \whyse{} we utilize the intermediate
-representation (IR) for both editing and document compilation. Features
-unique to \whyse{} would add in new keywords, and these would only be
-processed by \whyse{}; filters should always ignore IR content that
-doesn't concern them.
-
-\begin{verbatim}
-((code . 32)
- (x-label . "NW2ucZJx-3LzQog-2")
- (ref . "NW2ucZJx-3LzQog-1")
- (chunk . "chunks and their")% ELIDED
- (prevdef . "NW2ucZJx-3LzQog-1")
- (nextdef . "NW2ucZJx-3LzQog-3")
- (text . "\n(chunk-contents\n...")% ELIDED
- (x-label . "NW2ucZJx-3LzQog-2-u1")
- (ref . "NW2ucZJx-2ZphFz-1")
- (chunk-child-usage . "structural keywords")
- (text . "\n  ")
- (x-label . "NW2ucZJx-3LzQog-2-u2")
- (ref . "NW2ucZJx-44iV1g-1")
- (chunk-child-usage . "tagging keywords")
- (text . "\n  x-notused\n  ")
- (x-label . "NW2ucZJx-3LzQog-2-u3")
- (ref . "NW2ucZJx-1ZiKLq-1")
- (chunk-child-usage . "tool errors")
- (text . "))\n"))
-\end{verbatim}
-
-<<collect child chunk uses>>=
-(with-temp-buffer
-  (let* ((iter 0)
-         (parent-uses-child (list nil))
-         (chunk-number (assoc-default 'code chunk))
-         (chunk-formatted (format "%S" chunk)))
-    (insert chunk-formatted)
-    (goto-char (point-min))
-    (cl-remove
-     nil
-     (cl-mapcar (lambda (assoc)
-                  (when (equal (car assoc) 'chunk-child-usage)
-                    (vconcat (list chunk-number (cdr assoc)))))
-                chunk))))
-@
-
-
-
-
-
-\part{Appendices}
-\label{part:appendices}
-\appendix
-
-
-
+\part{Appendices} \label{part:appendices} \appendix
 \chapter{Packaging \whyse{}}
-Installing an \textsc{Emacs~LISP} package is quite easy if the system is
-distributed through the \textsc{GNU~Emacs~LISP~Package~Archive}
-(\textsc{GNU~ELPA}), and only slightly less easy if it is distributed
-through \textsc{MELPA}
-(\textsc{Milkypostman's~Emacs~Lisp~Package~Archive}). Other package
-archives have existed, but they are all ephemeral. The most popular
-alternative to \textsc{GNU~ELPA}, \textsc{Non-GNU~ELPA}, and
-\textsc{MELPA} is direct distribution of files through \textsc{Git}
-servers and the use of a package by the end user to install directly
-from such (e.g. \textsc{Quelpa}).
-
-This software is in-development, so it will only be distributed directly
-through \textsc{Git}.
-
 \whyse{} follows the form of single-file packages documented in the
 \textit{Emacs Lisp Reference Manual}. The package file, \whyseel{}, is
-emitted by \texttt{notangle} which is called by the Makefile in every
-target but [[clean]]. All source development occurs in \whysenw{} using
-\textsc{Polymode}.
-
+emitted by \texttt{notangle} which is rebuilt by Make in every
+target but [[clean]].
 The makefile distributed alongside \whysenw{} in the tarball contains the
 command-line used to tangle and weave \whyse{}.
 
 <<whyse.el>>=
-<<Emacs Lisp package headers>>
-<<Licensing and copyright>>
-<<Commentary>>
-<<Package Code>>
-<<provide the whyse feature and list the file local variables>>
-@
-
-<<Emacs Lisp package headers>>=
-;;; whyse.el --- noWeb HYpertext System in Emacs -*- lexical-binding: nil -*-
-;; Yes, you read that right: no lexical binding in this file.
+;;; whyse.el --- WEB Hypertext System in Emacs -*- lexical-binding: t -*-
 
 ;; Copyright © 2023 Bryce Carson
 
-;; Author: Bryce Carson <bcars268@mtroyal.ca>
+;; Author: Bryce Carson <bryce.a.carson@gmail.com>
+;; Version: 0.1
+;; Package Requires: ((emacs "25.1") (peg "1.0.1") (peg-noweb "0.1") (cl-lib "1.0"))
 ;; Created 2023-06-18
 ;; Keywords: tools tex hypermedia
 ;; URL: https://github.com/bryce-carson/whyse
 
 ;; This file is not part of GNU Emacs.
 
-<<whyse-pkg.el>>=
-(define-package "whyse" "0.1" "noWeb HYpertext System in Emacs"
-  '(<<required packages>>))
-@
-
-The following chunk lists the [[<<required packages>>]]; as of
-[[whyse-0.1-devel]] the only required packages are [[peg]], [[cl-lib]],
-[[emacsql]].
-
-<<required packages>>=
-(emacs "25.1")
-(emacsql "20230220")
-(peg "1.0.1")
-(peg-noweb "0.1")
-(cl-lib "1.0")
-@
-
-The license text was included in this document using its \LaTeX{} form
-in the License section at the end of this document.
-
-<<Licensing and copyright>>=
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation, either version 3 of the
@@ -1308,25 +438,16 @@ in the License section at the end of this document.
 ;; along with this program. If not, see
 ;; <https://www.gnu.org/licenses/>.
 
-<<Commentary>>=
 ;;; Commentary:
-;; WHYSE was described by Brown and Czedjo in _A Hypertext for Literate
-;; Programming_ (1991).
+;; WHYSE is inspired by a system described by Brown and Czedjo in _A
+;; Hypertext for Literate Programming_ (1991).
 ;;
-;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming. In: Akl,
-;;    S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in Computing and
-;;    Information — ICCI '90. ICCI 1990. Lecture Notes in Computer Science, vol
-;;    468. Springer, Berlin, Heidelberg.
+;; Brown, M., Czejdo, B. (1991). A hypertext for literate programming.
+;;    In: Akl, S.G., Fiala, F., Koczkodaj, W.W. (eds) Advances in
+;;    Computing and Information — ICCI '90. ICCI 1990. Lecture Notes in
+;;    Computer Science, vol 468. Springer, Berlin, Heidelberg.
 ;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
-;;
-;; A paper describing this implementation---written in Noweb and browsable,
-;; editable, and auditable with WHYSE, or readable in the printed form---is
-;; hoped to be submitted to The Journal of Open Source Software (JOSS) before
-;; the year 2024. N.B.: the paper will include historical information about
-;; literate programming, and citations (especially of those given credit here
-;; for ideating WHYSE itself).
 
-<<Package Code>>=
 ;;; Code:
 ;;;; Compiler directives
 (eval-when-compile (require 'wid-edit))
@@ -1334,15 +455,12 @@ in the License section at the end of this document.
 ;;;; Internals
 <<Customization and global variables>>
 <<Widgets>>
-<<\whyse{} project structure>>
-<<open-project-hook>>
-<<default hook functions>>
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>
 
 ;;;; Commands
 ;;;###autoload
-<<\whyse{}>>
+<<[[whyse]]>>
 
-<<provide the whyse feature and list the file local variables>>=
 (provide 'whyse)
 
 ;; Local Variables:
@@ -1356,126 +474,15 @@ in the License section at the end of this document.
 
 
 
-%% \backmatter
 \chapter{Indices}
 \section{Chunks} \nowebchunks
 \section{Identifiers} \nowebindex
 
-% \chapter{Bibliography}
-% \printbibliography
+\chapter{Bibliography}
+\printbibliography
 
 \chapter{License}
-\input{../src/gpl-3.0.tex}
-
-\chapter{November 8, 2025}
-
-The following diagram shows which lines, in a Noweb document, need
-RefTeX support and what kind. Within a chunk there are cross-references
-to labels defined elsewhere as well as index entry definitions and
-cross-references to labels identically-defined.
-
-\begin{verbatim}
- *
-+-------------------+
-|                   |
-| @<<example.c>>=   |
-|i#define A foo     | i Index "A".
-| int main() {      |
-|x  printf(@<<S>>); | x Cross-reference "S".
-| }                 |
-|                   |
-|l@<<S>>=           | l Label "S".
-| "Hello, world!"   |
-| @                 |
-|                   |
-|x[[@<<S>>]] is a   | x Cross-reference "S".
-| new chunk label.  |
-+-------------------+
-
-* Indicates that column is markup/gutter content not part of the normal
-buffer contents.
-\end{verbatim}
-
-\chapter{Pipeline Architecture}
-\label{chap:pipe}
-
-I want to keep things very fucking simple now, because perfect and
-documented has become the enemy of the good and implemented.
-
-<<index-keywords.sh>>=
-#!/usr/bin/sh
-
-awk '/^@index/ { print $0 }' </dev/stdin
-@ 
-
-The prior filter will remove all keywords that aren't indexing keywords.
-
-<<definitions.sh>>=
-#!/usr/bin/sh
-
-awk '/^@index defn (.*)/ {
-if (match($0, /^@index defn (.*)/)) {
- print(substr($0, match($0, /^@index defn (.*)/)))
-}
-}' </dev/stdin
-@ 
-
-<<example.sh>>=
-#!/usr/bin/sh
-awk '
-BEGIN {
-    # idefnrx = /^@index defn (.*)/
-    FS=" "
-    nwnl=1
-}
-# idefnrx {
-#     if (match($0, idefnrx)) {
-#         print(substr($0, match($0, idefnrx)))
-#     }
-# }
-/^@nl/ {
-  nwnl=nwnl+1
-}
-/^@defn/ {
-    module_name = substr($0, 7)
-    #print(substr($0, 6))# skip "@defn "
-}
-$1 == "@index" && $2 == "defn" {
-    id = substr($0, 13)# skip "@index defn ", print the rest of the line.
-    print(sprintf("%s\x1C%s\x1C%d", id, module_name, nwnl))
-}
-' < /dev/stdin
-@ 
-
-<<very nice.el>>=
-(defun w--module-navigate (widget direction widget-number)
-  (let ((widget-number (widget-get widget :module-number)))
-    (if (and (stringp direction)
-             (string= direction "prev"))
-        (while; not at the beginning or end of the buffer, nor at the desired widget
-            (or (not (bobp))
-                (not (and (widget-at)
-                          (widget-member (widget-at) :module-number)
-                          (= (widget-member (widget-at) :module-number)
-                             (1- widget-number)))))
-          (backward-line))
-      (while; not at the beginning or end of the buffer, nor at the desired widget
-          (or (not (eobp))
-              (not (and (widget-at)
-                        (widget-member (widget-at) :module-number)
-                        (= (widget-member (widget-at) :module-number)
-                           (1+ widget-number)))))
-        (forward-line)))))
-
-(widget-create 'push-button
-               :format "%[prev%]"
-               :button-face custom-button
-               :module-navigate #'w--module-navigate
-               :action (lambda (widget value)
-                         (widget-apply widget :module-navigate
-                                       value
-                                       (widget-get widget :module-number))))
-@
+\input{gpl-3.0.tex}
 
 \end{document}
 

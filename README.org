@@ -1,0 +1,60 @@
+* About
+The WEB Hypertext System[fn:1] implemented in Emacs Lisp for Norman Ramsey's
+noweb[fn:2] rather than Knuth's Pascal-based WEB or the later CWEB.
+
+* WHYSE: The WEB HYpertext System in Emacs
+WHYSE is an integrated development environment for noweb and LaTeX, integrating
+these tools with new system features for editing and reviewing literate
+programs.
+
+The IDE is inspired by the system described in Brown and Czejdo's 1991 ICCI
+conference proceeding[fn:1], and is in early development.
+
+* Development overview
+To orient new contributors and help adventurous hackers use the software, this
+overview is provided to help with navigation.
+
+The easiest way to get started with development on Whyse is to use a container
+created from the Dockerfile. Unfortunately, compiling the PDF for Whyse outside
+of this specific environment is quite difficult, given [[https://github.com/JoeRiel/knoweb/issues/1][the fragile nature of the
+knoweb.sty macros that I have experienced]].
+
+Firstly, noweb 2.13 and LaTeX are required for development. Run =make= to
+compile the PDF on your system.
+
+=autodefs.elisp= and =knoweb.sty= are taken from the knoweb project, which
+provides LaTeX support for noweb and Emacs Lisp identifier definitions in AWK
+for noweb to use for indexing. Upstream knoweb is not required.
+
+The *project* license is contained in =LICENSE=. Particular files, if released
+under a different license, contian separate licensing notices where appropriate
+within the file; binary files do not contain license notices, and images, fonts,
+sounds, movies, etc. are under their own license, if any works of these mediums
+exist within the project at any time.
+
+The Makefile has commands to =weave= noweb sources to LaTeX source, =tangle=
+files from noweb sources, and =compile-pdf=s from generated LaTeX sources. It
+also contains a command to generate noweb intermediate tool syntax for developer
+inspection.
+
+=whyse.bib= contains a BibTeX reference for academic works. It contains a
+reference to Brown & Czejdo's 1991 conference proceeding[fn:1] that inspired this
+package.
+
+The only other source file is =whyse.nw=, the noweb source for WHYSE itself.
+
+** LaTeX compilation difficulties
+I have not had success compiling a knoweb-styled LaTeX document in any
+environment apart from a Debian 11 OS environment with TeXLive 2020. Only this
+combination works; other versions of TexLive or newer versions of Debian, or
+other Linux distributions have not worked with the peculiarities of the style
+file and the latex environment.
+
+As of Saturday, July 26 2025 there is now a Dockerfile which I successfully use
+with =podman= on my Fedora Silverblue machine to build whyse and all of its
+dependencies.
+
+* Footnotes
+[fn:2] Ramsey, Norman. Literate Programming Simplified. IEEE Software, 11(5):97–105, September 1994
+
+[fn:1] Brown, M. and Bogdan D. Czejdo. “A Hypertext for Literate Programming.” International Conference on Computing and Information (1991)
