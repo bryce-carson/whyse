@@ -134,34 +134,88 @@ AUCTeX is the goal, rather than providing a wholly different interface.
 
 \section{Module index}
 % TODO: whyse--make-index-modules
-The module index provides a tabular interface to the references to other
-modules made by each module. The interface is provided by the
-\texttt{ctable} package, which requires tabular data be provided in a
-list of rows, so the parse tree of a noweb document is first gathered.
+The module index provides a tabular or graphical interface to the
+references to other modules made by each module.
 
-The \latex command \texttt{\nowebchunks} emits the chunk index, which is
-facilitated by the \texttt{-index} command of noweave.
+TODO: The tabular interface is provided by the \texttt{ctable} package,
+which requires tabular data be provided in a list of rows, so the parse
+tree of a noweb document is first gathered.
 
-<<example noweave pipeline with autodefs and indexing>>=
-markup whyse.nw | ./autodefs.elisp | finduses | noidx -delay > /tmp/whyse.tool
+Similarly, the graphical interface provided is provided by the
+\texttt{dag-draw} package, which requires an adjacency matrix in list
+form.
+
+The \latex command \texttt{\nowebchunks} emits a formatted chunk index
+using data accumulated throughout the compilation of a latex document.
+The accumulated data is based off of the labels and cross-references
+inserted into the document by the \texttt{-index} argument of
+\textit{noweave}, which adds the \textit{noidx} and \textit{finduses}
+filters to the pipeline. E.g. \texttt{noweave -index whyse.nw}.
+
+WHYSE uses the noweb programs installed on the host, and requires users
+to reconstruct the noweb's compilation pipeline; this is the simplest
+approach. The pipeline (below) that compiles \whyse itself shows the
+stages noweb goes through to produce a tool syntax containing everything
+that \latex{} needs to construct the hyperlinks from the indices back to
+definitions or usages.
+<<the noweave pipeline with autodefs and indexing used to compile \whyse{}'s literate documentation>>=
+markup whyse.nw | ./autodefs.elisp | finduses | noidx -delay
 @ 
-
 The information necessary to create a hyperlink back to the source text from
-the index is generated already, so all that needs to be done is to
-transform it into [[:data]] and metadata usable by ctable hook functions.
+the index is already availble in the tool syntax, so all that needs to be done is to
+transform it and add metadata usable by ctable hook functions or other
+Emacs SVG-related packages.
 
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
-(defun whyse--make-index-modules ()
+(defun whyse--make-index-modules ();whyse--make-index-identifiers is counterpart
   "Create the *whyse-modules* buffer and show it in a window."
-  (let ((modbuf (get-buffer-create "*whyse-modules*")))
+  (let ((modbuf (get-buffer-create "*whyse-modules*"))
+        g g-nodes g-edges)
     (with-current-buffer modbuf
-      (insert parse-tree); FIXME: this probably won't work.
+      <<create the dag svg and insert it>>
       (split-window)
       (switch-to-buffer-other-window modbuf))))
 @ 
 
+Following the tutorials provided by \textit{dag-draw}, I will [[@<<create
+the dag svg and insert it>>]] into the current buffer.
+<<create the dag svg and insert it>>=
+<<set [[g-nodes]] and [[g-edges]]>>
+(setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges))
+(dag-draw-layout-graph g)
+(princ (dag-draw-render-graph g 'ascii))
+@
+The nodes and edges need to be set by translating a small AWK program
+to elisp, a program that emits adjacency matrix, very nearly.
+<<hack.awk>>=
+#!/usr/bin/gawk -f
+BEGIN { ORS = " " }
+/@xref chunkbegin / {
+    valid += 1
+    print $3
+}
+/@xref chunkuse / {
+    if (valid != 1)
+    {
+        print "Invalid @xref chunks." > "/dev/stderr"
+        exit 1
+    }
+    print substr($0, 16)# rule pattern has length 15
+}
+/@xref chunkend/ { valid = 0; printf "\n" }
+@
+
+The following is a translation of that program that instead works on the
+parse tree of the tool syntax. Unlike the AWK code it is inelegant.
+<<set [[g-nodes]] and [[g-edges]]>>=
+;; TODO: fetch a parse tree from peg-noweb; set `g-nodes' and `g-edges'
+@
+
 \section{Identifier index}
-% TODO: whyse--make-index-identifiers
+
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
+(defun whyse--make-index-identifiers ())
+@ 
 
 \chapter{\whyse{} Projects}\label{Projects}
 A user will read from \textit{the package description} that they should
@@ -402,6 +456,7 @@ bufer, otherwise the identifier index is displayed."
 
 
 \part{Appendices} \label{part:appendices} \appendix
+
 \chapter{Packaging \whyse{}}
 \whyse{} follows the form of single-file packages documented in the
 \textit{Emacs Lisp Reference Manual}. The package file, \whyseel{}, is
@@ -410,14 +465,14 @@ target but [[clean]].
 The makefile distributed alongside \whysenw{} in the tarball contains the
 command-line used to tangle and weave \whyse{}.
 
-<<whyse.el>>=
+<<\whyseel>>=
 ;;; whyse.el --- WEB Hypertext System in Emacs -*- lexical-binding: t -*-
 
 ;; Copyright © 2023 Bryce Carson
 
 ;; Author: Bryce Carson <bryce.a.carson@gmail.com>
 ;; Version: 0.1
-;; Package Requires: ((emacs "25.1") (peg "1.0.1") (peg-noweb "0.1") (cl-lib "1.0"))
+;; Package Requires: ((emacs "26.1") (peg "1.0.1") (peg-noweb "0.1") (cl-lib "1.0") dag-draw)
 ;; Created 2023-06-18
 ;; Keywords: tools tex hypermedia
 ;; URL: https://github.com/bryce-carson/whyse
