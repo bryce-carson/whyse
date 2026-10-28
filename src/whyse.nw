@@ -209,6 +209,10 @@ The following is a translation of that program that instead works on the
 parse tree of the tool syntax. Unlike the AWK code it is inelegant.
 <<set [[g-nodes]] and [[g-edges]]>>=
 ;; TODO: fetch a parse tree from peg-noweb; set `g-nodes' and `g-edges'
+(let ((tree (peg-noweb-parse-files (whyse-project-script project)))
+      (document (peg-noweb-document 1 tree))
+      (indices (peg-noweb-document-indices document)))
+  (cl-first indices))
 @
 
 \section{Identifier index}
