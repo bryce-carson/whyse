@@ -8,11 +8,10 @@ PREFIX       ?= /usr
 DESTDIR      ?=
 # knoweb.sty is required during literate document compilation.
 LATEX_STYLE_DEST ?= $(PREFIX)/share/texmf/tex/latex
-
-NOWEB_LIB ?= /usr/local/noweb/lib # Debian
-# On Fedora the binaries are typically in /usr/bin and the filters in /usr/lib64/noweb
+# Debian; on Fedora the binaries are typically in /usr/bin and the filters in
+# /usr/lib64/noweb.
 NOWEB_BIN    ?= $(PREFIX)/bin
-# NOWEB_LIB    ?= $(PREFIX)/lib64/noweb
+NOWEB_LIB ?= $(PREFIX)/local/noweb/lib
 # markup     ?= $(NOWEB_LIB)/markup
 # finduses   ?= $(NOWEB_LIB)/finduses
 # noidx      ?= $(NOWEB_LIB)/noidx
@@ -25,10 +24,17 @@ AUTODEFS   ?= $(NOWEB_LIB)/autodefs.elisp
 $(BUILD)/%.el: | build
 	notangle -R$(@F) $(SRC)/whyse.nw > $@
 
-# Building the literate document for distribution requires installing the document compilation dependencies.
+# Building the literate document for distribution requires installing the
+# document compilation dependencies.
 $(BUILD)/whyse.tex: install | build
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
 
+# FIXME: on my Fedora Workstation, noweave complains about not finding
+# autodefs.elisp, after `sudo make install`; autodefs.elisp is currently found
+# in both /usr/local/noweb/lib and /usr/local/noweb/bin, but is not found in
+# /usr/lib64/noweb, which doesn't exist.
+.PHONY: document
+document: $(BUILD)/peg-noweb.pdf
 $(BUILD)/peg-noweb.pdf: $(BUILD)/whyse.tex | build
 	cd $(BUILD) && latexmk -c --xelatex --interaction=nonstopmode -f $<
 

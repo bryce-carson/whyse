@@ -1,4 +1,5 @@
 FROM ghcr.io/xu-cheng/texlive-historic-debian:2020 AS texlive
+# Update installed packages and install build dependencies for noweb, including GNU AWK.
 FROM texlive AS noweb-builder
 RUN apt-get update && \
     apt-get install -y make gcc git curl wget build-essential && \
@@ -67,6 +68,7 @@ WORKDIR /workspace
 RUN make NOWEB_BIN="${NOWEB_BIN}" NOWEB_LIB="${NOWEB_LIB}" SRC="/workspace/src" BUILD="/workspace/build" TEST="/workspace/test"
 RUN make NOWEB_BIN="${NOWEB_BIN}" NOWEB_LIB="${NOWEB_LIB}" SRC="/workspace/src" BUILD="/workspace/build" TEST="/workspace/test" whyse.pdf
 
+# The base image of xu-cheng/texlive-historic-debian:2020, I think.
 FROM debian:stable-slim AS output
 COPY --from=whyse-builder /workspace/build /build
 VOLUME ["/build"]
