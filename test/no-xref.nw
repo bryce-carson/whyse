@@ -1,4 +1,5 @@
-No chunk cross-references are made in this file.
+No chunk cross-references are made in this file, but some identifiers are
+defined ([[name]]).
 <<*>>=
 int
 main (void)
