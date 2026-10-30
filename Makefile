@@ -25,8 +25,10 @@ $(BUILD)/%.el: | build
 	notangle -R$(@F) $(SRC)/whyse.nw > $@
 
 # Building the literate document for distribution requires installing the
-# document compilation dependencies.
-$(BUILD)/whyse.tex: install | build
+# document compilation dependencies, however, this is not checked.
+$(BUILD)/whyse.tex: | build
+# Test that the elisp autodefintions file is available.
+	noweave -showautodefs |& grep "elisp"
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
 
 # FIXME: on my Fedora Workstation, noweave complains about not finding
@@ -36,7 +38,8 @@ $(BUILD)/whyse.tex: install | build
 .PHONY: document
 document: $(BUILD)/peg-noweb.pdf
 $(BUILD)/peg-noweb.pdf: $(BUILD)/whyse.tex | build
-	cd $(BUILD) && latexmk -c --xelatex --interaction=nonstopmode -f $<
+	cp $(addprefix $(SRC)/,gpl-3.0.tex ieee.csl knoweb.sty) $(BUILD)
+	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f $<
 
 .PHONY: package
 package: $(BUILD)/whyse-$(VERSION).tar
