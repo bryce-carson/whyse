@@ -1,9 +1,15 @@
+# Compiling the literate document with knoweb seems to require TeXLive 2020 on
+# Debian, specifically. Other combinations of operating system and TeXLive
+# distribution seem to result in document errors with knoweb (which is a vast
+# improvement over the vanilla noweb.sty). First update the installed Debian
+# packages and then install build dependencies for noweb, including GNU AWK.
 FROM ghcr.io/xu-cheng/texlive-historic-debian:2020 AS texlive
-# Update installed packages and install build dependencies for noweb, including GNU AWK.
 FROM texlive AS noweb-builder
 RUN apt-get update && \
     apt-get install -y make gcc git curl wget build-essential && \
     apt-get clean
+
+
 
 # Build a more recent GNU AWK than what's provided with the base image of Debian.
 ENV GAWK_VERSION="5.3.0"
@@ -16,6 +22,8 @@ RUN update-alternatives --remove-all awk || true && \
     update-alternatives --install /usr/bin/awk awk /usr/local/bin/gawk 10
 
 # Set environment variables for installation locations
+WORKDIR /opt
+RUN git clone https://github.com/bryce-carson/noweb.git
 ENV NOWEB_BIN=/usr/local/bin \
     NOWEB_LIB=/usr/local/share/noweb \
     NOWEB_MAN=/usr/local/share/man \
@@ -24,8 +32,6 @@ ENV NOWEB_BIN=/usr/local/bin \
     KNOWEB_STYLE_DEST=/usr/local/share/texmf/tex/latex/knoweb \
     TEXINPUTS="/usr/local/share/texmf/tex/latex//:" \
     NOWEB_SRC=/opt/noweb/src
-WORKDIR /opt
-RUN git clone https://github.com/bryce-carson/noweb.git
 WORKDIR ${NOWEB_SRC}
 RUN ./awkname gawk
 
@@ -62,13 +68,21 @@ RUN <<ETX
     TEXINPUTS=$NOWEB_TEXINPUTS
 ETX
 
+
+
+
+# Build WHYSE
 FROM noweb-builder AS whyse-builder
 COPY . /workspace
 WORKDIR /workspace
 RUN make NOWEB_BIN="${NOWEB_BIN}" NOWEB_LIB="${NOWEB_LIB}" SRC="/workspace/src" BUILD="/workspace/build" TEST="/workspace/test"
 RUN make NOWEB_BIN="${NOWEB_BIN}" NOWEB_LIB="${NOWEB_LIB}" SRC="/workspace/src" BUILD="/workspace/build" TEST="/workspace/test" whyse.pdf
 
-# The base image of xu-cheng/texlive-historic-debian:2020, I think.
+
+
+
+
+# I think debian:stable-slim is the base image of xu-cheng/texlive-historic-debian:2020.
 FROM debian:stable-slim AS output
 COPY --from=whyse-builder /workspace/build /build
 VOLUME ["/build"]
