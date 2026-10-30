@@ -1,5 +1,3 @@
-# THIS DOCKERFILE IS TANGLED FROM DOCKERFILE.NW. Read the woven version, DOCKERFILE.PDF in doc/Dockerfile.pdf.
-# EDIT Dockerfile.nw to make editions.
 FROM ghcr.io/xu-cheng/texlive-historic-debian:2020 AS texlive
 FROM texlive AS noweb-builder
 RUN apt-get update && \
