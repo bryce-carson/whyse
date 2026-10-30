@@ -50,6 +50,7 @@
 \newcommand{\texinfo}{\TeX{}info}
 
 
+\usepackage[marginpar]{todo}
 
 
 
@@ -1287,11 +1288,10 @@ same meaning and usage as in `call-process', which this function wraps."
   (call-process (file-name-concat peg-noweb-filter-directory filter)
                 file destination display args))
 @
-
 Noweb's key programs take multiple files as arguments, so the functions I define
 which call these programs should likewise support multiple arguments. Therefore
 \texttt{peg-noweb-call-filter} will be redefined in-place (see
-\texttt{peg-noweb-parse-files}), leaving this function unused.
+\texttt{peg-noweb-parse-files})\Todo{this is not a good choice}, leaving this function unused.
 
 <<define functions>>=
 (defun peg-noweb--parse-failure (lst)
@@ -1741,6 +1741,9 @@ any relevant third-party copyright notices.
 @
 
 \input{gpl-3.0.tex}
+
+\chapter{TODO}
+\todos
 
 \end{document}
 
