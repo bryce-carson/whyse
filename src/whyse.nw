@@ -1616,7 +1616,7 @@ target but [[clean]].
 The makefile distributed alongside \whysenw{} in the tarball contains the
 command-line used to tangle and weave \whyse{}.
 
-<<\whyseel>>=
+<<whyse.el>>=
 ;;; whyse.el --- WEB Hypertext System in Emacs -*- lexical-binding: t -*-
 
 ;; Copyright © 2023 Bryce Carson
