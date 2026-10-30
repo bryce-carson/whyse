@@ -1,0 +1,2 @@
+[1] M. Brown and B. Czejdo, “A hypertext for literate programming,” in Advances in Computing and Information — ICCI ’90, 1990, pp. 250–259.
+[2] N. Ramsey, “The noweb Hacker’s Guide,” 1992.

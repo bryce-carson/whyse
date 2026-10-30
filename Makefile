@@ -29,82 +29,106 @@ KNOWEB_STYLE_DEST ?= $(PREFIX)/share/texmf/tex/latex
 
 log = $(BUILD)/whyse.log
 
-# ------------------------------------------------------------------
-# Packaging
-# ------------------------------------------------------------------
-# TODO: should LICENSE be included? Doubtful... README.md shouldn't be included,
-# in my taste.
-pkg ?= $(BUILD)/whyse-$(VERSION)
-$(pkg).tar: $(pkg)/whyse.el $(pkg)/whyse-pkg.el | builddir
-	tar cf $@ -C $(BUILD) $(notdir $(basename $@))
 
-# ------------------------------------------------------------------
-# Documentation
-# ------------------------------------------------------------------
-whyse.tex: autodefs.elisp | builddir
-	cd $(BUILD) && $(NOWEB_BIN)/noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
 
-whyse.pdf: whyse.tex knoweb.sty
-	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode $<
 
-# ------------------------------------------------------------------
-# Source extraction
-# ------------------------------------------------------------------
-$(pkg)/%.el: | builddir
-	-mkdir -p $(pkg)
-	$(NOWEB_BIN)/notangle -R$(notdir $@) $(SRC)/whyse.nw > $@
+.PHONY: tar doc
+tar: $(BUILD)/whyse-$(VERSION).tar doc
+doc: $(BUILD)/whyse.pdf
 
-# ------------------------------------------------------------------
-# knoweb support (style file + autodefs filter)
-# Everything related to knoweb lives under $(BUILD)
-# ------------------------------------------------------------------
 
-$(KNOWEB_STYLE_DEST)/knoweb.sty: $(BUILD)/knoweb/knoweb.stamp
-	$(install) $(SRC)/knoweb.sty $(dir $@)
-# Refresh the TeX ls -R database
-	-mktexlsr $(dir $(KNOWEB_STYLE_DEST)) 2>/dev/null || true
+$(BUILD)/whyse-$(VERSION).tar : $(BUILD)/whyse-$(VERSION)/whyse.el | builddir
+	tar cf $@ -C $(BUILD) whyse-$(VERSION)
+$(BUILD)/whyse-$(VERSION)/whyse.el: $(SRC)/whyse.nw | builddir
+	$(NOWEB_BIN)/notangle -R\\$(notdir $@) $^ > $@
 
-autodefs.elisp:
-	mkdir -p $(DESTDIR)$(NOWEB_LIB)
-	cp -t $(DESTDIR)$(NOWEB_LIB) $(BUILD)/autodefs.elisp
-	chmod +x $(DESTDIR)$(NOWEB_LIB)/autodefs.elisp
+# Rebuild the dependency.
+PEG_NOWEB ?= ../peg-noweb
+peg-noweb-*.tar: $(PEG_NOWEB)/Makefile
+	make -C $(dir $^) -f $^
 
-# ------------------------------------------------------------------
-# Docker-related targets (kept for completeness)
-# ------------------------------------------------------------------
-Dockerfile: dockerfile.org
-	emacs -Q --batch --eval "(progn (require 'ob-tangle) (with-current-buffer (find-file-noselect $<) (org-babel-tangle)))"
 
-# ------------------------------------------------------------------
-# Utility / development targets
-# ------------------------------------------------------------------
+
+
+
+$(BUILD)/whyse.tex: $(SRC)/autodefs.elisp $(SRC)/whyse.nw | builddir
+	$(NOWEB_BIN)/noweave -v -delay -filter $< -index $(SRC)/whyse.nw > $@
+$(BUILD)/whyse.pdf: $(BUILD)/whyse.tex | $(SRC)/knoweb.sty $(SRC)/ieee.csl $(SRC)/gpl-3.0.tex
+	cp $| --target-directory $(BUILD)
+	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode $< > $@
+
+
+
+
+
 .PHONY: builddir clean tool-syntax install
 
 builddir:
-	mkdir -p $(BUILD)
+	mkdir -p $(BUILD)/whyse-$(VERSION)
 
 clean:
-	$(RM) -f $(BUILD)/*~ \
-		$(BUILD)/*.aux $(BUILD)/*.bbl $(BUILD)/*.bcf $(BUILD)/*.blg \
-		$(BUILD)/*.brf $(BUILD)/*.dvi $(BUILD)/*.fdb_latexmk \
-		$(BUILD)/*.fls $(BUILD)/*.idx $(BUILD)/*.lof $(BUILD)/*.out \
-		$(BUILD)/*.pdf $(BUILD)/*.run.xml $(BUILD)/*.toc \
-		$(BUILD)/*.xdy $(BUILD)/*.xdv
-	$(RM) -rf $(BUILD)/whyse-*/ $(BUILD)/knoweb $(BUILD)/knoweb.stamp
-	$(RM) -f $(BUILD)/whyse-*.tar $(BUILD)/autodefs.elisp
+	$(RM) -rf $(BUILD)
 # optional Emacs cache (ignore if absent)
 	-$(RM) ~/.config/emacs/.cache/whyse.db 2>/dev/null || true
 
 # Development pipeline for peg-noweb (can be removed later)
-tool-syntax: autodefs.elisp
+tool-syntax: $(SRC)/autodefs.elisp
 	$(markup) $(SRC)/whyse.nw \
-		| $(autodefs_elisp) \
+		| $(SRC)/autodefs.elisp \
 		| $(finduses) \
 		| $(clean_docs) \
 		| $(noidx) -delay
+
+
+
+
 
 # Minimal install target---places the generated Elisp and style file
 install: whyse.el knoweb.sty autodefs.elisp
 	mkdir -p $(DESTDIR)$(PREFIX)/share/emacs/site-lisp
 	cp -t $(DESTDIR)$(PREFIX)/share/emacs/site-lisp $(BUILD)/whyse.el
 # knoweb.sty and autodefs.elisp are already installed by their rules
+	$(install) $(SRC)/knoweb.sty $(dir $@)
+# Refresh the TeX ls -R database
+	-mktexlsr $(dir $(KNOWEB_STYLE_DEST)) 2>/dev/null || true
+	mkdir -p $(DESTDIR)$(NOWEB_LIB)
+	cp -t $(DESTDIR)$(NOWEB_LIB) $(BUILD)/autodefs.elisp
+	chmod +x $(DESTDIR)$(NOWEB_LIB)/autodefs.elisp
+
+### PEG NOWEB
+SHELL=/bin/bash
+
+VERSION := 0.2
+ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+BUILD ?= ${ROOT_DIR}build
+SRC ?= ${ROOT_DIR}src
+TEST ?= ${ROOT_DIR}test
+
+# Allow NOWEB_LIB to be overridden (e.g., via command line or Docker)
+NOWEB_LIB ?= /usr/local/noweb/lib
+markup ?= ${NOWEB_LIB}/markup
+finduses ?= ${NOWEB_LIB}/finduses
+noidx ?= ${NOWEB_LIB}/noidx
+autodefs_elisp ?= ${NOWEB_LIB}/autodefs.elisp
+
+tangle: clean
+	mkdir -p $(BUILD)
+	notangle -Rpeg-noweb.el $(SRC)/peg-noweb.nw > $(BUILD)/peg-noweb.el
+	mkdir -p $(BUILD)/peg-noweb-$(VERSION)
+	mv -t $(BUILD)/peg-noweb-$(VERSION) $(BUILD)/peg-noweb.el
+	cp -t $(BUILD)/peg-noweb-$(VERSION) LICENSE
+	tar --create --file $(BUILD)/peg-noweb-$(VERSION).tar -C $(BUILD) peg-noweb-$(VERSION)
+	tar --list --file $(BUILD)/peg-noweb-$(VERSION).tar
+
+## TODO: makem.sh is suposed to be easier than what I'm doing... read the documentation carefully!
+test-interactive: tangle
+	emacs --quick --eval="(setq build-directory \"$(BUILD)/peg-noweb-$(VERSION)\" test-directory \"$(TEST)\")" --load=$(TEST)/test-loader.el
+
+weave:
+	mkdir -p $(BUILD)
+	# noweave -delay -autodefs elisp -index $(SRC)/peg-noweb.nw > $(BUILD)/peg-noweb.tex
+	noweave -delay $(SRC)/peg-noweb.nw > $(BUILD)/peg-noweb.tex
+	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f peg-noweb.tex
+
+clean:
+	$(RM) --recursive --force $(BUILD)

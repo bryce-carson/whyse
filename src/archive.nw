@@ -755,3 +755,22 @@ doesn't concern them.
                           )))
 
 @ 
+
+
+<<create beframed buffers>>=
+;; FIXME: it's not required that whyse use a frame or any dedicated
+;; buffers. It's perfectly ergonomic to have a keybinding to open the
+;; module index, like RefTeX's *toc* popup buffer (`reftex-toc').
+(with-current-buffer (find-file (cl-second default-project))
+  (make-frame ((name . "WHYSE"))))
+
+<<create a ctable buffer>>=
+;; NOTE: I need to depend on ctable and study its usage. Goals: buffer
+;; containing a table with a ragged-right, or have a CHUNK and
+;; CHUNK-USAGE view (like using `tidyr::pivot_longer'). Preferring a
+;; "wide" format to aide understanding, use the tree view exampled in
+;; `direx-ctable.el', probably just using direx. for now, a
+;; `tidyr::pivot_longer' view is appropriate to get started.
+;; (ctbl:open-table-buffer)
+
+@

@@ -7,27 +7,55 @@
 \title{"The Implementation of \textsc{WHYSE}"}
 \author{"Bryce Carson"}
 
-\newcommand{\whyse}{\textsc{WHYSE}}
+
+
+%% NOTE: the following new document commmand and environment were provided by
+%% StackExchange user egreg (https://tex.stackexchange.com/a/391739); the code
+%% is subject to the "Attribution-ShareAlike 3.0 Unported" license
+%% (https://creativecommons.org/licenses/by-sa/3.0/), which is published by
+%% Creative Commons.
+\NewDocumentCommand{\bywhom}{m}{% the Bourbaki trick
+  {\nobreak\hfill\penalty50\hskip1em\null\nobreak
+    \hfill\mbox{\normalfont(#1)}%
+    \parfillskip=0pt \finalhyphendemerits=0 \par}%
+}
+\NewDocumentEnvironment{pquotation}{m}
+{\begin{quoting}[
+    indentfirst=true,
+    leftmargin=\parindent,
+    rightmargin=\parindent]\itshape}
+  {\bywhom{#1}\end{quoting}}
+
+
 \newcommand{\whyseel}{\texttt{whyse.el}}
 \newcommand{\whysenw}{\texttt{whyse.nw}}
+\newcommand{\sql}{SQL}
+
+\newcommand{\whyse}{\textsc{WHYSE}}
+\newcommand{\pegnw}{\textsc{peg-noweb}}
 \newcommand{\elisp}{\textsc{Emacs LISP}}
 \newcommand{\lisp}{\textsc{LISP}}
-\newcommand{\sql}{SQL}
 \newcommand{\noweb}{\textsc{noweb}}
-\newcommand{\notangle}{\texttt{notangle}}
-\newcommand{\noweave}{\texttt{noweave}}
-\newcommand{\emacs}{\textsc{GNU Emacs}}
-\newcommand{\auctex}{AUC\TeX{}}
-\newcommand{\reftex}{Ref\TeX{}}
-\newcommand{\texinfo}{\TeX{}info}
 \newcommand{\html}{\textsc{HTML}}
 \newcommand{\whs}{\textsc{WHS}}
 
-\usepackage{standalone}
-\usepackage[rm]{roboto}
-\usepackage[T1]{fontenc}
+\newcommand{\notangle}{\texttt{notangle}}
+\newcommand{\noweave}{\texttt{noweave}}
+
+\newcommand{\emacs}{\textsc{GNU Emacs}}
+
+\newcommand{\latex}{\LaTeX{}}
+\newcommand{\auctex}{AUC\TeX{}}
+\newcommand{\reftex}{Ref\TeX{}}
+\newcommand{\texinfo}{\TeX{}info}
+
+
+
+
+
 \usepackage{fontspec}
 \setmainfont{Eczar-Regular.otf}[BoldFont=Eczar-SemiBold.otf]
+
 \usepackage{geometry}
 \geometry{
   top=0.625in,
@@ -36,18 +64,9 @@
   right=0.625in,
   papersize={6in, 9in}
 }
-\usepackage{mparhack}
-\usepackage{mathptmx}
-\usepackage{listings}
-\usepackage{framed}
+
 \usepackage[breakcode,footnotesizecode]{knoweb}
 \usepackage[colorlinks,backref=page]{hyperref}
-\usepackage{verbatim}
-\usepackage{syntax}
-\usepackage{xspace}
-\usepackage{paralist}
-\usepackage{color}
-\usepackage{fancyvrb}
 
 % NOTE (from the knoweb package documentation): Headers contain file
 % name, date, and page number. noweave emits \nwfilename{name} for each
@@ -68,8 +87,8 @@
   environment for noweb-based hypertexts within Emacs. While named for
   WEB, it does not support that nor CWEB; the name is primarily to
   reference the inspiration. It is motivated by, and based on, a
-  conference proceeding written in \cite[1991 by Brown and
-  Czejdo]{brown1991}
+  conference proceeding written in 1991 by Brown and
+  Czejdo.
 \end{abstract}
 
 
@@ -84,6 +103,10 @@
 
 
 \chapter{Preface}\label{Preface}
+% I began this project some time in a month of May before I began a course
+% in databases and query languages, as well as systems analysis. I wanted
+% to get a step ahead. I found, years later, I have not.
+
 The RDBMS architecture proposed by Brown \& Czejdo isn't implemented in
 this version of \whyse{}, but for completeness is planned. The main
 features implemented are indices for chunks and identifiers, in the
@@ -116,6 +139,7 @@ feature.
 
 
 \chapter{Indices}
+\label{cha:indices}
 \whs described several indices used for navigation between modules.
 These indices are the core idea implemented in \whyse, whereas the
 \sql architecture and windowing are deliberately avoided. The indices
@@ -231,7 +255,6 @@ project, or it opens the ``Easy Customization Interface'' for the
 application's customization group ([[M-x~customize-group~whyse]]): an
 effective prompt for the user to enter the necessary information. If
 user's dislike this, they can disable it.
-
 <<Customization and global variables>>=
 (defgroup whyse nil
   "WEB Hypertext System in Emacs"
@@ -326,13 +349,15 @@ exist in a [[custom-set-variables]] form).
 
 
 \section{Commands}
-At the moment there is only one command, [[<<[[whyse]]>>]]. This
-command, effectively, handles project registration and in subsequent
-calls will run all hooks when it ``opens a project''. Opening a project
-either finds the file for a known project and opens the module index, or
-it just opens the module index if the user is already editing a file
-within the project.
-
+At the moment there is only one command, [[whyse]]. This command,
+effectively, handles project registration and in subsequent calls will
+run all functions listed in the abnormal hook variable
+\texttt{whyse-open-project-functions} when it ``opens a project''.
+Opening a project either finds the file for a known project and opens
+the module index (by default).
+% See the TODO in the following code chunk.
+% , or it just opens the module index if the
+% user is already editing a file within the project.
 <<[[whyse]]>>=
 (defun whyse ()
   "Opens the default whyse project, conditionally running hooks.
@@ -347,57 +372,89 @@ When both customization variables are non-nil, or if only
 `whyse-load-default-project?' is nil, then Customize is opened to the
 whyse group."
   (interactive)
+
   ;; Warn the user that their customization options have made `whyse' a
   ;; no-op function.
   (when (and (not whyse-load-default-project?)
              (not whyse-open-customize-when-no-projects-defined?))
     (warn "The current customization options in the `whyse' group have effectively disabled the `whyse' command."))
+
+  ;; TODO: when called whilst visiting a noweb file belonging to a
+  ;; project, or a whyse buffer other than an index buffer, open the
+  ;; module index buffer.
   (if-let* ((whyse-load-default-project?)
             (default-project (cl-first whyse-registered-projects))
             (project (list :name (cl-first default-project)
                            :noweb (cl-second default-project)
                            :script (cl-third default-project))))
-      (progn (if whyse-open-project-frame; open in a frame or the current window.
-                 (if (eq t whyse-open-project-frame)
-                     (make-frame); else make a frame with the parameters stored in the flag.
-                   (make-frame whyse-open-project-frame))
-               ;; Open the project in the appropriate buffer. TODO: watch
-               ;; Prot's video about buffer management to get a sense of how
-               ;; applications should behave by default. Which buffer should I
-               ;; open in? The current buffer? Anot her buffer?
-               (find-file (plist-get project :noweb)))
-             (run-hooks-with-args 'whyse-open-project-functions (current-buffer) project))
+      (if (eq (current-buffer)
+              (get-buffer
+               ;; NOTE: borrowed from `create-file-buffer', dropping the
+               ;; last value form of the `let*' binding.
+               (let* ((lastname (file-name-nondirectory (directory-file-name (plist-get project :noweb))))
+                      (lastname (if (string= lastname "") ; FILENAME is a root directory
+                                    filename lastname))
+                      (lastname (cond
+                                 ((not (and uniquify-trailing-separator-p
+                                            (file-directory-p filename)))
+                                  lastname)
+                                 ((eq uniquify-buffer-name-style 'forward)
+	                                (file-name-as-directory lastname))
+	                               ((eq uniquify-buffer-name-style 'reverse)
+	                                (concat (or uniquify-separator "\\") lastname))
+                                 (t lastname)))
+                      (basename (if (string-prefix-p " " lastname)
+		                                (concat "|" lastname)
+		                              lastname)))
+                 basename)))
+          (whyse--make-index project (get-buffer-create "*nw-index*"))
+          (progn (if whyse-open-project-frame; open in a frame or the current window.
+                     (if (eq t whyse-open-project-frame)
+                         (make-frame); else make a frame with the parameters stored in the flag.
+                       (make-frame whyse-open-project-frame))
+                   ;; Open the project in the appropriate buffer. TODO: watch
+                   ;; Prot's video about buffer management to get a sense of how
+                   ;; applications should behave by default. Which buffer should I
+                   ;; open in? The current buffer? Anot her buffer?
+                   (find-file (plist-get project :noweb)))
+                 ;; Should the hook functions be called with the current
+                 ;; buffer? What I want is for the actions taken by the hook
+                 ;; functions to operate upon the buffer(s) in the project
+                 ;; frame, if that was created, or in the current frame.
+                 (run-hook-with-args 'whyse-open-project-functions project (current-buffer))))
     (if whyse-open-customize-when-no-projects-defined?
         (customize-group 'whyse)
       (warn "No `whyse' projects are defined! Call `customize-group' with `whyse' to setup a project."))))
 
 @
 
-Opening a project means the indices will need to be available, so the
-project script will be ran to produce the tool syntax needed to generate
-the indices for navigation.
+The [[whyse-open-project-functions]] include [[whyse--make-index]] by
+default, so opening a project means the indices will be created from
+data parsed from the project web. To gather that data, the function
+[[whyse--make-index]] will need to run the project script to produce the
+tool syntax [[peg-noweb]] requires parses, which will return LISP data I
+can manipulate. The abnormal hook itself is defined in the next section,
+\Ref{sec:cust-behav-whyse}. The index-making functions listed in the
+abnormal hook are defined in \Ref{cha:indices}.
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
+(defun whyse--make-index (project &optional buffer identifiers?)
+  "Create the *nw-index* buffer, replacing the contents of BUFFER.
 
-<<a hook function to generate noweb indices>>=
-;; TODO: write a function that starts a process according to a shell command.
-#'make-process
-(whyse--)
-@ 
+When IDENTIFIERS? is non-nil the identifier index will be displayed in
+the bufer, otherwise the module index is displayed."
+  (let ((index (if identifiers? (whyse--make-index-identifiers project)
+                 (whyse--make-index-modules project))))
+    (replace-buffer-contents index)))
+@
 
-<<create beframed buffers>>=
-;; FIXME: it's not required that whyse use a frame or any dedicated
-;; buffers. It's perfectly ergonomic to have a keybinding to open the
-;; module index, like RefTeX's *toc* popup buffer (`reftex-toc').
-(with-current-buffer (find-file (cl-second default-project))
-  (make-frame ((name . "WHYSE"))))
 
-<<create a ctable buffer>>=
-;; NOTE: I need to depend on ctable and study its usage. Goals: buffer
-;; containing a table with a ragged-right, or have a CHUNK and
-;; CHUNK-USAGE view (like using `tidyr::pivot_longer'). Preferring a
-;; "wide" format to aide understanding, use the tree view exampled in
-;; `direx-ctable.el', probably just using direx. for now, a
-;; `tidyr::pivot_longer' view is appropriate to get started.
-;; (ctbl:open-table-buffer)
+
+\section{Customizing the behaviour of \whyse{} with hooks}
+\label{sec:cust-behav-whyse}
+\whyse{} is meant to be customizable, defining as little as necessary to
+implement a development environment for noweb inspired by
+\cite{brown1991}. The default behaviour of \whyse{} is to do nothing
+after opening a project, so no default hook functions are defined.
 
 <<Customization and global variables>>=
 (defcustom whyse-load-default-project? t
@@ -426,31 +483,16 @@ The value is any additional frame parameters or `t'."
   :group 'whyse
   :tag "A list of frame parameters to use when opening a whyse project in a new frame, or `nil' to disable opening projects in new frames.")
 
+<<the [[whyse-open-project-functions]] abnormal hook and its default functions>>
 @
 
-
-
-
-
-\section{Customizing the behaviour of \whyse{} with hooks}
-\whyse{} is meant to be customizable, defining as little as necessary to
-implement a development environment for noweb inspired by
-\cite{brown1991}. The default behaviour of \whyse{} is to do nothing
-after opening a project, so no default hook functions are defined.
-
+There is also an abnormal hook for customizing what occurs when a
+project is opened.
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
 (defvar whyse-open-project-functions '()
   "Functions to call when `whyse' has opened a project.
 
 Each function must take at least one argument, the whyse project plist.")
-
-(defun whyse--make-index (project &optional modules?)
-  "Create the *nw index* buffer.
-
-When MODULES? is non-nil the module index will be displayed in the
-bufer, otherwise the identifier index is displayed."
-  (if (eq t modules?) (whyse--make-index-modules project)
-    (whyse--make-index-identifiers project)))
 
 (add-hook 'whyse-open-project-functions #'whyse--make-index)
 @
@@ -459,9 +501,1114 @@ bufer, otherwise the identifier index is displayed."
 
 
 
+\chapter{PEG Parsing noweb tool syntax}
+\label{chap:parsing}
+
+I knew early on in the project that I didn't want to scrub through the
+real tool syntax and that I wanted to hack on LISP data, so I focused my
+efforts on writing a PEG parser. That was successful, and for a year in
+the development of WHYSE I had stripped peg-noweb out of WHYSE and made
+it a dependency of the whyse package, rather than a part of it. I am now
+reintegrating peg-noweb, because the Makefile and testing is getting
+annoying. The likelihood is that peg-noweb will never be used by anyone
+but me, though there is a faint hope because of the noweb support in Org
+mode. That could be severely extended to support real features of noweb,
+and the core of noweb could be reimplemented in Emacs Lisp.
+
+\begin{abstract}
+  The \textsc{peg} package for \textsc{Emacs} provides automatic parser
+  generation from a formal grammar. The grammar for noweb released in this
+  package is based off of the description of \emph{the tool syntax} given in the
+  \textit{Noweb Hacker's Guide}.
+
+  The formal grammar for Norman Ramsey's popular Noweb was completed during the
+  early development of \whyse{}, a package separate from this one. Having a
+  complete formal grammar, the resulting parse tree from the automatically
+  generated parser was nearly complete: only traversal and manipulation of that
+  tree were insufficiently developed. Writing a useful pulic interface to the
+  parse tree before continuing on any other adventure in WHYSE-land may help me
+  complete this subproject, at least.
+\end{abstract}
+
+\section{Customization variables}
+\label{sec:customization}
+
+To utilize \textit{markup}, the customization variable
+\texttt{peg-noweb-filter-directory} must be set, otherwise the default value
+will come from parsing the standard error of \texttt{noweave -v}, a cental
+command distributed in Noweb which must be on the user's PATH.
+
+<<define customization variables>>=
+(defgroup peg-noweb ()
+  "Customization Variables affecting PEG Noweb, the peg package extension library providing a ruleset for the Noweb tool syntax.")
+
+(defcustom peg-noweb-filter-directory
+  (and (= 0 (shell-command "which noweave"))
+       (with-temp-buffer (shell-command "noweave -v -n" (get-buffer (current-buffer)))
+                         (file-name-directory (buffer-substring (goto-line 3) (- (point-at-eol) 2)))))
+  "The directory containing noweb filters, particularly `markup'."
+  :group 'peg-noweb)
+
+@
+
+During testing, with the Makefile target ``test-interactive'', I found that the
+PEG parser wasn't happy with the following variables being undefined, despite
+each having exclusively local values during parsing.
+
+<<define variables>>=
+(defvar peg-noweb--file-number-record 0
+  "The current line of the current file being processed by peg-noweb.
+`peg-noweb--file-number-record' emulates \"FNR\" in the AWK programming
+language.")
+(defvar peg-noweb--parser-within-code-chunk? nil
+  "Whether the peg-noweb parser is currently within a code chunk.")
+(defvar peg-noweb--parse-success t
+  "The success or failure of the last parsing of noweb tool syntax.")
+@
+
+
+
+
+
+\section{A grammar of the Noweb tool markup}
+\label{sec:markup-grammar}
+
+\begin{quotation}% I`m quoting myself, so I don't need any attribution. This is
+                 % just old text I haven't gotten rid of yet.
+  Every character of an input text to be parsed by \textit{parsing expressions} in a PEG
+  must be defined in terminal rules of the formal grammar.
+  %% NOTE: to match the new line character in a text stream, the string literal
+  %% "\n" must be included. The (eol) PEG rule /tests/ for the end of line by
+  %% guarding against unintended evaluation of the boolean return value of the
+  %% standard Emacs Lisp (eolp). To test if point is at the end of a line, use
+  %% (eol); to match the end of line, and permit parsing the next line of input,
+  %% include the string literal "\n".
+  The root rule in the grammar for Noweb tool syntax is named \texttt{noweb}, so
+  with \texttt{@<<PEG rules>>} in scope a match using the root rule
+  \texttt{noweb} is attempted against the current buffer. The current buffer
+  must contain the tool syntax produced by \texttt{noweave} and passed to any
+  one of the default or additional filters specified on the command line.
+
+  To further the development of \whyse{}, packaging \texttt{@<<PEG rules>>} as an
+  independent peg package extension allows me to forget about this subproject
+  while I focus on Ref\TeX{} and AUC\TeX{} as foundational layers for
+  implementing \whyse{}.
+\end{quotation}
+
+The grammar of Noweb's tool syntax can be sectioned into five pieces, each
+piece covering some aspect of parsing.
+
+<<PEG rules>>=
+<<high-level Noweb tool syntax structure>>
+<<files and their paths>>
+<<chunks and their boundaries>>
+<<quotations>>
+<<keyword definitions>>
+<<meta rules>>
+@
+
+The \texttt{noweb} rule is the root expression which will match an instance of
+the Noweb tool syntax. Erroneous or incomplete texts will not match. The root
+rule is just one rule among many defined within the \texttt{noweb-markup} PEG
+ruleset. A public API for the interacting with texts matched by the
+\texttt{noweb} rule when using the ruleset, and texts which should match the
+grammar it defines are given in other sections.
+
+<<PEG rules and the Noweb ruleset>>=
+<<PEG rules>>
+
+(define-peg-ruleset peg-noweb-ruleset
+  '(noweb
+
+    nl
+    !eol
+    spc
+
+    file
+    path
+    directory
+    path-separator
+    file-name
+
+    chunk
+    begin
+    end-of-defun-function
+    ordinal
+    kind
+    chunk-contents
+
+    text
+    nwnl
+
+    defn
+    use
+
+    quotation
+
+    line
+    language
+
+    idx
+    xr
+
+    i-define-or-use
+
+    i-definitions
+    i-isused
+    i-defitem
+
+    i-usages
+    i-isdefined
+    i-useitem
+
+    i-identifiers
+    i-entry
+    i-entrydefn
+    i-entryuse
+
+    i-localdefn; NOTE: not widely used nor well-documented.
+    i-nl; NOTE: deprecated in Noweb 2.10.
+
+    x-label
+    x-ref
+    x-undefined
+    x-prev-or-next-def
+
+    x-continued-definitions-of-the-current-chunk
+    x-usages
+
+    x-notused
+    x-chunks
+    x-chunk
+
+    x-tag; NOTE: entirely disused, as discussed in the Hacker's Guide.
+    label
+
+    header
+    trailer
+    fatal))
+
+@ 
+
+As stated, the \texttt{noweb} rule defines the root expression---or starting
+expression---for the grammar. The tool syntax of Noweb is a list of one or more
+files, which are each composed of at least one chunk. Ergo, the following
+\texttt{@<<high-level Noweb tool syntax structure>>} is defined.
+
+<<high-level Noweb tool syntax structure>>=
+;;; Overall marked-up Noweb structure without header and trailer
+(define-peg-rule noweb ()
+  (bob) (not header) (+ file) (not trailer) (eob))
+@
+
+It is an error, more or less so, for noweb filters if the header or trailer
+keywords appear in the text being parsed. These filters are irrelevant to any
+earlier filter, and only matter for the final back-ends (\TeX{}, \LaTeX{}, or
+HTML) that produce human-readable documenation. Normally a filter should ignore
+anything that it doesn't manipulate, but here I decided to fail-safe and make it
+an error. The grammar is designed with the \texttt{--delay} option in mind.
+
+The grammar needs to address the fact that the syntax of the Noweb tool
+format is highly line-oriented, given the influence of AWK on the design
+and usage of Noweb (a historical version was entirely implemented in
+AWK). The following \texttt{@<<meta rules>>} define rules which organize the
+constructs of a line-oriented, or data-oriented, syntax.
+
+<<meta rules>>=
+;; Helpers
+(define-peg-rule nl ()
+  "\n")
+(define-peg-rule !eol ()
+  (+ (not "\n") (any)))
+(define-peg-rule spc ()
+  " ")
+@
+
+With the \texttt{@<<meta rules>>} enabling easier definitions of what a given
+``keyword'' looks like, the \textit{concept of a file} can be defined. A file is
+``anything that looks like a file to Noweb'';
+%% TODO: verify the functionality of:
+%% -Rone.el -Rtwo.el -Rthree.el#, or that of
+%% -Rone.el,two.el,three.el,four,five.h,six.c#
+files may be tangled from the noweb sources by specifying their root
+chunk names on the command-line. However, by default, only the chunk
+named ``*''
+(it's chunk header is \texttt{@<<*>>})%@<<: prohibit Noweb inserting a @use here
+is tangled when no
+specific root chunk is given on the command line.
+
+TODO: Write about the need for the overall document to be separate from the
+one-or-more files specified in the document. Exempli gratia: the current
+document, contained in \texttt{peg-noweb.nw} contains more than one file, these
+separately tangled. If these two files were tangled at the same time, such that
+the output file discovery ability of Noweb was used, then there would be more
+than one file in the intermediate tool syntax, but still a single preceeding
+documentation chunk before the first file, and a single succeeding documentation
+chunk after the last file. When woven, however, the ``overall document'' will
+include all files and the surrounding text.
+
+\begin{itemize}
+\item multiple noweb files
+\item multiple roots within multiple noweb files
+\item single noweb files
+\item multiple roots within a single noweb file
+\end{itemize}
+
+When \texttt{noweave} is given multiple noweb files there will be multiple
+\texttt{@file} tags in the markup output. Root chunks aren't a construct in the
+noweb file itself; the only difference between a root chunk and any other chunk
+is that it was specified as the root to recursively expand and emit when calling
+\texttt{notangle}.
+
+<<files and their paths>>=
+;; Technically, file is a tagging keyword, but that classification only
+;; makes sense in the Hacker's Guide to Noweb, not in the parser for the
+;; tool syntax.
+(define-peg-rule file ()
+  (bol) "@file" spc (substring path) (eol) "\n"; the file tagging keyword ends here
+  (action (setq peg-noweb--file-number-record 0))
+  (list (and (+ chunk)
+             (list (opt (or (and x-chunks i-identifiers); standard noidx ordering
+                            (and i-identifiers x-chunks)))))
+        ;; Trailing documentation chunk and new-lines after the xref
+        ;; and index.
+        (opt chunk)
+        (opt (+ nl)))
+  `(path chunk-list -- (cons path chunk-list)))
+
+(define-peg-rule path ()
+  (* directory) (opt "/") file-name)
+
+(define-peg-rule file-name ()
+  ;; NOTE: while POSIX filenames themselves can theoretically include new-lines,
+  ;; noweb syntax does not allow this.
+  (+ (and (not ["\x00" "/" "\n"]) (any))))
+
+;; A directory may include a relative specifier, or a directory specifier,
+;; but will always include a slash to indicate one or more directory components.
+;; `/' is the unnamed root directory, `/root-subdirectory',
+;; `../root-subdirectory' would be `/', etc. NOTE: this PEX also matches the
+;; final directory separator!
+(define-peg-rule directory ()
+  ;; Perhaps I should instead `regexp-quote' the result of
+  ;; `f-path-separator' rather than hard-code the UNIX-like path
+  ;; separator. Doesn't Windows support automatic translation of UNIX-like
+  ;; paths to Windows-paths on the current drive now?
+  (opt (or ".." "."))
+  "/"
+  (if (not (and file-name "\n")))
+  (opt file-name))
+@
+
+NOTE: Writing PEXes for matching file names was the most difficult part
+I have encountered so far, as it has forced me to understand that a
+first reading of documentation is usually not sufficient to understand a
+complex library in an area of programming I have not practiced in before
+(i.e. language parsing).
+
+Because chunks must not overlap, but can nest, the beginnings of chunks
+need to be pushed to the parsing stack and the end of a chunk needs to
+be popped off of it. The stack pushing operations in \texttt{kind} and
+\texttt{ordinal} delimit chunks by their kinds and number, and the stack
+actions in the \texttt{end} rule check that the chunk-related tokens on the
+stack are balanced.
+
+<<chunks and their boundaries>>=
+(define-peg-rule chunk ()
+  begin (list (* chunk-contents)) end)
+(define-peg-rule begin ()
+  (bol) "@begin" spc kind spc ordinal (eol) nl
+  (action (if (string= (cl-second peg--stack) "code")
+              (setq peg-noweb--parser-within-code-chunk? t))))
+(define-peg-rule end ()
+  (bol) "@end" spc kind spc ordinal (eol) nl
+  (action
+   (setq peg-noweb--parser-within-code-chunk? nil))
+  ;; The stack grows down and the heap grows up,
+  ;; that's the yin and yang of the computer thang
+  `(kind-one
+    ordinal-one
+    keywords
+    kind-two
+    ordinal-two
+    --
+    (if (and (= ordinal-one ordinal-two) (string= kind-one kind-two))
+        (cons (cons ordinal-one
+                    (if (string= kind-one "code")
+                        (prog1 'code (setq peg-noweb--code-chunk-language nil))
+                      'docs))
+              keywords)
+      (error "Chunk nesting error encountered."))))
+(define-peg-rule ordinal ()
+  (substring [0-9] (* [0-9]))
+  `(number -- (string-to-number number)))
+(define-peg-rule kind ()
+  (substring (or "code" "docs")))
+@
+
+Valid \texttt{chunk-contents} is somewhat confusing, because chunks
+can contain many types of information other than text and new
+lines. The definition of what is valid follows.
+
+\begin{enumerate}
+\item \texttt{text}
+\item \texttt{nl}
+\item \texttt{defn \textit{name}}
+\item \texttt{use \textit{name}}
+\item \texttt{line \textit{n}}
+\item \texttt{language \textit{language}}
+\item \texttt{index \ldots}
+\item \texttt{xref \ldots}
+\end{enumerate}
+
+Any other keywords are invalid inside a code block. An example of an
+invalid keyword is anything related to quotations! \textit{This
+restriction only applies to code blocks, however, and documentation
+chunks may contain quotations, of course.} As an exception, the
+keywords were originally banned inside code chunks, but to parse the
+noweb document in which \whyse{} itself was written it needed to be
+adjusted. The grammar should be studied again to ensure that textual
+description and reality are in step.
+
+%% TODO: rephrase this and ensure it is accurate. The rules for parsing
+%% were modified quite significantly from the initial definition so that it
+%% would ``work'', and so that \textit{whyse.nw} would be successfully
+%% parsed. ``Further, the implementation was modified to accommodate the
+%% parsing of the Noweb \whysenw{} firstly.''
+
+<<chunks and their boundaries>>=
+(define-peg-rule chunk-contents ()
+  (or
+   <<structural keywords>>
+   <<tagging keywords>>
+   x-notused
+   <<tool errors>>))
+@
+
+It is easier to handle the fatal keyword appearing inside chunks when it
+is a permissible keyword to appear inside a chunk; this allows the
+parser to consider a chunk with fatal inside of it \textit{as a valid
+chunk}, but that does not mean that a chunk with a fatal keyword
+inside it does not invalidate a Noweb, it still does: the fatal keyword
+causes a fatal crash in parsing regardless. Those structural keywords
+which may be used inside the contents of a chunk are given next.
+
+<<structural keywords (except quotations)>>=
+;; structural
+text
+nwnl ;; Noweb's @nl keyword, as differentiated from the rule nl := "\n".
+defn
+;;; NOTE: previously, a note on the following line incorrectly stated
+;;; the `use' token was related to the `identifierusedinmodule' table,
+;;; when it is actually related to the `parentchild' table.
+use
+@
+
+All structural keywords, then, are:
+
+<<structural keywords>>=
+<<structural keywords (except quotations)>>
+quotation
+@
+
+<<tagging keywords>>=
+;; tagging
+line
+language
+;; index
+i-nl; NOTE: recognized, but unsupported.
+i-define-or-use
+i-definitions
+;; xref
+x-prev-or-next-def
+x-continued-definitions-of-the-current-chunk
+i-usages
+x-usages
+x-label
+x-ref
+@
+
+Sometimes, however, the system will permit a chunk to be undefined and
+this leads to the only cases in the tool syntax where it is not
+line-oriented. \texttt{noidx} will read the cross references to other chunks
+and will be unable to generate the label, so it will insert \texttt{@notdef}
+where it would otherwise upcase ``nw'' and then insert the label. This
+is why \texttt{x-undefined} is placed among the other \texttt{@<<tool errors>>}
+keywords.
+
+<<tool errors>>=
+;; error
+fatal
+x-undefined
+@
+
+The fundamental keywords are ``text'' and ``nwnl'' (new line, per Noweb
+convention). Text keywords contain source text, and any new line tokens
+in the source text are replaced with the appropriate number of @nl
+keywords (per convention); these are reduced to a single text token when
+they are adjacent on the \texttt{peg--stack}.
+
+<<chunks and their boundaries>>=
+(define-peg-rule text ()
+  (bol) "@text" spc (substring (* (and (not "\n") (any)))) nl
+  `(txt -- (cons 'text txt)))
+(define-peg-rule nwnl ()
+  (bol) (substring "@nl") nl
+  (action (cl-incf peg-noweb--file-number-record))
+  `(nl -- (cons 'nl "\n")))
+@
+
+Nowebs are built from chunks, so the definition and usage of (i.e.
+references to) a chunk are important keywords.
+
+<<chunks and their boundaries>>=
+(define-peg-rule defn ()
+  "@defn" spc (substring (opt !eol)) nl
+  `(name -- (cons 'chunk name)))
+
+;; In @<<whyse.el>>=, it leads to usages tokens like below:
+;; (use . "Commentary")
+;; (use . "Code")
+(define-peg-rule use ()
+  (bol) "@use" spc (substring !eol) nl
+  `(name --
+         (if name (cons 'use name)
+           (error "UH-OH! There's a syntax error in the tool output!"))))
+@
+
+\begin{pquotation}{Norman Ramsey, 1992}
+  Depending on its kind, a chunk may contain documentation or code.
+  Documentation may contain text and newlines, represented by \texttt{@text} and
+  \texttt{@nl}. It may also contain quoted code bracketed by
+  \texttt{@quote...@endquote}. Every \texttt{@quote} must be terminated by an
+  \texttt{@endquote} within the same chunk. Quoted code corresponds to the
+  \texttt{[[...]]} construct in the noweb source.
+\end{pquotation}
+
+<<quotations>>=
+(define-peg-rule quotation ()
+  (bol) "@quote" nl
+  (action (when peg-noweb--parser-within-code-chunk?
+            (error "The parser found a @quote within a code chunk. A @fatal should have been substituted here by a previous tool, but was not.")))
+  (substring (+ (and (not (and (bol) "@endquote")) (any))))
+  (bol) "@endquote" nl
+  `(lst -- (cons 'quotation lst)))
+@
+
+<<keyword definitions>>=
+(define-peg-rule line ()
+  (bol) "@line" spc (substring ordinal) nl
+  `(o -- (cons 'line o)))
+
+(define-peg-rule language (&optional lang)
+  (bol) "@language"
+  ;; NOTE: the action is taken early because if a partial match of the keyword
+  ;; is found, the rest of the line doesn't matter. Erroneous inclusion of
+  ;; multiple full or partial @language keywords is fatal.
+  (action (if (or (not peg-noweb--parser-within-code-chunk?)
+                  peg-noweb--code-chunk-language)
+              (error "The parser found a @language keyword within a code chunk. A @fatal should have been substituted here by a previous tool, but was not.")))
+  spc (action (setq peg-noweb--code-chunk-language (substring !eol))) nl)
+@
+
+The indexing and cross-referencing abilities of Noweb are
+excellent features which enable a reader to navigate through a
+printed (off-line) or on-line version of the literate document
+quite nicely. These functionalities each begin with a rule which
+matches only part of a line of the tool syntax since there are
+many indexing and cross-referencing keywords. The common part of
+each line is a rule which merely matches the \texttt{@index} or
+\texttt{@xref} keyword. The rest of the lines are handled by a
+list of rules in \texttt{index-keyword} or \texttt{xref-keyword}.
+
+The \textit{Noweb Hacker's Guide} lists these two lines in the ``Tagging
+keywords'' table, indicating that it's unlikely (or forbidden) that the
+index or xref keywords would appear alone without any subsequent
+information on the same line.
+
+\begin{quotation}
+@index ... Index information.
+
+@xref ... Cross-reference information
+\end{quotation}
+
+There are many keywords defined by the Noweb tool syntax, so they
+are referenced in this block and defined and documented
+separately. Some of these keywords are delimiters, so they are
+not given full ``keyword'' status (defined as a PEX rule) but
+exist as constants in the definition of a rule that defines the
+grouping.
+
+<<keyword definitions>>=
+;; Index
+<<indexing and cross-referencing set-off words>>
+<<fundamental indexing keywords, which are restricted to within a code chunk>>
+<<the index of identifiers>>
+<<unsupported indexing keywords>>
+
+;; Cross-reference
+<<cross-referencing keywords>>
+
+;; Error
+<<error-causing keywords>>
+@
+
+Further keywords are categorized neatly as Indexing or
+Cross--referencing keywords, so they are contained in subsections.
+
+\subsection{Indexing}
+Indexing keywords, both those used within chunks and those used outside
+of chunks, are defined in this section. The
+\texttt{@<<fundamental indexing keywords, which are restricted to within a code chunk>>},
+index definitions or usages of identifiers and track the definitions of
+identifiers in a chunk and the usages of identifiers in a chunk. They
+may seem redundant, but are not; the Noweb Hacker's Guide offers a
+better explanation of the differences.
+
+<<indexing and cross-referencing set-off words>>=
+(define-peg-rule idx ()
+  (bol) "@index" spc)
+(define-peg-rule xr ()
+  (bol) "@xref" spc)
+@
+
+As a note, the following rule only applies to unparsed text and should not be
+understood to benefit the Emacs LISP recognizer defined later. This rule is for
+parsing identifier-index definitions or usages inserted into the tool syntax by
+other filters, primarily already existing AWK filters.
+
+<<fundamental indexing keywords, which are restricted to within a code chunk>>=
+(define-peg-rule i-define-or-use ()
+  idx
+  (substring (or "defn" "use")) spc (substring !eol) nl
+  (action
+   (if (not peg-noweb--parser-within-code-chunk?)
+       (error "Index identifier definition or usage occurred outside of a code chunk.")))
+  `(s1 s2 -- (cons (make-symbol (concat "i-" s1)) s2)))
+
+<<identifiers defined in a chunk>>
+<<identifiers used in a chunk>>
+
+<<identifiers defined in a chunk>>=
+(define-peg-rule i-definitions ()
+  idx "begindefs" nl
+  (list (+ (and (+ i-isused) i-defitem)))
+  idx "enddefs" nl
+  `(definitions -- (cons 'definitions definitions)))
+(define-peg-rule i-isused ()
+  idx (substring "isused") spc (substring label) nl
+  `(u l -- (cons 'used! l)))
+(define-peg-rule i-defitem ()
+  idx (substring "defitem") spc (substring !eol) nl
+  `(d i -- (cons 'def-item i)))
+
+<<identifiers used in a chunk>>=
+(define-peg-rule i-usages ()
+  idx "beginuses" nl
+  (list (+ (and (+ i-isdefined) i-useitem)))
+  idx "enduses" nl
+  `(usages -- (cons 'usages usages)))
+(define-peg-rule i-isdefined ()
+  idx (substring "isdefined" spc label) nl)
+(define-peg-rule i-useitem ()
+  idx (substring "useitem" spc !eol) nl) ;; !eol :== ident
+@
+
+The summary index of identifiers is a file--specific set of keywords.
+The index lists all identifiers defined in the file (at least all of
+those recognized by the autodefinitions filter).
+
+<<the index of identifiers>>=
+(define-peg-rule i-identifiers ()
+  idx "beginindex" nl
+  (list (opt (+ i-entry)))
+  idx "endindex" nl
+  `(l -- (cons 'i-identifiers l)))
+(define-peg-rule i-entry ()
+  idx "entrybegin" spc (substring label spc !eol) nl
+  (list (+ (or i-entrydefn i-entryuse)))
+  idx "entryend" nl
+  `(entry-label lst -- (cons 'entry-label lst)))
+(define-peg-rule i-entrydefn ()
+  idx (substring "entrydefn") spc (substring label) nl
+  `(defn label -- (cons 'defn label)))
+(define-peg-rule i-entryuse ()
+  idx (substring "entryuse") spc (substring label) nl
+  `(use lst -- (cons 'use lst)))
+@
+
+\texttt{@index nl} was deprecated in Noweb 2.10, and \texttt{@index localdefn}
+is not widely used (assumedly) nor well-documented, so it is unsupported by
+\texttt{peg-noweb}. Contributions for support might not be accepted, but will be
+reviewed; most users should avoid the exotic syntax, I believe. See the Noweb
+Hacker's Guide for more information.
+
+<<unsupported indexing keywords>>=
+(define-peg-rule i-localdefn ()
+  idx "localdefn" spc !eol nl
+  (action (error "\"@index localdefn IDENTIFIER_LIST\" was detected during
+parsing, indicating unsupported, exotic syntax. Are you Oren Ben-Kiki?
+Ramsey wrote in the *Noweb Hacker's Guide* that this was exotic syntax
+(presumably) added specifically for that user. Please submit a patch to support
+your use case, with argument.")))
+;; NOTE: Noweb 2.13 sources include plenty of @index nl, so despite its
+;; deprecation it is still around in important documents. TODO: submit a patch
+;; to the Noweb 2.13 sources which removes the hand-written definitions and adds
+;; a proper call to various autodefinitions filters to recognize identifiers.
+(define-peg-rule i-nl ()
+  idx "nl" nl
+  (action (error "\"@index nl\" detected during parsing, indicating deprected,
+hand-written \"@ %%def IDENTIFIER_LIST\" syntax in the Noweb source. This
+syntax was deprecated in Noweb 2.10, and is entirely unsupported. Write
+an autodefs.LANGUAGE program, which is usually an AWK script, for the
+language you are using if not listed in \"noweave -showautodefs\" output.")))
+@
+
+\subsection{Cross referencing}
+
+<<cross-referencing keywords>>=
+(define-peg-rule x-label ()
+  xr (substring "label" spc label) nl
+  `(substr -- (cons 'x-label (cadr (split-string substr)))))
+(define-peg-rule x-ref ()
+  xr (substring "ref" spc label) nl
+  `(substr --  (cons 'ref (cadr (split-string substr)))))
+
+;; FIXME: improve the error handling at this point. It is not fragile any
+;; longer, because most things are ignored and this is hackish; however, the
+;; message reporting is not helpful. It would be nice to have _only_ the chunk
+;; name reported, and formatted with @<< and >>.
+;;
+;; TODO: Reproduction steps: make a reference to an undefined code chunk
+;; within another code chunk. For fixing this issue, undefined code
+;; chunks should also be referenced within quotations in documentation.
+(define-peg-rule x-undefined ()
+  xr (or "ref" "chunkbegin") spc
+  (guard
+   (if (string= "nw@notdef"
+                (buffer-substring-no-properties (point) (+ 9 (point))))
+       (error (format "%s: %s: %s:\n@<@<%s>>"
+                      "WHYSE"
+                      "nw@notdef detected"
+                      "an undefined chunk was referenced"
+                      (buffer-substring-no-properties (progn (forward-line) (point))
+                                                      (end-of-line)))))))
+
+(define-peg-rule x-prev-or-next-def ()
+  xr (substring (or "nextdef" "prevdef")) spc (substring label) nl
+  `(previous-or-next-chunk-defn label -- (cons (make-symbol previous-or-next-chunk-defn) label)))
+
+(define-peg-rule x-continued-definitions-of-the-current-chunk ()
+  xr "begindefs" nl
+  (list (+ (and xr (substring "defitem") spc (substring label) nl)))
+  xr "enddefs" nl)
+
+(define-peg-rule x-usages ()
+  xr "beginuses" nl
+  (list (+ (and xr "useitem" spc (substring label) nl)))
+  xr "enduses" nl)
+
+(define-peg-rule x-notused ()
+  xr "notused" spc (substring !eol) nl
+  `(name -- (cons 'unused! name)))
+(define-peg-rule x-chunks ()
+  nwnl nwnl; the standard noidx adds two @nw before printing the indices.
+  xr "beginchunks" nl
+  (list (+ x-chunk))
+  xr "endchunks" nl
+  `(a b l -- (cons 'x-chunks l))); @nl a and b are dropped.
+(define-peg-rule x-chunk ()
+  xr "chunkbegin" spc (substring label) spc (substring !eol) nl
+  (list (+ (list (and xr
+                      (substring (or "chunkuse" "chunkdefn"))
+                      `(chunk-usage-or-definition -- (make-symbol chunk-usage-or-definition))
+                      spc
+                      (substring label)
+                      nl))))
+  xr "chunkend" nl
+  `(label name l -- `(,(cons 'chunkname name)
+                      ,(cons 'chunkanchor label)
+                      ,@l)))
+
+;; Associates label with tag (@xref tag $LABEL $TAG)
+(define-peg-rule x-tag ()
+  xr "tag" spc label spc !eol nl)
+(define-peg-rule label ()
+  (+ (or "-" [alnum]))) ;; A label never contains whitespace.
+
+<<error-causing keywords>>=
+;; User-errors (header and trailer) and tool-error (fatal)
+;; Header and trailer's further text is irrelevant for parsing, because they cause errors.
+(define-peg-rule header ()
+  (bol) "@header" ;; formatter options
+  (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+(define-peg-rule trailer ()
+  (bol) "@trailer" ;; formatter
+  (action (error "[ERROR] Do not use totex or tohtml in your noweave pipeline.")))
+(define-peg-rule fatal ()
+  (bol) "@fatal"
+  (action (error "[FATAL] There was a fatal error in the pipeline. Stash the work area and submit a bug report against Noweb, WHYSE, and other relevant tools.")))
+@
+
+
+
+
+
+\section{API}
+\label{sec:parse-tree-navigation}
+
+This section defines a public interface to texts parsed by the grammar, allowing
+texts to be navigated and searched using simple functions and manipulated in
+manners appropriate to the texts.
+
+The parse tree is a list of noweb documents, each being a list themselves. The
+first element of a document is the filename of that document, all remaining
+elements are association lists describing the contents of a chunk (either code
+or docs). Each association in the alist is between the symbol relating to the
+PEG rule that generated the cons cell and the contents appropriate to the
+symbol; sometimes the car of the cons cell is not the symbol of the PEG rule,
+but something which harkens to it and is easier to type or is more descriptive.
+
+\subsection{Parsing}
+
+It's immediately useful to have a function to markup noweb files to produce the
+all-important tool format, or to call any other filter.
+\texttt{peg-noweb-call-filter} is a simple function which wraps
+\texttt{call-process} to concatenate the desired filter to call with the
+\texttt{peg-noweb-filter-directory}.
+
+<<define functions>>=
+(defun peg-noweb-call-filter (filter file &optional destination display &rest args)
+  "Filter FILE through FILTER, the name of a filter in the filter directory.
+
+See `peg-noweb-filter-directory' for details, and browse that directory
+for a listing of available filters. All remaining arguments have the
+same meaning and usage as in `call-process', which this function wraps."
+  (call-process (file-name-concat peg-noweb-filter-directory filter)
+                file destination display args))
+@
+
+Noweb's key programs take multiple files as arguments, so the functions I define
+which call these programs should likewise support multiple arguments. Therefore
+\texttt{peg-noweb-call-filter} will be redefined in-place (see
+\texttt{peg-noweb-parse-files}), leaving this function unused.
+
+<<define functions>>=
+(defun peg-noweb--parse-failure (lst)
+  (setq peg-noweb--parse-success nil)
+  (pop-to-buffer (clone-buffer))
+  (save-excursion
+    (put-text-property (point) (point-min)
+                       'face 'success)
+
+    (put-text-property (point) (point-max)
+                       'face 'error)
+
+    (goto-char (point-max))
+    (message "PEXes which failed:\n%S" lst)))
+
+(defun peg-noweb-parse-at-point ()
+  "Parse the current buffer beginning at point."
+  (with-peg-rules (peg-noweb-ruleset)
+    (let (peg-noweb--parser-within-code-chunk?)
+      (peg-run (peg noweb) #'peg-noweb--parse-failure))))
+
+(defun peg-noweb-parse-buffer (buffer)
+  "Parse the buffer, with BUFFER current.
+
+Parsing is accomplished with `peg-noweb-parse-at-point' after calling `point-min'."
+  (interactive "bbuffer:")
+  (with-current-buffer buffer
+    (goto-char (point-min))
+    (peg-noweb-parse-at-point)))
+
+(defun peg-noweb-parse-files (&optional command &rest files)
+  "Parse the Noweb files in FILES, calling `markup' on the files.
+
+With COMMAND, `call-process-shell-command' instead of directly calling
+the markup filter alone; do not provide FILES, which should instead be
+part of COMMAND.
+
+Parsing is accomplished with `peg-noweb-parse-buffer'."
+  (let ((files (mapcar #'expand-file-name files)))
+    (with-temp-buffer
+      (unless (listp files)
+        (error "FILES is not a list!"))
+      (if command (call-process-shell-command command nil (current-buffer))
+        (eval `(call-process (expand-file-name "markup" peg-noweb-filter-directory)
+                             nil t nil ,@files)))
+      (peg-noweb-parse-buffer (current-buffer)))))
+
+(defun peg-noweb-parse-files-insert-into-buffer (buffer &rest files)
+  (with-current-buffer buffer
+    (insert (eval `(format "%S" (peg-noweb-parse-files ,@files))))))
+@
+
+\subsection{Elements}
+\label{sec:retrieving-chunks}
+
+In this subsection I define functions to work on the parse tree of noweb
+tool syntax; these functions return various elements of the parse tree, such as
+a particular chunk (by number, name, or relation to another chunk), or a whole
+document, or the chunk index or identifier index of a document.
+
+<<define functions>>=
+<<functions for extracting elements from the parse tree>>
+
+<<functions for extracting elements from the parse tree>>=
+(defun peg-noweb-document (nth-document parse-tree)
+  "Return the `nth' document in the parse tree, represented as a list of the documents' name and then its parse subtree."
+  (nth nth-document parse-tree))
+
+(defun peg-noweb-document-name (parse-tree &optional nth-document)
+  "Return the document name of the first (zeroth) document.
+
+  With `nth-document', return the document name of the nth document."
+  (car (peg-noweb-document (if nth-document nth-document 0) parse-tree)))
+
+(defun peg-noweb-document-indices (document)
+  "Return the indices of DOCUMENT."
+  (peg-noweb-chunk (- (length document) 2) document))
+
+(defun peg-noweb-chunk (nth-chunk document)
+  "Return the subtree for the nth chunk of a noweb document."
+  (nth nth-chunk document))
+
+(defun peg-noweb-chunk-attributes (chunk)
+  "Return a list of the CHUNK number, type, and name (if it has one)."
+  (list (cl-first chunk)
+        (if-let* ((name (assq 'chunk chunk)))
+            (cdr name))))
+
+(defun peg-noweb-chunk-text (chunk)
+  "Join all the strings returned from the collection in the loop,
+and return the single string."
+  (string-join
+   (cl-loop for elt in chunk collect
+            (when (and (listp elt)
+                       (or (equal 'nl (car elt))
+                           (equal 'text (car elt))))
+              ;; MAYBE FIXME: is this valid for nl elements?
+              (cdr elt)))
+   ""))
+@
+
+Extracting the chunk cross-referencing information from a web requires that the
+web's tool syntax contain said information, which is only made available by
+existing external filters: autodefs; finduses; noidx. These filters are added
+to a pipeline by \texttt{noweave} based on the arguments passed to it. The
+pipeline should be known by the package user and provided to the API as a
+function which returns the tool syntax.
+
+<<functions for extracting elements from the parse tree>>=
+(defun peg-noweb-chunk-xref (document)
+  "Return the chunk xref information from the DOCUMENT."
+  (let ((xref (caddr (peg-noweb-document-indices document)))
+        (f (lambda (elt)
+             ;; TODO: write a function body, replacing `elt'.
+             elt)))
+    (cl-loop for (defn-label defn-name defn-usages) in xref
+             collect (cons defn-name (mapcar #'f defn-usages)))))
+@ 
+
+It's annoying to chain together multiple function, so I'll write a central
+API function: [[peg-noweb]]. This function will make it easier to just pass a
+command to parse one noweb file and retrieve the first document (file) from it.
+
+<<define functions>>=
+<<[[peg-noweb]], the unifying function>>
+
+<<[[peg-noweb]], the unifying function>>=
+(defun peg-noweb (&rest args)
+  "Parse the tool syntax returned by a shell command and extract the first document.
+
+With ARGS being: `:index', return just the chunk and identifier indices;
+with `:project' and a following project name, call
+`whyse-project-markup-command'."
+  (if (not (or (seq-contains-p args :project)
+               (seq-contains-p args :command)))
+      (error "`peg-noweb' requires either `:project' or `:command' keyword arguments with appropriate values be provided.")
+    (let* ((command (if (seq-contains-p args :project)
+                        (progn (error "Not yet implemented.")
+                               ;; FIXME: I think a struct is overkill at this point,
+                               ;; and the customize variable will be sufficient. Just
+                               ;; search through the values of the customization
+                               ;; variable `whyse-projects' for a project with the
+                               ;; appropriate name, then return the value associated
+                               ;; with the script key. TODO: obtain the project struct
+                               ;; so the script slot can be accessed.
+                               (let ((project (nth (1+ (cl-position :position args)) args)))
+                                 ;; Return the command contained in the script slot of project.
+                                 (whyse-project-script project)))
+                     (nth (1+ (cl-position :command args)) args)))
+          (document (peg-noweb-document 0 (peg-noweb-parse-files command))))
+      (when (seq-contains-p args :index)
+        (setq document (peg-noweb-document-indices document)))
+      document)))
+@ 
+
+
+
+\subsection{Deparsing documents and chunks}
+At some point it may be useful to reproduce the markup from which an element of
+the parse tree was produced, either a document, a whole chunk, or some other
+part of the parse tree. Such functions are defined and discussed in this subsection.
+
+At the moment, only the markup produced by [[markup]] is supported by
+[[peg-noweb-document-deparse]] and [[peg-noweb-chunk-deparse-contents]], the
+latter is merely a utility function of the former.
+
+<<define functions>>=
+<<functions for deparsing documents and chunks>>
+
+<<functions for deparsing documents and chunks>>=
+(defun peg-noweb-document-deparse (document)
+  "Deparse DOCUMENT to reproduce its markup representation."
+  (let* ((x (cl-loop for chunk in (cl-rest document)
+                     when chunk collect
+                     (let* ((cons-cell (or (rassq 'code chunk)
+		                                       (rassq 'docs chunk)))
+                            (i (car cons-cell))
+	                          (kind (symbol-name (cdr cons-cell)))
+	                          (name (cdr (assq 'chunk chunk))))
+                       (string-join (flatten-list (list (format "@%s %s %d" "begin" kind i)
+                                                        (if (string= kind "code")
+	                                                          (format "@defn %s" (if name name "")))
+                                                        (peg-noweb-chunk-deparse-contents chunk)
+                                                        (format "@%s %s %d" "end" kind i)))
+                                    "\n"))
+                     into X
+                     finally return X))
+         (y (cons (format "@file %s" (car document)) x))
+         (z (string-join y "\n")))
+    (concat z "\n")))
+
+(defun peg-noweb-chunk-deparse-contents (chunk)
+  "Deparse CHUNK to reproduce the markup representation of that chunk."
+  (cl-loop
+   for (k . v) in (cdr chunk) while k collect
+   (cl-case k
+     ((text defn) (format "@%s %s" (symbol-name k) v))
+     (nl "@nl")
+     (quotation (format "@quote\n%s@endquote" v))
+     (index (format "@index %s" v))
+     (use (format "@use %s" v)))))
+@
+
+
+
+
+% TODO: rewrite this section. The thesis of the section is a replacement for
+% autodefs.elisp, but it's not clear to me how this would be used.
+\section{Emacs LISP autorecognize definitions}
+\label{sec:emacs-lisp-definitions}
+
+The built-in package \texttt{PEG} greatly simplifies the source code of this
+package: rather than relying on an autodefs.elisp file written in AWK we can use
+PEG parsing to manage Emacs LISP definitions when we see them. The following
+PEXs are based off the AWK code written by Joseph S. Riel.
+
+The following grammar should be parameterizable using an Emacs LISP
+customization varible which allows users to list the symbols of functions and
+macros which define things. For example, \texttt{define-peg-rule} and
+\texttt{define-peg-ruleset} define PEG-related things, but when peg-noweb is
+parsing a noweb with emacs lisp which defines peg rules and rulesets the
+identifiers defined with these functions or macros would not be marked up
+properly. Therefore, at least within Emacs, we can use Emacs LISP to mark up
+Noweb texts with the necessary @defn options PEG parsing rather than regular
+expressions in AWK.
+
+<<simple lisp grammar>>=
+(define-peg-rule lisp-atom ()
+  (substring (+ (and (not (or [blank "()"] "\n")) (any))))
+  (* (or [blank] "\n")))
+(define-peg-rule lisp-form ()
+  "(" (opt [blank]) (list (or "nil" lisp-atom) (* (or lisp-atom lisp-form))) ")")
+@ 
+
+Recognizing a LISP form at the ``top level'' of web text will allow parsing;
+attempting to recognize forms at lower levels will lead to the misidentification
+of forms that are nested within others that may be quoted, for instance, in
+strings or other forms that quote others.
+
+For example, only one top-level definition is given below.
+
+<<example-n>>=
+(defvar example-defun-form
+  (quote (defun example () "Hello, world!")))
+(eval example-defun-form)
+(example)
+@ 
+
+The top-level definition is useful for higher-order programming, evaluating data
+as code, which is normal in LISP, but at the top-level of the program text
+itself the function ``example'' was not defined until run time, so recognizing
+the identifier may be misguided in larger, more complex programs. Therefore the
+recognizer is limited to top level forms.
+
+The grammar defined above for LISP forms is limited to the recognition of raw
+text and does not parse LISP forms found spread across multiple ``@text''
+keywords in Noweb tool syntax.
+
+<<define functions>>=
+;; Derived from AWK code released under the GNU GPL v2 license by Joseph S.
+;; Riel; that code is Copyright (c) 2005-2015 by Joseph S. Riel. All rights
+;; reserved.
+(defun peg-noweb--emacs-lisp-identifier-recognizer ()
+  "This function must only be called when the parser is within a code
+chunk, at the beginning of the line of a @text keyword."
+  (with-peg-rules
+      ((whitespace (+ (or " " "\t")))
+       (identifier (substring (+ (not (or " " "\t" "\n" "()"))))
+                   `(id -- (cons 'index id) id))
+       (definitions (bol) "@text" whitespace
+                    "(" (opt whitespace)
+                    ;; TODO: for performance, the following form should be cached!
+                    (or (funcall #'mapcar #'symbol-name peg-noweb-define-symbols))
+
+                    whitespace identifier (opt whitespace)))
+    (peg-run (peg definitions))))
+
+<<define customization variables>>=
+(defcustom peg-noweb-define-symbols
+  (list 'defun
+        'defvar
+        'defconst
+        'defgroup
+        'defalias
+        'defsubst
+        'defmacro
+        'defcustom
+        'defadvice
+        'defimage
+        'define-minor-mode
+        'define-derived-mode
+        'define-abbrev
+        'define-category
+        'define-prefix-command
+        'define-key-after)
+  "The symbols in Emacs LISP which define things like variables, functions, macros, modes, etc.
+
+Symbols do not need to be `intern'-ed before parsing with PEG noweb, as only the `symbol-name' is used."
+  :type '(repeat symbol)
+  :group 'peg-noweb)
+
+@
+
+
+
+
+
+
+
+
+
+
 \part{Appendices} \label{part:appendices} \appendix
 
-\chapter{Packaging \whyse{}}
+\chapter{Packaging \whyse{} and \pegnw{}}
+
+\section{The \whyseel{} package}
 \whyse{} follows the form of single-file packages documented in the
 \textit{Emacs Lisp Reference Manual}. The package file, \whyseel{}, is
 emitted by \texttt{notangle} which is rebuilt by Make in every
@@ -483,19 +1630,7 @@ command-line used to tangle and weave \whyse{}.
 
 ;; This file is not part of GNU Emacs.
 
-;; This program is free software: you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation, either version 3 of the
-;; License, or (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful, but
-;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-;; General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program. If not, see
-;; <https://www.gnu.org/licenses/>.
+<<Licensing and copyright>>
 
 ;;; Commentary:
 ;; WHYSE is inspired by a system described by Brown and Czedjo in _A
@@ -529,18 +1664,82 @@ command-line used to tangle and weave \whyse{}.
 ;; End:
 @
 
+\section{The \textit{PEG Noweb} Emacs Package}
+\label{sec:pkg-meta}
 
+<<peg-noweb.el>>=
+;;; peg-noweb.el --- PEG ruleset for the Noweb Tool Syntax -*- lexical-binding: t -*-
 
+;; Copyright © 2025 Bryce Carson
 
+;; Author: Bryce Carson <bryce.a.carson@gmail.com>
+;; Version: 0.2
+;; Package-Requires: ((peg "1.0.1"))
+;; Keywords: tools, tex, hypermedia, peg
+;; URL: https://github.com/bryce-carson/peg-noweb
+
+;; This file is not part of GNU Emacs.
+
+<<Licensing and copyright>>
+
+;;; Commentary:
+;; This file defines a PEG ruleset for Noweb's tool syntax, which is normally
+;; used to extend Noweb with UNIX tools like AWK or sed. Parsing the tool syntax
+;; allows it to be manipulated as LISP data, and potentially used as LISP code
+;; depending on the user-provided extensions.
+;;
+;; The main purpose of this package is to separate the concern of maintaining
+;; the grammar for the tool syntax and the maintenance of WHYSE, which was
+;; originally designed with PEG parsing at its core.
+
+;;; Code:
+<<PEG rules and the Noweb ruleset>>
+<<define customization variables>>
+<<define variables>>
+<<define functions>>
+
+(provide 'peg-noweb)
+
+;; Local Variables:
+;; mode: emacs-lisp
+;; no-byte-compile: t
+;; no-native-compile: t
+;; End:
+
+;;; peg-noweb.el ends here
+@
 
 \chapter{Indices}
 \section{Chunks} \nowebchunks
 \section{Identifiers} \nowebindex
 
-\chapter{Bibliography}
-\printbibliography
+\chapter{References}
+\label{cha:references}
+\begin{enumerate}[[1]]
+\item M. Brown and B. Czejdo, “A hypertext for literate programming,” in Advances in Computing and Information — ICCI ’90, 1990, pp. 250–259.
+\item N. Ramsey, “The noweb Hacker’s Guide,” 1992.
+\end{enumerate}
 
-\chapter{License}
+\chapter{Licensing and Copyright}
+This subsection contains licensing and copyright information for PEG Noweb, and
+any relevant third-party copyright notices.
+
+<<Licensing and copyright>>=
+;; This program is free software: you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+;; General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program. If not, see
+;; <https://www.gnu.org/licenses/>.
+@
+
 \input{gpl-3.0.tex}
 
 \end{document}

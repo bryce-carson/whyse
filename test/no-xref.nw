@@ -1,0 +1,10 @@
+No chunk cross-references are made in this file.
+<<*>>=
+int
+main (void)
+{
+    int name;
+    name = 0;
+    return name;
+}
+@

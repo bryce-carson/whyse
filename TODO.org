@@ -2058,3 +2058,16 @@ preferrably a transient map or hydra like Info mode.
        map)))
 #+end_src
 
+* TODO Dogfood
+- Use the grammar to explore peg-noweb.nw itself!
+- What is difficult to do?
+- Ease difficulties by writing LISP.
+- Don't do research except by reading the Emacs Package developers handbook.
+  - After publishing the first version I'll hear feedback that I may integrate.
+
+* DONE Basic Emacs LISP programming facilities
+CLOSED: [2026-01-11 Sun 00:39]
+- with buffer
+- with file
+
+
