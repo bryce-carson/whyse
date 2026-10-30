@@ -1257,10 +1257,9 @@ language you are using if not listed in \"noweave -showautodefs\" output.")))
 
 \section{API}
 \label{sec:parse-tree-navigation}
-
-This section defines a public interface to texts parsed by the grammar, allowing
-texts to be navigated and searched using simple functions and manipulated in
-manners appropriate to the texts.
+This section defines a public interface to texts parsed by the grammar,
+allowing the Lisp data to be queried simply and manipulated with
+standard elisp.
 
 The parse tree is a list of noweb documents, each being a list themselves. The
 first element of a document is the filename of that document, all remaining
@@ -1271,13 +1270,11 @@ symbol; sometimes the car of the cons cell is not the symbol of the PEG rule,
 but something which harkens to it and is easier to type or is more descriptive.
 
 \subsection{Parsing}
-
 It's immediately useful to have a function to markup noweb files to produce the
 all-important tool format, or to call any other filter.
 \texttt{peg-noweb-call-filter} is a simple function which wraps
 \texttt{call-process} to concatenate the desired filter to call with the
 \texttt{peg-noweb-filter-directory}.
-
 <<define functions>>=
 (defun peg-noweb-call-filter (filter file &optional destination display &rest args)
   "Filter FILE through FILTER, the name of a filter in the filter directory.
