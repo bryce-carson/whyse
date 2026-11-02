@@ -2,7 +2,7 @@
       build-directory (expand-file-name "../build" test-directory))
 
 (when (and (load-library "peg")
-           (load (expand-file-name "peg-noweb.el" build-directory)))
+           (load (expand-file-name "whyse.el" build-directory)))
   (load-file (expand-file-name "test.el" test-directory)))
 
 (defun test-peg-noweb ()

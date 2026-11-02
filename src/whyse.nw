@@ -185,14 +185,23 @@ that \latex{} needs to construct the hyperlinks from the indices back to
 definitions or usages.
 <<the noweave pipeline with autodefs and indexing used to compile \whyse{}'s literate documentation>>=
 markup whyse.nw | ./autodefs.elisp | finduses | noidx -delay
-@ 
+@
 The information necessary to create a hyperlink back to the source text from
 the index is already availble in the tool syntax, so all that needs to be done is to
 transform it and add metadata usable by ctable hook functions or other
 Emacs SVG-related packages.
 
+I have just realized I can spare mysef from writing more complex
+pipelines by utilizing \texttt{tee} as a filter:
+<<the noweave pipeline with autodefs and indexing used to compile \whyse{}'s literate documentation>>=
+noweave -delay -index -autodefs elisp -filter "tee whyse.nwt" whyse.nw
+@
+The last stage will always be \texttt{totex}, so utilizing tee as a filter will
+make a copy of the standard output of the last filter. This is a boon
+for users of \whyse, they'll be able to write simpler commands.
+
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
-(defun whyse--make-index-modules ();whyse--make-index-identifiers is counterpart
+(defun whyse--make-index-modules (project);whyse--make-index-identifiers is counterpart
   "Create the *whyse-modules* buffer and show it in a window."
   (let ((modbuf (get-buffer-create "*whyse-modules*"))
         g g-nodes g-edges)
@@ -233,11 +242,13 @@ BEGIN { ORS = " " }
 The following is a translation of that program that instead works on the
 parse tree of the tool syntax. Unlike the AWK code it is inelegant.
 <<set [[g-nodes]] and [[g-edges]]>>=
-;; TODO: fetch a parse tree from peg-noweb; set `g-nodes' and `g-edges'
-(let ((tree (peg-noweb-parse-files (whyse-project-script project)))
-      (document (peg-noweb-document 1 tree))
-      (indices (peg-noweb-document-indices document)))
-  (cl-first indices))
+;; TODO: fetch a parse tree from peg-noweb; set `g-nodes' and `g-edges'.
+(let* ((tree (whyse--peg-parse-command (plist-get project :script)))
+       (document (peg-noweb-document 0 tree))
+       (indices (peg-noweb-document-indices document))
+       (x-chunks (cdr (assq 'x-chunks indices))))
+  (setq g-nodes (mapcar #'peg-noweb--chunk-as-dag-draw-node x-chunks)
+        g-edges (whyse--make-index-modules-dag-draw-edges indices)))
 @
 
 \section{Identifier index}
@@ -1225,7 +1236,8 @@ language you are using if not listed in \"noweave -showautodefs\" output.")))
                       `(chunk-usage-or-definition -- (make-symbol chunk-usage-or-definition))
                       spc
                       (substring label)
-                      nl))))
+                      nl))
+           `(l -- (cons (car l) (cadr l)))))
   xr "chunkend" nl
   `(label name l -- `(,(cons 'chunkname name)
                       ,(cons 'chunkanchor label)
@@ -1270,6 +1282,7 @@ symbol; sometimes the car of the cons cell is not the symbol of the PEG rule,
 but something which harkens to it and is easier to type or is more descriptive.
 
 \subsection{Parsing}
+% TODO: remove this function, because it's unused.
 It's immediately useful to have a function to markup noweb files to produce the
 all-important tool format, or to call any other filter.
 \texttt{peg-noweb-call-filter} is a simple function which wraps
@@ -1285,10 +1298,6 @@ same meaning and usage as in `call-process', which this function wraps."
   (call-process (file-name-concat peg-noweb-filter-directory filter)
                 file destination display args))
 @
-Noweb's key programs take multiple files as arguments, so the functions I define
-which call these programs should likewise support multiple arguments. Therefore
-\texttt{peg-noweb-call-filter} will be redefined in-place (see
-\texttt{peg-noweb-parse-files})\Todo{this is not a good choice}, leaving this function unused.
 
 <<define functions>>=
 (defun peg-noweb--parse-failure (lst)
@@ -1319,39 +1328,36 @@ Parsing is accomplished with `peg-noweb-parse-at-point' after calling `point-min
     (goto-char (point-min))
     (peg-noweb-parse-at-point)))
 
-(defun peg-noweb-parse-files (&optional command &rest files)
-  "Parse the Noweb files in FILES, calling `markup' on the files.
+(defun peg-noweb-parse-files (files)
+  "Parse the Noweb files in FILES, calling `markup' with FILES."
+  (peg-noweb-call-filter "markup" files))
 
-With COMMAND, `call-process-shell-command' instead of directly calling
-the markup filter alone; do not provide FILES, which should instead be
-part of COMMAND.
+(defun whyse--peg-parse-command (command)
+  "Parse the relevant result of a whyse project's COMMAND.
 
-Parsing is accomplished with `peg-noweb-parse-buffer'."
-  (let ((files (mapcar #'expand-file-name files)))
+Rather than parsing the output of COMMAND, this function will parse the
+file contents of whatever nwt file is indicated when the COMMAND matches
+'-filter \"tee \\(.*[.]nwt\\)\"'."
+  (let ((newt? (string-match "-filter \"tee \\(.*[.]nwt\\)\"" command)))
     (with-temp-buffer
-      (unless (listp files)
-        (error "FILES is not a list!"))
-      (if command (call-process-shell-command command nil (current-buffer))
-        (eval `(call-process (expand-file-name "markup" peg-noweb-filter-directory)
-                             nil t nil ,@files)))
-      (peg-noweb-parse-buffer (current-buffer)))))
-
-(defun peg-noweb-parse-files-insert-into-buffer (buffer &rest files)
-  (with-current-buffer buffer
-    (insert (eval `(format "%S" (peg-noweb-parse-files ,@files))))))
+      (call-process-shell-command command nil (not newt?))
+      (when newt?
+        (insert-file-contents (match-string 1 command)))
+      (peg-noweb-parse-at-point))))
 @
 
 \subsection{Elements}
 \label{sec:retrieving-chunks}
-
 In this subsection I define functions to work on the parse tree of noweb
 tool syntax; these functions return various elements of the parse tree, such as
 a particular chunk (by number, name, or relation to another chunk), or a whole
 document, or the chunk index or identifier index of a document.
-
 <<define functions>>=
 <<functions for extracting elements from the parse tree>>
 
+@
+
+The first few functions must access the basic elements of the parse tree: documents and properties of a document; chunks and attributes of a chunk.
 <<functions for extracting elements from the parse tree>>=
 (defun peg-noweb-document (nth-document parse-tree)
   "Return the `nth' document in the parse tree, represented as a list of the documents' name and then its parse subtree."
@@ -1398,14 +1404,43 @@ pipeline should be known by the package user and provided to the API as a
 function which returns the tool syntax.
 
 <<functions for extracting elements from the parse tree>>=
-(defun peg-noweb-chunk-xref (document)
-  "Return the chunk xref information from the DOCUMENT."
-  (let ((xref (caddr (peg-noweb-document-indices document)))
-        (f (lambda (elt)
-             ;; TODO: write a function body, replacing `elt'.
-             elt)))
-    (cl-loop for (defn-label defn-name defn-usages) in xref
-             collect (cons defn-name (mapcar #'f defn-usages)))))
+;; (defun peg-noweb-chunk-xref (document)
+;;   "Return the chunk xref information from the DOCUMENT."
+;;   (let ((xref (caddr (peg-noweb-document-indices document)))
+;;         (f (lambda (elt)
+;;              ;; TODO: write a function body, replacing `elt'.
+;;              elt)))
+;;     (cl-loop for (defn-label defn-name defn-usages) in xref
+;;              collect (cons defn-name (mapcar #'f defn-usages)))))
+
+(defun peg-noweb--chunk-as-dag-draw-node (chunk)
+  (list (make-symbol
+	       (cdr (assq 'chunkanchor chunk)))
+	      :label (cdr (assq 'chunkname chunk))))
+
+(defun peg-noweb--chunk-as-dag-draw-edges (chunk)
+  (let* ((anchor (make-symbol (cdr (assq 'chunkanchor chunk))))
+	 (uses (mapcar (lambda (a) (when (string= 'chunkuse (car a))
+				     (make-symbol (cdr a))))
+		       chunk))
+	 (alists (mapcar (lambda (u) (cons anchor u))
+			 uses)))
+    (rassq-delete-all nil alists)))
+
+(defun whyse--make-index-modules-dag-draw-edges (document-indices)
+  "Return the module cross-reference graph edges to be used by dag-draw
+given a document's indices."
+  (let ((edges '(edges))
+	(chunks (cdr (assq 'x-chunks indices))))
+    (mapcar (lambda (alist)
+	      (setq edges (append (peg-noweb--chunk-as-dag-draw-edges alist) edges)))
+	    chunks)
+    (remq 'edges edges)))
+
+;; Example usage.
+;; (print (whyse--make-index-modules-dag-draw-edges
+;; 	indices)
+;;        (current-buffer))
 @ 
 
 It's annoying to chain together multiple function, so I'll write a central
@@ -1438,7 +1473,7 @@ with `:project' and a following project name, call
                                  ;; Return the command contained in the script slot of project.
                                  (whyse-project-script project)))
                      (nth (1+ (cl-position :command args)) args)))
-          (document (peg-noweb-document 0 (peg-noweb-parse-files command))))
+          (document (peg-noweb-document 0 (whyse--peg-parse-command command))))
       (when (seq-contains-p args :index)
         (setq document (peg-noweb-document-indices document)))
       document)))
@@ -1490,6 +1525,7 @@ latter is merely a utility function of the former.
      (quotation (format "@quote\n%s@endquote" v))
      (index (format "@index %s" v))
      (use (format "@use %s" v)))))
+
 @
 
 
@@ -1620,9 +1656,9 @@ command-line used to tangle and weave \whyse{}.
 
 ;; Author: Bryce Carson <bryce.a.carson@gmail.com>
 ;; Version: 0.1
-;; Package Requires: ((emacs "26.1") (peg "1.0.1") (peg-noweb "0.1") (cl-lib "1.0") dag-draw)
+;; Package Requires: ((emacs "26.1") (peg "1.0.1") (cl-lib "1.0") dag-draw)
 ;; Created 2023-06-18
-;; Keywords: tools tex hypermedia
+;; Keywords: tools tex hypermedia peg
 ;; URL: https://github.com/bryce-carson/whyse
 
 ;; This file is not part of GNU Emacs.
@@ -1638,12 +1674,23 @@ command-line used to tangle and weave \whyse{}.
 ;;    Computing and Information — ICCI '90. ICCI 1990. Lecture Notes in
 ;;    Computer Science, vol 468. Springer, Berlin, Heidelberg.
 ;;    https://doi-org.libproxy.mtroyal.ca/10.1007/3-540-53504-7_82.
+;;
+;; This package also defines a PEG ruleset for noweb's tool syntax,
+;; which is normally used to extend noweb with UNIX tools like AWK or
+;; sed. Parsing the tool syntax allows it to be manipulated as LISP
+;; data, and potentially used as LISP code depending on the
+;; user-provided extensions.
 
 ;;; Code:
 ;;;; Compiler directives
 (eval-when-compile (require 'wid-edit))
 
 ;;;; Internals
+<<PEG rules and the Noweb ruleset>>
+<<define customization variables>>
+<<define variables>>
+<<define functions>>
+
 <<Customization and global variables>>
 <<Widgets>>
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>
@@ -1659,51 +1706,8 @@ command-line used to tangle and weave \whyse{}.
 ;; no-byte-compile: t
 ;; no-native-compile: t
 ;; End:
-@
 
-\section{The \textit{PEG Noweb} Emacs Package}
-\label{sec:pkg-meta}
-
-<<peg-noweb.el>>=
-;;; peg-noweb.el --- PEG ruleset for the Noweb Tool Syntax -*- lexical-binding: t -*-
-
-;; Copyright © 2025 Bryce Carson
-
-;; Author: Bryce Carson <bryce.a.carson@gmail.com>
-;; Version: 0.2
-;; Package-Requires: ((peg "1.0.1"))
-;; Keywords: tools, tex, hypermedia, peg
-;; URL: https://github.com/bryce-carson/peg-noweb
-
-;; This file is not part of GNU Emacs.
-
-<<Licensing and copyright>>
-
-;;; Commentary:
-;; This file defines a PEG ruleset for Noweb's tool syntax, which is normally
-;; used to extend Noweb with UNIX tools like AWK or sed. Parsing the tool syntax
-;; allows it to be manipulated as LISP data, and potentially used as LISP code
-;; depending on the user-provided extensions.
-;;
-;; The main purpose of this package is to separate the concern of maintaining
-;; the grammar for the tool syntax and the maintenance of WHYSE, which was
-;; originally designed with PEG parsing at its core.
-
-;;; Code:
-<<PEG rules and the Noweb ruleset>>
-<<define customization variables>>
-<<define variables>>
-<<define functions>>
-
-(provide 'peg-noweb)
-
-;; Local Variables:
-;; mode: emacs-lisp
-;; no-byte-compile: t
-;; no-native-compile: t
-;; End:
-
-;;; peg-noweb.el ends here
+;;; whyse.el ends here
 @
 
 \chapter{Indices}

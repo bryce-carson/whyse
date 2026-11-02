@@ -21,14 +21,16 @@ AUTODEFS   ?= $(NOWEB_LIB)/autodefs.elisp
 
 
 
-$(BUILD)/%.el: | build
+.PHONY: tangle
+tangle: | build
+	notangle -Rwhyse.el $(SRC)/whyse.nw > $(BUILD)/whyse.el
+$(BUILD)/whyse.el: | build
 	notangle -R$(@F) $(SRC)/whyse.nw > $@
 
 # Building the literate document for distribution requires installing the
 # document compilation dependencies, however, this is not checked.
 $(BUILD)/whyse.tex: | build
-# Test that the elisp autodefintions file is available.
-	noweave -showautodefs |& grep "elisp"
+	noweave -showautodefs |& grep "elisp" # test that the elisp autodefintions file is available.
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
 
 # FIXME: on my Fedora Workstation, noweave complains about not finding
@@ -36,22 +38,22 @@ $(BUILD)/whyse.tex: | build
 # in both /usr/local/noweb/lib and /usr/local/noweb/bin, but is not found in
 # /usr/lib64/noweb, which doesn't exist.
 .PHONY: document
-document: $(BUILD)/peg-noweb.pdf
-$(BUILD)/peg-noweb.pdf: $(BUILD)/whyse.tex | build
+document: $(BUILD)/whyse.pdf
+$(BUILD)/whyse.pdf: $(BUILD)/whyse.tex | build
 	cp $(addprefix $(SRC)/,gpl-3.0.tex ieee.csl knoweb.sty) $(BUILD)
 	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f $<
 
 .PHONY: package
 package: $(BUILD)/whyse-$(VERSION).tar
-$(BUILD)/whyse-$(VERSION).tar: $(BUILD)/whyse.el $(BUILD)/peg-noweb.el
+$(BUILD)/whyse-$(VERSION).tar: $(BUILD)/whyse.el
 	mkdir -p $(basename $@)
 	cp $^ $(basename $@)
 	tar --create --file $@ -C $(BUILD) $(basename $(@F))
 
 # Test the peg parser.
 .PHONY: test
-test: $(BUILD)/whyse.el $(BUILD)/peg-noweb.el
-	emacs --quick --load=$(TEST)/test-loader.el
+test: tangle
+	emacs --init-directory="~/.whyse-emacs" --load=$(TEST)/test-loader.el
 
 build:
 	mkdir -p $(BUILD)/whyse-$(VERSION)
@@ -64,7 +66,7 @@ clobber:
 
 
 # Install the LaTeX style file, the Emacs Lisp autodefs filter for noweave, and the Emacs package whyse.
-install: $(BUILD)/whyse.el $(BUILD)/peg-noweb.el
+install: $(BUILD)/whyse.el
 	install -D -t $(DESTDIR)$(PREFIX)/share/emacs/site-lisp/whyse $^
 
 # knoweb.sty and autodefs.elisp are already installed by their rules
