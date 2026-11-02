@@ -490,7 +490,7 @@ defined."
   "Non-nil means to open a new frame in which to edit a whyse project.
 
 The value is any additional frame parameters or `t'."
-  :type '(choice (or boolean list))
+  :type '(choice boolean plist)
   :group 'whyse
   :tag "A list of frame parameters to use when opening a whyse project in a new frame, or `nil' to disable opening projects in new frames.")
 
