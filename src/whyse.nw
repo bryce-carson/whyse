@@ -242,13 +242,12 @@ BEGIN { ORS = " " }
 The following is a translation of that program that instead works on the
 parse tree of the tool syntax. Unlike the AWK code it is inelegant.
 <<set [[g-nodes]] and [[g-edges]]>>=
-;; TODO: fetch a parse tree from peg-noweb; set `g-nodes' and `g-edges'.
 (let* ((tree (whyse--peg-parse-command (plist-get project :script)))
        (document (peg-noweb-document 0 tree))
        (indices (peg-noweb-document-indices document))
-       (x-chunks (cdr (assq 'x-chunks indices))))
+       (x-chunks (cddr (assq 'x-chunks indices))))
   (setq g-nodes (mapcar #'peg-noweb--chunk-as-dag-draw-node x-chunks)
-        g-edges (whyse--make-index-modules-dag-draw-edges indices)))
+        g-edges (whyse--make-index-modules-dag-draw-edges x-chunks)))
 @
 
 \section{Identifier index}
@@ -1420,21 +1419,20 @@ function which returns the tool syntax.
 
 (defun peg-noweb--chunk-as-dag-draw-edges (chunk)
   (let* ((anchor (make-symbol (cdr (assq 'chunkanchor chunk))))
-	 (uses (mapcar (lambda (a) (when (string= 'chunkuse (car a))
-				     (make-symbol (cdr a))))
-		       chunk))
-	 (alists (mapcar (lambda (u) (cons anchor u))
-			 uses)))
+	       (uses (mapcar (lambda (a) (when (string= 'chunkuse (car a))
+				                             (make-symbol (cdr a))))
+		                   chunk))
+	       (alists (mapcar (lambda (u) (cons anchor u))
+			                   uses)))
     (rassq-delete-all nil alists)))
 
-(defun whyse--make-index-modules-dag-draw-edges (document-indices)
+(defun whyse--make-index-modules-dag-draw-edges (x-chunks)
   "Return the module cross-reference graph edges to be used by dag-draw
-given a document's indices."
-  (let ((edges '(edges))
-	(chunks (cdr (assq 'x-chunks indices))))
+given a document's `X-CHUNKS'."
+  (let ((edges '(edges)))
     (mapcar (lambda (alist)
-	      (setq edges (append (peg-noweb--chunk-as-dag-draw-edges alist) edges)))
-	    chunks)
+	            (setq edges (append (peg-noweb--chunk-as-dag-draw-edges alist) edges)))
+	          x-chunks)
     (remq 'edges edges)))
 
 ;; Example usage.

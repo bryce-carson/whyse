@@ -15,7 +15,11 @@
     (peg-noweb-parse-files
      (format "markup %s | noidx -delay" f))))
 
-(setq spacemacs-package-dir "/home/bryce/.emacs.d/elpa/30.2/develop/")
-(add-to-list 'load-path (expand-file-name "polymode-20260505.1803" spacemacs-package-dir))
-(add-to-list 'load-path (expand-file-name "poly-noweb-20200316.1315" spacemacs-package-dir))
-(require 'poly-noweb)
+
+(mapc (lambda (package-dir)
+        (add-to-list 'load-path (expand-file-name
+                                 package-dir
+                                 "/home/bryce/.emacs.d/elpa/30.2/develop/")))
+      '("dash-20260221.1346"
+        "ht-20230703.558"
+        "dag-draw-20260627.2238"))
