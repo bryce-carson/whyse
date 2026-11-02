@@ -1421,10 +1421,13 @@ function which returns the tool syntax.
   (let* ((anchor (make-symbol (cdr (assq 'chunkanchor chunk))))
 	       (uses (mapcar (lambda (a) (when (string= 'chunkuse (car a))
 				                             (make-symbol (cdr a))))
-		                   chunk))
-	       (alists (mapcar (lambda (u) (cons anchor u))
-			                   uses)))
-    (rassq-delete-all nil alists)))
+		                   chunk)))
+    (mapcar (lambda (cell)
+              (if (consp cell)
+                  (list (car cell) (cdr cell))
+                (error "Cell is not a cons cell: %s." cell)))
+            (rassq-delete-all nil (mapcar (lambda (u) (cons anchor u))
+			                                    uses)))))
 
 (defun whyse--make-index-modules-dag-draw-edges (x-chunks)
   "Return the module cross-reference graph edges to be used by dag-draw
