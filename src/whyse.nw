@@ -215,7 +215,7 @@ Following the tutorials provided by \textit{dag-draw}, I will [[@<<create
 the dag svg and insert it>>]] into the current buffer.
 <<create the dag svg and insert it>>=
 <<set [[g-nodes]] and [[g-edges]]>>
-(setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges))
+(setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges)); FIXME: `g-nodes' and `g-edges' likely need to be quoted.
 (dag-draw-layout-graph g)
 (princ (dag-draw-render-graph g 'ascii))
 @
