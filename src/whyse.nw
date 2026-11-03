@@ -1418,15 +1418,18 @@ function which returns the tool syntax.
 	      :label (cdr (assq 'chunkname chunk))))
 
 (defun peg-noweb--chunk-as-dag-draw-edges (chunk)
-  (let* ((anchor (make-symbol (cdr (assq 'chunkanchor chunk))))
-	       (uses (mapcar (lambda (a) (when (string= 'chunkuse (car a))
-				                             (make-symbol (cdr a))))
-		                   chunk)))
+  (let* ((substitute-1 (lambda (str)
+                         (concat (substring str 0 (1- (length str))) "1")))
+         (anchor (make-symbol (funcall substitute-1 (cdr (assq 'chunkanchor chunk)))))
+	       (uses (mapcar (lambda (a)
+                         (when (string= 'chunkuse (car a))
+                           (make-symbol (funcall substitute-1 (cdr a)))))
+                       chunk)))
     (mapcar (lambda (cell)
               (if (consp cell)
                   (list (car cell) (cdr cell))
                 (error "Cell is not a cons cell: %s." cell)))
-            (rassq-delete-all nil (mapcar (lambda (u) (cons anchor u))
+            (assq-delete-all nil (mapcar (lambda (u) (cons u anchor)); the usage is a back-reference, so u is the user of anchor.
 			                                    uses)))))
 
 (defun whyse--make-index-modules-dag-draw-edges (x-chunks)
