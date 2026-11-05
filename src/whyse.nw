@@ -215,7 +215,8 @@ Following the tutorials provided by \textit{dag-draw}, I will [[@<<create
 the dag svg and insert it>>]] into the current buffer.
 <<create the dag svg and insert it>>=
 <<set [[g-nodes]] and [[g-edges]]>>
-(setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges)); FIXME: `g-nodes' and `g-edges' likely need to be quoted.
+;; FIXME: `g-nodes' and `g-edges' likely need to be quoted in some manner.
+(setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges))
 (dag-draw-layout-graph g)
 (princ (dag-draw-render-graph g 'ascii))
 @
@@ -1412,18 +1413,21 @@ function which returns the tool syntax.
 ;;     (cl-loop for (defn-label defn-name defn-usages) in xref
 ;;              collect (cons defn-name (mapcar #'f defn-usages)))))
 
+(defun peg-noweb--substitute-1 (chunk-label)
+  "Substitute the chunk definition number for 1 in CHUNK-LABEL."
+  (concat (substring chunk-label 0 (string-match "[[:digit:]]+$" chunk-label))
+          "1"))
+
 (defun peg-noweb--chunk-as-dag-draw-node (chunk)
   (list (make-symbol
-	       (cdr (assq 'chunkanchor chunk)))
+	       (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk))))
 	      :label (cdr (assq 'chunkname chunk))))
 
 (defun peg-noweb--chunk-as-dag-draw-edges (chunk)
-  (let* ((substitute-1 (lambda (str)
-                         (concat (substring str 0 (1- (length str))) "1")))
-         (anchor (make-symbol (funcall substitute-1 (cdr (assq 'chunkanchor chunk)))))
+  (let* ((anchor (make-symbol (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk)))))
 	       (uses (mapcar (lambda (a)
                          (when (string= 'chunkuse (car a))
-                           (make-symbol (funcall substitute-1 (cdr a)))))
+                           (make-symbol (peg-noweb--substitute-1 (cdr a)))))
                        chunk)))
     (mapcar (lambda (cell)
               (if (consp cell)
