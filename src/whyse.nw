@@ -246,7 +246,8 @@ parse tree of the tool syntax. Unlike the AWK code it is inelegant.
 (let* ((tree (whyse--peg-parse-command (plist-get project :script)))
        (document (peg-noweb-document 0 tree))
        (indices (peg-noweb-document-indices document))
-       (x-chunks (cddr (assq 'x-chunks indices))))
+       (x-chunks (cddr (assq 'x-chunks indices)))
+       (chunky (obarray-make 100)))
   (setq g-nodes (mapcar #'peg-noweb--chunk-as-dag-draw-node x-chunks)
         g-edges (whyse--make-index-modules-dag-draw-edges x-chunks)))
 @
@@ -1413,27 +1414,36 @@ function which returns the tool syntax.
 ;;     (cl-loop for (defn-label defn-name defn-usages) in xref
 ;;              collect (cons defn-name (mapcar #'f defn-usages)))))
 
+(defvar peg-noweb--chunk-obarray
+  (obarray-make 100)
+  "The object array for interning noweb chunk labels and references.")
+
 (defun peg-noweb--substitute-1 (chunk-label)
   "Substitute the chunk definition number for 1 in CHUNK-LABEL."
-  (concat (substring chunk-label 0 (string-match "[[:digit:]]+$" chunk-label))
-          "1"))
+  (intern (concat (substring chunk-label 0 (string-match "[[:digit:]]+$" chunk-label))
+"1")
+  peg-noweb--chunk-obarray))
 
 (defun peg-noweb--chunk-as-dag-draw-node (chunk)
-  (list (make-symbol
-	       (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk))))
-	      :label (cdr (assq 'chunkname chunk))))
+  (list (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk)))
+	        :label (cdr (assq 'chunkname chunk))))
 
 (defun peg-noweb--chunk-as-dag-draw-edges (chunk)
-  (let* ((anchor (make-symbol (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk)))))
+  "Convert an alist of chunks (themselves alists) into a single alist of the desire structure."
+  (let* ((anchor (peg-noweb--substitute-1 (cdr (assq 'chunkanchor chunk))))
 	       (uses (mapcar (lambda (a)
+                         "When the assoc is a `chunkuse' return the substituted chunk label."
                          (when (string= 'chunkuse (car a))
-                           (make-symbol (peg-noweb--substitute-1 (cdr a)))))
+                             (peg-noweb--substitute-1 (cdr a))))
                        chunk)))
     (mapcar (lambda (cell)
+              "Convert the cons cell into a list."
               (if (consp cell)
                   (list (car cell) (cdr cell))
                 (error "Cell is not a cons cell: %s." cell)))
-            (assq-delete-all nil (mapcar (lambda (u) (cons u anchor)); the usage is a back-reference, so u is the user of anchor.
+            (assq-delete-all nil (mapcar (lambda (u)
+                                           "Create a cons cell of the usage and the anchor."
+                                           (cons u anchor)); the usage is a back-reference, so u is the user of anchor.
 			                                    uses)))))
 
 (defun whyse--make-index-modules-dag-draw-edges (x-chunks)
