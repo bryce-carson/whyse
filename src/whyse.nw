@@ -213,7 +213,13 @@ the dag svg and insert it>>]] into the current buffer.
 ;; FIXME: `g-nodes' and `g-edges' likely need to be quoted in some manner.
 (setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges))
 (dag-draw-layout-graph g)
-(insert (dag-draw-render-graph g 'ascii))
+(if whyse-svg-module-index?
+    (let ((svg (dag-draw-render-graph g 'svg))
+          (file (make-temp-file "whyse-" nil ".svg")))
+      (with-temp-file file
+        (insert svg))
+      (insert-image (create-image file)))
+  (insert (dag-draw-render-graph g 'ascii)))
 @
 The nodes and edges need to be set by translating a small AWK program
 to elisp, a program that emits adjacency matrix, very nearly.
@@ -495,6 +501,10 @@ The value is any additional frame parameters or `t'."
   :tag "A list of frame parameters to use when opening a whyse project in a new frame, or `nil' to disable opening projects in new frames.")
 
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>
+
+(defcustom whyse-svg-module-index? t
+  "Should whyse insert an SVG rendering of the DAG into the module index buffer?"
+  :type 'boolean)
 @
 
 There is also an abnormal hook for customizing what occurs when a
