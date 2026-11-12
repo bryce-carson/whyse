@@ -62,8 +62,7 @@
   top=0.625in,
   bottom=0.625in,
   left=0.625in,
-  right=0.625in,
-  papersize={6in, 9in}
+  right=0.625in
 }
 
 \usepackage[breakcode,footnotesizecode]{knoweb}
