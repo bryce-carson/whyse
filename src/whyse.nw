@@ -157,13 +157,10 @@ and better-implemented, by RefTeX. Eventually, extension of RefTeX and
 AUCTeX is the goal, rather than providing a wholly different interface.
 
 \section{Module index}
-% TODO: whyse--make-index-modules
-The module index provides a tabular or graphical interface to the
-references to other modules made by each module.
-
-TODO: The tabular interface is provided by the \texttt{ctable} package,
-which requires tabular data be provided in a list of rows, so the parse
-tree of a noweb document is first gathered.
+The module index provides a tabular (not yet implemented) or graphical
+interface (a work in progress) to the references to other modules made
+by each module. The tabular interface is provided by the \texttt{ctable}
+package; the graphical interface is provided by the \texttt{dag-draw} package.
 
 Similarly, the graphical interface provided is provided by the
 \texttt{dag-draw} package, which requires an adjacency matrix in list
@@ -200,14 +197,13 @@ make a copy of the standard output of the last filter. This is a boon
 for users of \whyse, they'll be able to write simpler commands.
 
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
-(defun whyse--make-index-modules (project);whyse--make-index-identifiers is counterpart
+(defun whyse--make-index-modules (project); whyse--make-index-identifiers is counterpart
   "Create the *whyse-modules* buffer and show it in a window."
   (let ((modbuf (get-buffer-create "*whyse-modules*"))
         g g-nodes g-edges)
-    (with-current-buffer modbuf
-      <<create the dag svg and insert it>>
-      (split-window)
-      (switch-to-buffer-other-window modbuf))))
+    (select-window (split-window))
+    (switch-to-buffer modbuf)
+    <<create the dag svg and insert it>>))
 @ 
 
 Following the tutorials provided by \textit{dag-draw}, I will [[@<<create
@@ -217,7 +213,7 @@ the dag svg and insert it>>]] into the current buffer.
 ;; FIXME: `g-nodes' and `g-edges' likely need to be quoted in some manner.
 (setq g (dag-draw-create-from-spec :nodes g-nodes :edges g-edges))
 (dag-draw-layout-graph g)
-(princ (dag-draw-render-graph g 'ascii))
+(insert (dag-draw-render-graph g 'ascii))
 @
 The nodes and edges need to be set by translating a small AWK program
 to elisp, a program that emits adjacency matrix, very nearly.
@@ -254,7 +250,11 @@ parse tree of the tool syntax. Unlike the AWK code it is inelegant.
 \section{Identifier index}
 
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
-(defun whyse--make-index-identifiers ())
+(defun whyse--make-index-identifiers (project)
+  "Not yet implemented.
+
+The corollary of this function is `whyse--make-index-modules'."
+  (error "Not yet implemented."))
 @ 
 
 \chapter{\whyse{} Projects}\label{Projects}
@@ -449,14 +449,13 @@ can manipulate. The abnormal hook itself is defined in the next section,
 \Ref{sec:cust-behav-whyse}. The index-making functions listed in the
 abnormal hook are defined in \Ref{cha:indices}.
 <<the [[whyse-open-project-functions]] abnormal hook and its default functions>>=
-(defun whyse--make-index (project &optional buffer identifiers?)
-  "Create the *nw-index* buffer, replacing the contents of BUFFER.
+(defun whyse--make-index (project &optional identifiers?)
+  "Create a view of the index for a whyse PROJECT.
 
 When IDENTIFIERS? is non-nil the identifier index will be displayed in
 the bufer, otherwise the module index is displayed."
-  (let ((index (if identifiers? (whyse--make-index-identifiers project)
-                 (whyse--make-index-modules project))))
-    (replace-buffer-contents index)))
+  (if identifiers? (whyse--make-index-identifiers project)
+    (whyse--make-index-modules project)))
 @
 
 
