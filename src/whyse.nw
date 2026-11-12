@@ -419,7 +419,7 @@ whyse group."
 		                                (concat "|" lastname)
 		                              lastname)))
                  basename)))
-          (whyse--make-index project (get-buffer-create "*nw-index*"))
+          (whyse--make-index project)
           (progn (if whyse-open-project-frame; open in a frame or the current window.
                      (if (eq t whyse-open-project-frame)
                          (make-frame); else make a frame with the parameters stored in the flag.
@@ -433,7 +433,7 @@ whyse group."
                  ;; buffer? What I want is for the actions taken by the hook
                  ;; functions to operate upon the buffer(s) in the project
                  ;; frame, if that was created, or in the current frame.
-                 (run-hook-with-args 'whyse-open-project-functions project (current-buffer))))
+                 (run-hook-with-args 'whyse-open-project-functions project)))
     (if whyse-open-customize-when-no-projects-defined?
         (customize-group 'whyse)
       (warn "No `whyse' projects are defined! Call `customize-group' with `whyse' to setup a project."))))
