@@ -32,10 +32,18 @@ within the file; binary files do not contain license notices, and images, fonts,
 sounds, movies, etc. are under their own license, if any works of these mediums
 exist within the project at any time.
 
-The Makefile has commands to =weave= noweb sources to LaTeX source, =tangle=
-files from noweb sources, and =compile-pdf=s from generated LaTeX sources. It
-also contains a command to generate noweb intermediate tool syntax for developer
-inspection.
+** Available Standard and .PHONY Make-targets
+The Makefile defines the phony target /tangle/ in addition to the standard
+targets /all/, /install/, /dist/, /check/, /clobber/, and /pdf/. Again, the available targets are:
+
+- all
+- install
+- dist
+- check
+- clobber
+- pdf
+- tangle
+
 
 =whyse.bib= contains a BibTeX reference for academic works. It contains a
 reference to Brown & Czejdo's 1991 conference proceeding[fn:1] that inspired this

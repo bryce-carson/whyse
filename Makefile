@@ -21,15 +21,19 @@ AUTODEFS   ?= $(NOWEB_LIB)/autodefs.elisp
 
 
 
+
+all: dist pdf
+
 .PHONY: tangle
-tangle: | build
-	notangle -Rwhyse.el $(SRC)/whyse.nw > $(BUILD)/whyse.el
-$(BUILD)/whyse.el: | build
+tangle: $(BUILD)/whyse.el
+$(BUILD)/whyse.el:
+	mkdir -p $(BUILD)/whyse-$(VERSION)
 	notangle -R$(@F) $(SRC)/whyse.nw > $@
 
 # Building the literate document for distribution requires installing the
 # document compilation dependencies, however, this is not checked.
-$(BUILD)/whyse.tex: | build
+$(BUILD)/whyse.tex:
+	mkdir -p $(BUILD)/whyse-$(VERSION)
 	noweave -showautodefs |& grep "elisp" # test that the elisp autodefintions file is available.
 	noweave -delay -autodefs elisp -index $(SRC)/whyse.nw > $@
 
@@ -37,26 +41,21 @@ $(BUILD)/whyse.tex: | build
 # autodefs.elisp, after `sudo make install`; autodefs.elisp is currently found
 # in both /usr/local/noweb/lib and /usr/local/noweb/bin, but is not found in
 # /usr/lib64/noweb, which doesn't exist.
-.PHONY: document
-document: $(BUILD)/whyse.pdf
-$(BUILD)/whyse.pdf: $(BUILD)/whyse.tex | build
+pdf: $(BUILD)/whyse.pdf
+$(BUILD)/whyse.pdf: $(BUILD)/whyse.tex
+	mkdir -p $(BUILD)/whyse-$(VERSION)
 	cp $(addprefix $(SRC)/,gpl-3.0.tex ieee.csl knoweb.sty) $(BUILD)
 	cd $(BUILD) && latexmk --xelatex --interaction=nonstopmode -f $<
 
-.PHONY: package
-package: $(BUILD)/whyse-$(VERSION).tar
+dist: $(BUILD)/whyse-$(VERSION).tar
 $(BUILD)/whyse-$(VERSION).tar: $(BUILD)/whyse.el
 	mkdir -p $(basename $@)
 	cp $^ $(basename $@)
 	tar --create --file $@ -C $(BUILD) $(basename $(@F))
 
 # Test the peg parser.
-.PHONY: test
-test: tangle
+check: tangle
 	emacs --init-directory="~/.whyse-emacs" --load=$(TEST)/test-loader.el
-
-build:
-	mkdir -p $(BUILD)/whyse-$(VERSION)
 
 clobber:
 	$(RM) --recursive --force $(BUILD)
