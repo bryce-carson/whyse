@@ -14,13 +14,13 @@ conference proceeding[fn:1], and is in early development.
 To orient new contributors and help adventurous hackers use the software, this
 overview is provided to help with navigation.
 
-The easiest way to get started with development on Whyse is to use a container
-created from the Dockerfile. Unfortunately, compiling the PDF for Whyse outside
-of this specific environment is quite difficult, given [[https://github.com/JoeRiel/knoweb/issues/1][the fragile nature of the
-knoweb.sty macros that I have experienced]].
-
 Firstly, noweb 2.13 and LaTeX are required for development. Run =make= to
-compile the PDF on your system.
+compile the PDF on your system, then read the literate program (the /all/ target
+will create the distribution tarball and compile the pdf). The easiest way to
+get started with development on Whyse is to use a container created from the
+Dockerfile. Unfortunately, compiling the PDF for Whyse outside of this specific
+environment is quite difficult, given [[https://github.com/JoeRiel/knoweb/issues/1][the fragile nature of the knoweb LaTeX
+style that I have experienced]].
 
 =autodefs.elisp= and =knoweb.sty= are taken from the knoweb project, which
 provides LaTeX support for noweb and Emacs Lisp identifier definitions in AWK
@@ -31,6 +31,12 @@ under a different license, contian separate licensing notices where appropriate
 within the file; binary files do not contain license notices, and images, fonts,
 sounds, movies, etc. are under their own license, if any works of these mediums
 exist within the project at any time.
+
+=whyse.bib= contains a BibTeX reference for academic works. It contains a
+reference to Brown & Czejdo's 1991 conference proceeding[fn:1] that inspired this
+package.
+
+The only other source file is =whyse.nw=, the noweb source for WHYSE itself.
 
 ** Available Standard and .PHONY Make-targets
 The Makefile defines the phony target /tangle/ in addition to the standard
@@ -43,13 +49,6 @@ targets /all/, /install/, /dist/, /check/, /clobber/, and /pdf/. Again, the avai
 - clobber
 - pdf
 - tangle
-
-
-=whyse.bib= contains a BibTeX reference for academic works. It contains a
-reference to Brown & Czejdo's 1991 conference proceeding[fn:1] that inspired this
-package.
-
-The only other source file is =whyse.nw=, the noweb source for WHYSE itself.
 
 ** LaTeX compilation difficulties
 I have not had success compiling a knoweb-styled LaTeX document in any
